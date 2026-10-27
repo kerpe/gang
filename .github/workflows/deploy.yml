@@ -62,6 +62,30 @@ jobs:
           ];
           file_put_contents("private/config.php", "<?php\nreturn ".var_export($c, true).";\n");'
 
+      # Finds where the site lives for this FTP account, and refuses to upload when it
+      # cannot, so private/ (with config.php) can never land inside the web root.
+      - name: Check the target folders on the server
+        if: env.HAS_FTP == 'true'
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          PROTOCOL: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+        run: |
+          host="${FTP_SERVER#ftp://}"; host="${host%/}"
+          tls=(); [ "$PROTOCOL" = ftps ] && tls=(--ssl-reqd --insecure)
+          ftp() { curl -sS --max-time 60 "${tls[@]}" --user "$FTP_USERNAME:$FTP_PASSWORD" "$@"; }
+          if ftp --list-only "ftp://$host/$SITE_DIR/public_html/" >/dev/null 2>&1; then
+            echo "BASE_DIR=$SITE_DIR" >> "$GITHUB_ENV"
+          elif ftp --list-only "ftp://$host/public_html/" >/dev/null 2>&1 && ! ftp --list-only "ftp://$host/" | grep -qx 'index.php'; then
+            echo "This FTP account starts in the site folder."
+            echo "BASE_DIR=." >> "$GITHUB_ENV"
+          else
+            echo "::error::Could not find $SITE_DIR/public_html or public_html over FTP. Top-level folders:"
+            ftp --list-only "ftp://$host/" || true
+            exit 1
+          fi
+
       - name: Upload public_html and private
         if: env.HAS_FTP == 'true'
         env:
@@ -77,6 +101,6 @@ jobs:
           lftp --env-password -u "$FTP_USERNAME" "$host" -e "
             set ftp:ssl-force $ssl; set ftp:ssl-protect-data $ssl; set ssl:verify-certificate no;
             set net:max-retries 3; set net:timeout 30;
-            mirror -R --verbose --no-perms ./public_html/ '$SITE_DIR/public_html/';
-            mirror -R --verbose --no-perms -x '^data/' -x '(^|/)\.git' ./private/ '$SITE_DIR/private/';
+            mirror -R --verbose --no-perms ./public_html/ '$BASE_DIR/public_html/';
+            mirror -R --verbose --no-perms -x '^data/' -x '(^|/)\.git' ./private/ '$BASE_DIR/private/';
             bye"
