@@ -1,0 +1,82 @@
+# Uploads the site to Hostinger over FTP whenever main changes.
+# public_html/ goes to the site's public_html; private/ goes next to it, outside the web root.
+# private/config.php is written from the secrets below; private/data/ is never touched.
+# Hostinger's own Git deployment must stay OFF (it copies the whole repository into public_html).
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions):
+#   FTP_SERVER    the IP shown in hPanel, without ftp:// (e.g. 92.113.18.12)
+#   FTP_USERNAME  hPanel -> Files -> FTP Accounts
+#   FTP_PASSWORD
+#   DB_NAME, DB_USER, DB_PASSWORD   hPanel -> Databases -> MySQL Databases
+#   ADMIN_EMAIL   the email that gets /admin after logging in
+# Optional: RESEND_KEY (sends mail through Resend instead of PHP mail()).
+# Optional repository variables: FTP_PROTOCOL (default ftps), SITE_DIR (default domains/gang.lt).
+name: Deploy to Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-hostinger
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      HAS_FTP: ${{ secrets.FTP_SERVER != '' && secrets.FTP_USERNAME != '' && secrets.FTP_PASSWORD != '' }}
+      HAS_DB: ${{ secrets.DB_NAME != '' && secrets.DB_USER != '' && secrets.DB_PASSWORD != '' && secrets.ADMIN_EMAIL != '' }}
+      SITE_DIR: ${{ vars.SITE_DIR || 'domains/gang.lt' }}
+    steps:
+      - name: Check settings
+        if: env.HAS_FTP != 'true'
+        run: echo "::notice::FTP secrets are not set yet, so nothing was deployed. Add FTP_SERVER, FTP_USERNAME and FTP_PASSWORD."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_FTP == 'true'
+
+      - name: Lint PHP
+        if: env.HAS_FTP == 'true'
+        run: for f in $(find private public_html -name '*.php'); do php -l "$f" >/dev/null || exit 1; done
+
+      - name: Write config.php from secrets
+        if: env.HAS_FTP == 'true' && env.HAS_DB == 'true'
+        env:
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          RESEND_KEY: ${{ secrets.RESEND_KEY }}
+        run: |
+          php -r '
+          $c = [
+            "public_url" => "https://gang.lt",
+            "db_dsn" => "mysql:host=localhost;dbname=".getenv("DB_NAME").";charset=utf8mb4",
+            "db_user" => getenv("DB_USER"),
+            "db_password" => getenv("DB_PASSWORD"),
+            "admin_email" => getenv("ADMIN_EMAIL"),
+            "mail_from" => "GANG <info@gang.lt>",
+            "resend_key" => (string) getenv("RESEND_KEY"),
+          ];
+          file_put_contents("private/config.php", "<?php\nreturn ".var_export($c, true).";\n");'
+
+      - name: Upload public_html and private
+        if: env.HAS_FTP == 'true'
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+          PROTOCOL: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp >/dev/null
+          host="${FTP_SERVER#ftp://}"; host="${host%/}"
+          ssl=false; [ "$PROTOCOL" = ftps ] && ssl=true
+          export LFTP_PASSWORD="$FTP_PASSWORD"
+          lftp --env-password -u "$FTP_USERNAME" "$host" -e "
+            set ftp:ssl-force $ssl; set ftp:ssl-protect-data $ssl; set ssl:verify-certificate no;
+            set net:max-retries 3; set net:timeout 30;
+            mirror -R --verbose --no-perms ./public_html/ '$SITE_DIR/public_html/';
+            mirror -R --verbose --no-perms -x '^data/' -x '(^|/)\.git' ./private/ '$SITE_DIR/private/';
+            bye"

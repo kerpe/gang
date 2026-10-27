@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /admin
+Disallow: /mano
+Disallow: /prisijungti
+Sitemap: https://gang.lt/sitemap.xml
