@@ -61,7 +61,7 @@ jobs:
             "db_user" => getenv("DB_USER"),
             "db_password" => getenv("DB_PASSWORD"),
             "admin_email" => getenv("ADMIN_EMAIL"),
-            "mail_from" => "GANG <info@gang.lt>",
+            "mail_from" => "GANG <hello@gang.lt>",
             "resend_key" => (string) getenv("RESEND_KEY"),
             "preview_password" => (string) getenv("PREVIEW_PASSWORD"),
             "public" => getenv("SITE_PUBLIC") === "true",

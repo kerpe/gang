@@ -28,7 +28,7 @@ Until launch every page asks for one shared password (`preview_password`, from t
 
 Every push to `main` is uploaded by `.github/workflows/deploy.yml` over FTPS, and `private/config.php` is written from repository secrets (see the comments at the top of the workflow). Hostinger's own Git deployment must stay off.
 
-One-time setup in hPanel: create the MySQL database, the mailbox `info@gang.lt` (PHP `mail()` sends from it), and a cron job `php /home/<user>/domains/gang.lt/private/cron.php` every hour.
+One-time setup in hPanel: create the MySQL database, the mailbox `hello@gang.lt` (PHP `mail()` sends from it), and a cron job `php /home/<user>/domains/gang.lt/private/cron.php` every hour.
 
 ## Testing locally
 

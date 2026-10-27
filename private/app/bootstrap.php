@@ -37,7 +37,7 @@ function config(): array
             http_response_code(503);
             exit('Svetainė ruošiama.');
         }
-        $c = (require $file) + ['resend_key' => '', 'mail_from' => 'GANG <info@gang.lt>', 'request_days' => 30];
+        $c = (require $file) + ['resend_key' => '', 'mail_from' => 'GANG <hello@gang.lt>', 'request_days' => 30];
     }
     return $c;
 }
@@ -191,7 +191,9 @@ function send_mail(string $to, string $subject, string $text, string $replyTo = 
     if ($replyTo !== '') {
         $headers['Reply-To'] = $replyTo;
     }
-    return mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $text, $headers);
+    // Envelope sender on the site's own mailbox, so Hostinger accepts and signs the mail.
+    $envelope = preg_match('/[^<\s]+@[^>\s]+/', $c['mail_from'], $m) ? '-f'.$m[0] : '';
+    return mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $text, $headers, $envelope);
 }
 
 function date_lt(?string $date): string

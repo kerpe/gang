@@ -8,7 +8,7 @@ return [
     'db_password' => 'YOUR_DATABASE_PASSWORD',
     // Logging in with this email opens /admin.
     'admin_email' => 'you@example.com',
-    'mail_from' => 'GANG <info@gang.lt>',
+    'mail_from' => 'GANG <hello@gang.lt>',
     // Optional: Resend API key. Empty means PHP mail() (works on Hostinger).
     'resend_key' => '',
 ];
