@@ -81,8 +81,9 @@ jobs:
             echo "This FTP account starts in the site folder."
             echo "BASE_DIR=." >> "$GITHUB_ENV"
           else
-            echo "::error::Could not find $SITE_DIR/public_html or public_html over FTP. Top-level folders:"
-            ftp --list-only "ftp://$host/" || true
+            # Annotations, not just log lines, so the reason shows on the run page.
+            listing=$(ftp --list-only "ftp://$host/" 2>&1 | head -30 | tr '\n' ' ')
+            echo "::error::Could not find $SITE_DIR/public_html or public_html over FTP. What the FTP account sees at its top level: $listing"
             exit 1
           fi
 
