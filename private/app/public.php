@@ -6,33 +6,41 @@ function home_page(): never
 {
     $urgent = open_requests(['kind' => 'skubu'], 6);
     $latest = $urgent ?: open_requests([], 6);
-    $cards = $latest ? '<div class="cards">'.implode('', array_map('request_card', $latest)).'</div><p><a href="/darbai">Visi darbai →</a></p>' : '';
-    $listTitle = $urgent ? 'Skubiai reikia žmonių' : 'Naujausi darbai';
-    $list = $cards !== '' ? "<section class=\"wrap\"><h2>$listTitle</h2>$cards</section>" : '';
+    $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbai';
+    $list = $latest ? '<div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
-    $proof = $workers >= 50 ? "<p class=\"proof\">Jau $workers darbuotojų GANG'e</p>" : '';
+    $proof = $workers >= 50 ? "<p class=\"proof\">Jau $workers žmonių GANG'e</p>" : '';
+    // Drop a photo at public_html/img/hero.jpg to replace the warm light gradient.
+    $photo = is_file(__DIR__.'/../../public_html/img/hero.jpg') ? ' style="background-image: linear-gradient(transparent, transparent), url(/img/hero.jpg)"' : '';
+    $cards = '';
+    foreach ([
+        ['/darbai', 'Darbai', 'Pamainos, sezonas, nuolatinis.', '<path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16"/>'],
+        ['/prisijungti?kaip=vadovas', 'Įstaigoms', 'Rask žmonių per kelias minutes.', '<path d="M7 3h10l-5 8zM12 11v8M8 21h8"/>'],
+        ['/prisijungti?kaip=darbuotojas', 'Darbuotojams', 'Pažymėk, kad laisvas.', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/>'],
+        ['/kaip-veikia', 'Kaip veikia', 'Kontraktai ir įvertinimai.', '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
+    ] as [$href, $title, $text, $icon]) {
+        $cards .= '<a class="navcard" href="'.$href.'"><svg viewBox="0 0 24 24" aria-hidden="true">'.$icon.'</svg><strong>'.$title.'</strong><span>'.$text.'</span><em class="arrow" aria-hidden="true">→</em></a>';
+    }
     page('', <<<HTML
-<section class="hero"><div class="wrap">
-  <h1>Susirgo virėjas? Reikia rankų šventėms?</h1>
-  <p class="lead">GANG greitai suveda barus, restoranus ir kavines su patikimais žmonėmis: pavadavimui dienai ar mėnesiui, sezonui arba nuolatiniam darbui.</p>
-  <div class="split">
-    <a class="side" href="/prisijungti?kaip=vadovas"><strong>Ieškau žmonių</strong><span>Įstaigų vadovams: paskelbkite poreikį ir laisvi žmonės gaus pranešimą iškart.</span><em>Registruoti įstaigą →</em></a>
-    <a class="side" href="/prisijungti?kaip=darbuotojas"><strong>Ieškau darbo</strong><span>Barmenams, padavėjams, virėjams ir kitiems: pažymėkite, kada laisvi, ir gaukite pasiūlymus.</span><em>Susikurti profilį →</em></a>
-  </div>
+<section class="hero"><div class="hero-media"$photo></div><div class="wrap">
+  <p class="eyebrow">Hospitality komandoms</p>
+  <h1>Susirgo virėjas? <span class="hl">Žmogų rasi šiandien</span></h1>
+  <p class="lead">GANG suveda barus, restoranus ir kavines su patikimais žmonėmis: pavadavimui dienai ar mėnesiui, sezonui ar nuolatiniam darbui.</p>
+  <p class="cta"><a class="btn" href="/prisijungti">Prisijunk prie GANG →</a><a class="text-link" href="/kaip-veikia">Kaip tai veikia</a></p>
   $proof
 </div></section>
-$list
-<section class="wrap how">
-  <h2>Kaip veikia</h2>
+<section class="wrap">
+  <nav class="navcards" aria-label="Skiltys">$cards</nav>
+  $list
+  <div class="section-head"><h2>Kaip veikia</h2><a href="/kaip-veikia">Daugiau →</a></div>
   <ol class="steps">
-    <li><strong>Vadovas paskelbia poreikį.</strong> Pvz., „virėjas rytoj, 10–22 val.“ ar „padavėjai vasaros sezonui“.</li>
-    <li><strong>Tinkami darbuotojai gauna laišką</strong> ir atsiliepia vienu paspaudimu.</li>
-    <li><strong>Vadovas patvirtina žmogų.</strong> Tai GANG kontraktas: abu gauna vienas kito kontaktus.</li>
-    <li><strong>Po darbo abu įvertina vienas kitą.</strong> Taip kaupiasi patikimumo istorija.</li>
+    <li><strong>Vadovas paskelbia poreikį</strong>Pvz., „virėjas rytoj, 10–22 val.“ ar „padavėjai vasaros sezonui“.</li>
+    <li><strong>Tinkami žmonės gauna laišką</strong>ir atsiliepia vienu paspaudimu.</li>
+    <li><strong>Vadovas patvirtina</strong>Tai GANG kontraktas: abu gauna vienas kito kontaktus.</li>
+    <li><strong>Abu įvertina vienas kitą</strong>Taip kaupiasi patikimumo istorija.</li>
   </ol>
-  <p><a href="/kaip-veikia">Daugiau apie įvertinimus ir taisykles →</a></p>
+  <p class="cities">Veikiame <strong>Vilniuje, Kaune, Klaipėdoje ir Palangoje</strong>. Šiuo metu GANG nemokamas.</p>
 </section>
-<section class="wrap cities"><p>Veikiame: <strong>Vilniuje, Kaune, Klaipėdoje ir Palangoje</strong>. Šiuo metu GANG nemokamas.</p></section>
 HTML, ['canonical' => '/']);
 }
 

@@ -12,9 +12,9 @@ function page(string $title, string $body, array $opt = []): never
     $head = $opt['head'] ?? '';
     $user = current_user();
     if ($user) {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="btn small" href="/mano">Mano GANG</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="btn small" href="/mano">Mano GANG</a>';
     } else {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a href="/prisijungti">Prisijungti</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
     }
     $flash = flash();
     $flash = $flash !== '' ? '<div class="wrap"><div class="notice ok flash">'.e($flash).'</div></div>' : '';
@@ -29,10 +29,11 @@ function page(string $title, string $body, array $opt = []): never
 <meta name="description" content="{$e($desc)}">
 <meta property="og:title" content="{$e($fullTitle)}">
 <meta property="og:description" content="{$e($desc)}">
-<meta name="theme-color" content="#1f3a2e">
+<meta name="theme-color" content="#171717">
 $robots$canonical
+<link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=3">
+<link rel="stylesheet" href="/style.css?v=5">
 $head
 </head>
 <body>
