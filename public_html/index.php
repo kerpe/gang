@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -29,6 +29,8 @@ $m = [];
 $is = function (string $pattern) use ($path, &$m): bool {
     return (bool) preg_match('#^'.$pattern.'$#', $path, $m);
 };
+preview_gate($path);
+
 match (true) {
     $path === '/' => home_page(),
     $path === '/darbai' => jobs_page(),

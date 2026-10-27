@@ -9,7 +9,9 @@
 #   FTP_PASSWORD
 #   DB_NAME, DB_USER, DB_PASSWORD   hPanel -> Databases -> MySQL Databases
 #   ADMIN_EMAIL   the email that gets /admin after logging in
+#   PREVIEW_PASSWORD  until launch the whole site asks for this password
 # Optional: RESEND_KEY (sends mail through Resend instead of PHP mail()).
+# Launch: set the repository variable SITE_PUBLIC to true (Variables tab) and deploy again.
 # Optional repository variables: FTP_PROTOCOL (default ftps), SITE_DIR (default domains/gang.lt).
 name: Deploy to Hostinger
 
@@ -49,6 +51,8 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           RESEND_KEY: ${{ secrets.RESEND_KEY }}
+          PREVIEW_PASSWORD: ${{ secrets.PREVIEW_PASSWORD }}
+          SITE_PUBLIC: ${{ vars.SITE_PUBLIC }}
         run: |
           php -r '
           $c = [
@@ -57,8 +61,10 @@ jobs:
             "db_user" => getenv("DB_USER"),
             "db_password" => getenv("DB_PASSWORD"),
             "admin_email" => getenv("ADMIN_EMAIL"),
-            "mail_from" => "GANG <info@gang.lt>",
+            "mail_from" => "GANG <hello@gang.lt>",
             "resend_key" => (string) getenv("RESEND_KEY"),
+            "preview_password" => (string) getenv("PREVIEW_PASSWORD"),
+            "public" => getenv("SITE_PUBLIC") === "true",
           ];
           file_put_contents("private/config.php", "<?php\nreturn ".var_export($c, true).";\n");'
 
