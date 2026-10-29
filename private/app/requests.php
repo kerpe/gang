@@ -21,29 +21,29 @@ function venue_form_page(?int $id = null): never
             $errors['city'] = 'Pasirinkite miestą.';
         }
         if (mb_strlen($v['address']) > 190) {
-            $errors['address'] = 'Per ilgas adresas.';
+            $errors['address'] = 'Adresas gali būti ne ilgesnis nei 190 simbolių.';
         }
         if (mb_strlen($v['about']) > 2000) {
-            $errors['about'] = 'Iki 2000 simbolių.';
+            $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
         if (!$errors) {
             if ($venue) {
                 sql('UPDATE venues SET name = ?, city = ?, address = ?, about = ? WHERE id = ?', [$v['name'], $v['city'], $v['address'], $v['about'], $venue['id']]);
-                flash('Įstaiga išsaugota.');
+                flash('Įstaigos duomenys išsaugoti.');
                 redirect('/mano');
             }
             insert('venues', ['manager_id' => $u['id'], 'name' => $v['name'], 'city' => $v['city'], 'address' => $v['address'], 'about' => $v['about'], 'created_at' => now()]);
-            flash('Įstaiga užregistruota. Dabar galite ieškoti žmonių.');
+            flash('Įstaiga užregistruota. Dabar galite skelbti darbuotojų poreikius.');
             redirect('/mano');
         }
     }
     $title = $venue ? 'Įstaigos duomenys' : 'Užregistruokite įstaigą';
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
-        .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="pvz. Baras „Gintaras“" required>'.err($errors, 'name').'</label>'
+        .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
         .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'
-        .'<label>Adresas <small>(darbuotojas jį matys po patvirtinimo)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
-        .'<label>Apie įstaigą <small>(nebūtina)</small><textarea name="about" rows="4" maxlength="2000" placeholder="Kokia tai vieta, kokia komanda, kuo jums gera dirbti">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
+        .'<label>Adresas <small>(darbuotojas matys tik po patvirtinimo)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
+        .'<label>Apie įstaigą <small>(neprivaloma)</small><textarea name="about" rows="4" maxlength="2000" placeholder="Trumpai apibūdinkite įstaigą, komandą ir darbo sąlygas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
         .'<button class="btn">Išsaugoti</button></form></section>', ['noindex' => true]);
 }
 
@@ -55,14 +55,14 @@ function venue_page(int $id): never
         not_found();
     }
     if ($u['kind'] !== 'worker' && (int) $venue['manager_id'] !== (int) $u['id'] && !is_admin($u)) {
-        flash('Įstaigų įvertinimus mato darbuotojai.');
+        flash('Įstaigų įvertinimus gali peržiūrėti tik darbuotojai.');
         redirect('/mano');
     }
     [$avg, $n] = venue_rating($id);
     $reviews = reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas');
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
-    $jobsHtml = $jobs ? '<h2>Dabar ieško</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
+    $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
     page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').' · '.stars($avg, $n).'</p>'
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$jobsHtml.'<h2>Darbuotojų įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
@@ -91,34 +91,34 @@ function request_form_page(): never
             $errors['role'] = 'Pasirinkite pareigas.';
         }
         if (!isset(KINDS[$v['kind']])) {
-            $errors['kind'] = 'Pasirinkite, kiek laiko reikia.';
+            $errors['kind'] = 'Pasirinkite darbo trukmę.';
         }
         $people = (int) $v['people'];
         if ($people < 1 || $people > 20) {
-            $errors['people'] = 'Nuo 1 iki 20.';
+            $errors['people'] = 'Nurodykite skaičių nuo 1 iki 20.';
         }
         $start = DateTime::createFromFormat('!Y-m-d', $v['start_date']);
         if (!$start || $v['start_date'] < today() || $start > new DateTime('+1 year')) {
-            $errors['start_date'] = 'Nurodykite pradžios datą (ne praeityje).';
+            $errors['start_date'] = 'Nurodykite pradžios datą. Ji negali būti praeityje.';
         }
         if ($v['kind'] === 'nuolat') {
             $v['end_date'] = '';
         } elseif ($v['end_date'] !== '') {
             $end = DateTime::createFromFormat('!Y-m-d', $v['end_date']);
             if (!$end || $v['end_date'] < $v['start_date'] || $end > new DateTime('+18 months')) {
-                $errors['end_date'] = 'Pabaiga turi būti ne anksčiau už pradžią.';
+                $errors['end_date'] = 'Pabaigos data negali būti ankstesnė už pradžios datą.';
             }
         } elseif ($v['kind'] !== 'skubu') {
-            $errors['end_date'] = 'Nurodykite, iki kada reikia žmogaus.';
+            $errors['end_date'] = 'Nurodykite, iki kada reikalingas darbuotojas.';
         }
         if (mb_strlen($v['hours']) > 120) {
-            $errors['hours'] = 'Iki 120 simbolių.';
+            $errors['hours'] = 'Tekstas gali būti ne ilgesnis nei 120 simbolių.';
         }
         if (mb_strlen($v['pay']) > 80) {
-            $errors['pay'] = 'Iki 80 simbolių.';
+            $errors['pay'] = 'Tekstas gali būti ne ilgesnis nei 80 simbolių.';
         }
         if (mb_strlen($v['description']) < 10 || mb_strlen($v['description']) > 3000) {
-            $errors['description'] = 'Parašykite bent trumpai, ką reikės daryti.';
+            $errors['description'] = 'Trumpai aprašykite darbo pobūdį ir pareigas (bent 10 simbolių).';
         }
         if (!$errors) {
             $id = insert('requests', [
@@ -127,23 +127,23 @@ function request_form_page(): never
                 'description' => $v['description'], 'created_at' => now(),
             ]);
             $sent = notify_workers(find_request($id));
-            flash($sent ? "Paskelbta. Laišką gavo $sent tinkami darbuotojai – atsiliepimus matysite čia ir gausite el. paštu." : 'Paskelbta. Tinkamų darbuotojų sąraše dar nėra, bet skelbimą matys visi lankytojai.');
+            flash($sent ? "Poreikis paskelbtas. Pranešimą gavo tinkamų darbuotojų: $sent. Atsiliepimus matysite šiame puslapyje ir gausite el. paštu." : 'Poreikis paskelbtas. Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai.');
             redirect('/darbas/'.$id);
         }
     }
     $kinds = radios('kind', KINDS, $v['kind']);
-    page('Ieškoti žmogaus', '<section class="wrap narrow"><h1>Ko jums reikia?</h1>'
+    page('Naujas poreikis', '<section class="wrap narrow"><h1>Kokio darbuotojo ieškote?</h1>'
         .'<form method="post" class="form request-form" novalidate>'.csrf_field()
         .(count($venues) > 1 ? '<label>Įstaiga <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
-        .'<label>Kiek žmonių <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
-        .'<fieldset><legend>Kiek laiko</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
+        .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
+        .'<fieldset><legend>Darbo trukmė</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
         .'<div class="row"><label>Nuo <input type="date" name="start_date" min="'.today().'" value="'.e($v['start_date']).'" required>'.err($errors, 'start_date').'</label>'
-        .'<label class="end">Iki <small class="opt">(jei daugiau nei viena diena)</small><input type="date" name="end_date" min="'.today().'" value="'.e($v['end_date']).'">'.err($errors, 'end_date').'</label></div>'
-        .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" placeholder="pvz. 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
-        .'<label>Atlygis <small>(rekomenduojame)</small><input name="pay" value="'.e($v['pay']).'" maxlength="80" placeholder="pvz. 10 €/val. į rankas">'.err($errors, 'pay').'</label></div>'
-        .'<label>Ką reikės daryti <textarea name="description" rows="5" maxlength="3000" required placeholder="pvz. Susirgo virėjas, reikia žmogaus karštajai virtuvei. Meniu paprastas, padės su-šefas.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
-        .'<button class="btn">Paskelbti ir pranešti darbuotojams</button></form></section>', ['noindex' => true]);
+        .'<label class="end">Iki <small class="opt">(jei ilgiau nei viena diena)</small><input type="date" name="end_date" min="'.today().'" value="'.e($v['end_date']).'">'.err($errors, 'end_date').'</label></div>'
+        .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
+        .'<label>Atlygis <small>(rekomenduojame)</small><input name="pay" value="'.e($v['pay']).'" maxlength="80" placeholder="Pavyzdžiui: 10 €/val. į rankas">'.err($errors, 'pay').'</label></div>'
+        .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
+        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>', ['noindex' => true]);
 }
 
 function request_page(int $id): never
@@ -188,7 +188,7 @@ function request_page(int $id): never
     }
     page("$role – {$r['venue_name']}, $city", <<<HTML
 <article class="wrap narrow job">
-  <p class="back"><a href="/darbai">← Visi darbai</a></p>
+  <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
   <p>$urgent</p>
   <h1>{$e($role)}</h1>
   <p class="meta">$venueLink · {$e($city)}</p>
@@ -206,11 +206,8 @@ HTML, [
 
 function worker_panel(array $r, ?array $u, bool $isOpen): string
 {
-    if (!$isOpen) {
-        return '<div class="panel"><p>Šis darbas jau nebeaktualus.</p></div>';
-    }
     if (!$u) {
-        return '<div class="panel"><h2>Tinka?</h2><p>Atsiliepti gali GANG nariai. Registracija užtrunka minutę.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>';
+        return $isOpen ? '<div class="panel"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
     if ($u['kind'] !== 'worker') {
         return '';
@@ -218,42 +215,45 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $mine = sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetch();
     if ($mine) {
         return match ($mine['status']) {
-            'accepted' => '<div class="panel ok"><h2>Jūs patvirtintas! 🎉</h2><p>Kontaktai ir adresas – <a href="/mano">jūsų paskyroje</a>.</p></div>',
-            'declined' => '<div class="panel"><p>Vadovas šį kartą pasirinko kitą žmogų. Sėkmės kitur!</p></div>',
-            'withdrawn' => '<div class="panel"><p>Atšaukėte savo atsiliepimą.</p></div>',
-            default => '<div class="panel"><h2>Atsiliepėte ✓</h2><p>Vadovas mato jūsų profilį ir įvertinimus. Kai patvirtins, gausite laišką su kontaktais.</p>'
-                .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Tikrai atšaukti?').'</div>',
+            'accepted' => '<div class="panel ok"><h2>Įstaiga patvirtino jūsų kandidatūrą</h2><p>Vadovo kontaktus ir įstaigos adresą rasite <a href="/mano">savo paskyroje</a>.</p></div>',
+            'declined' => '<div class="panel"><p>Dėkojame už susidomėjimą. Šį kartą įstaiga pasirinko kitą kandidatą. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
+            'withdrawn' => '<div class="panel"><p>Savo atsiliepimą atšaukėte.</p></div>',
+            default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2><p>Įstaigos vadovas mato jūsų profilį ir įvertinimus. Vadovui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus.</p>'
+                .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Ar tikrai norite atšaukti atsiliepimą?').'</div>',
         };
     }
-    return '<div class="panel" id="atsiliepti"><h2>Tinka? Atsiliepkite</h2>'
+    if (!$isOpen) {
+        return '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
+    }
+    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
-        .'<label>Žinutė vadovui <small>(nebūtina)</small><textarea name="note" rows="3" maxlength="1000" placeholder="pvz. Galiu atvykti per valandą, turiu 2 metų patirtį"></textarea></label>'
-        .'<button class="btn">Galiu dirbti</button></form>'
-        .'<p class="meta">Vadovas matys jūsų vardą, profilį ir įvertinimus. Telefoną – tik jus patvirtinęs.</p></div>';
+        .'<label>Žinutė vadovui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
+        .'<button class="btn">Pateikti kandidatūrą</button></form>'
+        .'<p class="meta">Vadovas matys jūsų vardą, nuotrauką, profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
 }
 
 function owner_panel(array $r, bool $isOpen): string
 {
-    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.available_until, w.phone FROM responses s JOIN users w ON w.id = s.worker_id
+    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone FROM responses s JOIN users w ON w.id = s.worker_id
         WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['id']])->fetchAll();
     $list = '';
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
         $done = completed_count((int) $s['worker_id']);
-        $free = is_available($s) ? ' · <span class="free">laisvas</span>' : '';
+        $free = is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? ' · <span class="free">laisvas šiomis dienomis</span>' : '';
         $buttons = $s['status'] === 'accepted'
-            ? '<p class="ok-text">Patvirtinta ✓ · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $s['phone'])).'">'.e($s['phone']).'</a></p>'
-            : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Ne šį kartą', [], 'btn small ghost');
-        $list .= '<div class="responder"><div><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n).'<p class="meta">Darbų per GANG: '.$done.$free.'</p>'
+            ? '<p class="ok-text">Patvirtinta · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $s['phone'])).'">'.e($s['phone']).'</a></p>'
+            : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
+        $list .= '<div class="responder">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n).'<p class="meta">Darbų per GANG: '.$done.$free.'</p>'
             .($s['note'] ? '<p class="note">„'.e($s['note']).'“</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
-    [$total, $freeNow] = matching_workers_count($r['role'], $r['city']);
-    $reach = '<p class="meta">Laišką gavo: '.(int) $r['notified'].' · Tinkamų darbuotojų mieste: '.$total.', iš jų laisvi dabar: '.$freeNow.'</p>';
+    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()));
+    $reach = '<p class="meta">Pranešimą gavo: '.(int) $r['notified'].' · Tinkamų darbuotojų mieste: '.$total.', iš jų darbo pradžios dieną laisvi: '.$freeNow.'</p>';
     $status = ['open' => 'Aktyvus', 'filled' => 'Užpildytas', 'cancelled' => 'Atšauktas', 'expired' => 'Pasibaigęs'][$r['status']] ?? $r['status'];
-    $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti poreikį', [], 'btn small ghost', 'Uždaryti šį poreikį? Darbuotojai jo nebematys.') : '';
+    $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti poreikį', [], 'btn small ghost', 'Ar tikrai norite uždaryti šį poreikį? Darbuotojai jo nebematys.') : '';
     return '<div class="panel owner"><h2>Atsiliepę darbuotojai</h2><p class="meta">Būsena: '.e($isOpen ? 'Aktyvus' : $status).'</p>'.$reach
-        .($list ?: '<p class="empty">Dar niekas neatsiliepė. Gausite laišką, kai kas nors atsilieps.</p>').$close.'</div>';
+        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$close.'</div>';
 }
 
 function respond_action(int $id): never
@@ -270,13 +270,14 @@ function respond_action(int $id): never
         insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'created_at' => now()]);
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
         [$avg, $n] = worker_rating((int) $u['id']);
-        $rating = $n ? number_format($avg, 1, ',', '')."/5 ($n įvert.)" : 'dar neįvertintas';
-        send_mail($manager['email'], 'Atsiliepė: '.first_name($u['name']).' – '.(ROLES[$r['role']] ?? ''),
-            first_name($u['name'])." atsiliepė į jūsų poreikį „".(ROLES[$r['role']] ?? '')."“ (".period($r).").\n"
+        $rating = $n ? number_format($avg, 1, ',', '')." iš 5 ($n įvert.)" : 'įvertinimų dar nėra';
+        send_mail($manager['email'], 'Nauja kandidatūra: '.(ROLES[$r['role']] ?? '').' – '.first_name($u['name']),
+            "Laba diena,\n\n"
+            .first_name($u['name'])." atsiliepė į jūsų poreikį „".(ROLES[$r['role']] ?? '')."“ (".period($r).").\n"
             ."Įvertinimas: $rating\n".($note !== '' ? "\nŽinutė: $note\n" : '')
-            ."\nPeržiūrėkite ir patvirtinkite:\n".url('/darbas/'.$id));
+            ."\nKandidatūrą galite peržiūrėti ir patvirtinti čia:\n".url('/darbas/'.$id));
     }
-    flash('Atsiliepėte! Vadovas gaus pranešimą.');
+    flash('Kandidatūra pateikta. Įstaigos vadovas gaus pranešimą el. paštu.');
     redirect('/darbas/'.$id);
 }
 
@@ -319,25 +320,25 @@ function decide_response_action(int $responseId, bool $accept): never
     $role = ROLES[$r['role']] ?? '';
     if (!$accept) {
         sql("UPDATE responses SET status = 'declined' WHERE id = ?", [$responseId]);
-        send_mail($worker['email'], 'Dėl darbo: '.$role.' – '.$r['venue_name'], "Sveiki, ".first_name($worker['name']).",\n\n{$r['venue_name']} šį kartą pasirinko kitą žmogų. Ačiū, kad atsiliepėte – kiti darbai: ".url('/darbai'));
+        send_mail($worker['email'], 'Dėl jūsų kandidatūros: '.$role.' – '.$r['venue_name'], "Laba diena,\n\ndėkojame, kad atsiliepėte į {$r['venue_name']} darbo pasiūlymą. Šį kartą įstaiga pasirinko kitą kandidatą.\n\nKviečiame peržiūrėti kitus aktualius darbo pasiūlymus:\n".url('/darbai'));
         redirect('/darbas/'.$r['id']);
     }
     sql("UPDATE responses SET status = 'accepted' WHERE id = ?", [$responseId]);
     insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()]);
     send_mail($worker['email'], 'Patvirtinta: '.$role.' – '.$r['venue_name'],
-        "Sveiki, ".first_name($worker['name']).",\n\n{$r['venue_name']} patvirtino jus darbui!\n\n"
+        "Laba diena,\n\n{$r['venue_name']} patvirtino jūsų kandidatūrą.\n\n"
         ."Kada: ".period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
         ."Kur: ".($r['address'] ?: CITIES[$r['city']])."\n"
         ."Kontaktas: {$u['name']}, {$u['phone']}\n\n"
-        ."Rekomenduojame paskambinti ir susitarti dėl detalių. Darbo sąlygas ir sutartį sutariate tiesiogiai su įstaiga.\n\n"
-        ."Po darbo galėsite įvertinti įstaigą: ".url('/mano'), $u['email']);
+        ."Rekomenduojame susisiekti su vadovu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su įstaiga.\n\n"
+        ."Baigę darbą galėsite įvertinti įstaigą savo paskyroje:\n".url('/mano'), $u['email']);
     $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
     if ($accepted >= (int) $r['people']) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);
         decline_waiting($r);
-        flash('Patvirtinta! Visos vietos užpildytos. '.first_name($worker['name']).' telefonas: '.$worker['phone']);
+        flash('Kandidatūra patvirtinta, visos vietos užpildytos. Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.');
     } else {
-        flash('Patvirtinta! '.first_name($worker['name']).' telefonas: '.$worker['phone']);
+        flash('Kandidatūra patvirtinta. Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.');
     }
     redirect('/darbas/'.$r['id']);
 }
@@ -348,7 +349,7 @@ function decline_waiting(array $r): void
     $waiting = sql("SELECT w.email, w.name FROM responses s JOIN users w ON w.id = s.worker_id WHERE s.request_id = ? AND s.status = 'sent'", [$r['id']])->fetchAll();
     sql("UPDATE responses SET status = 'declined' WHERE request_id = ? AND status = 'sent'", [$r['id']]);
     foreach ($waiting as $w) {
-        send_mail($w['email'], 'Dėl darbo: '.(ROLES[$r['role']] ?? '').' – '.$r['venue_name'], "Sveiki, ".first_name($w['name']).",\n\nšis darbas jau užpildytas. Ačiū, kad atsiliepėte – kiti darbai: ".url('/darbai'));
+        send_mail($w['email'], 'Dėl jūsų kandidatūros: '.(ROLES[$r['role']] ?? '').' – '.$r['venue_name'], "Laba diena,\n\ndėkojame, kad atsiliepėte į {$r['venue_name']} darbo pasiūlymą. Informuojame, kad visos vietos jau užpildytos.\n\nKviečiame peržiūrėti kitus aktualius darbo pasiūlymus:\n".url('/darbai'));
     }
 }
 
@@ -360,14 +361,15 @@ function worker_profile_page(int $id): never
         not_found();
     }
     if ($u['kind'] !== 'manager' && (int) $u['id'] !== $id && !is_admin($u)) {
-        flash('Darbuotojų profilius mato įstaigų vadovai.');
+        flash('Darbuotojų profilius gali peržiūrėti tik įstaigų vadovai.');
         redirect('/mano');
     }
     [$avg, $n] = worker_rating($id);
     $reviews = reviews_html(worker_reviews($id), fn ($r) => 'Įstaiga, '.(CITIES[$r['city']] ?? ''));
-    $free = is_available($w) ? '<p class="status on">● Laisvas iki '.e(date_lt($w['available_until'])).'</p>' : '';
-    page(first_name($w['name']), '<section class="wrap narrow"><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p>'.$free
+    $ranges = availability_ranges($id);
+    $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
+    page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
+        .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
         .'<ul class="facts"><li><b>Pareigos</b>'.e(labels($w['roles'], ROLES)).'</li><li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);

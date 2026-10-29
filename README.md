@@ -19,6 +19,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 - Reviews only after a contract, both directions; a review becomes visible when both sides have rated or after 7 days (`REVIEW_HIDE_DAYS`). Worker reviews are visible to managers only, venue reviews to workers only. Authors are never shown.
 - Admin = the user whose email equals `admin_email` in config.
 - Schema changes: bump `SCHEMA_VERSION` in `schema.php` and add the statements; the marker file in `private/data/` makes it run once.
+- Worker photos are stored in `private/data/photos/` (outside the web root, never overwritten by deploys) and served by `/nuotrauka/{id}` only to managers, the worker and the admin.
 
 ## Preview lock
 

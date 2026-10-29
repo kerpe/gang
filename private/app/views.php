@@ -5,7 +5,7 @@ declare(strict_types=1);
 function page(string $title, string $body, array $opt = []): never
 {
     $e = 'e';
-    $desc = $opt['description'] ?? 'GANG – vieta, kur barai, restoranai ir kavinės greitai randa patikimų žmonių: skubiam pavadavimui, sezonui ar nuolatiniam darbui.';
+    $desc = $opt['description'] ?? 'GANG – platforma, padedanti barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus skubiam pavadavimui, sezonui ar nuolatiniam darbui.';
     $fullTitle = $title === '' ? 'GANG – darbas hospitality komandoms' : $title.' · GANG';
     $robots = !empty($opt['noindex']) ? '<meta name="robots" content="noindex">' : '';
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
@@ -33,7 +33,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=5">
+<link rel="stylesheet" href="/style.css?v=6">
 $head
 </head>
 <body>
@@ -46,7 +46,7 @@ $flash
 $body
 </main>
 <footer class="foot"><div class="wrap">
-  <p><strong>GANG.lt</strong> – patikimi žmonės barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
+  <p><strong>GANG.lt</strong> – patikimi darbuotojai barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
   <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/darbai">Darbai</a> · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
 </div></footer>
 </body>
@@ -58,7 +58,7 @@ HTML;
 function not_found(): never
 {
     http_response_code(404);
-    page('Puslapis nerastas', '<section class="wrap narrow"><h1>Puslapis nerastas</h1><p>Galbūt skelbimas jau nebegalioja.</p><p><a class="btn" href="/darbai">Visi darbai</a></p></section>', ['noindex' => true]);
+    page('Puslapis nerastas', '<section class="wrap narrow"><h1>Puslapis nerastas</h1><p>Puslapis neegzistuoja arba skelbimas nebegalioja.</p><p><a class="btn" href="/darbai">Visi darbo pasiūlymai</a></p></section>', ['noindex' => true]);
 }
 
 function options(array $items, string $selected): string
@@ -115,7 +115,7 @@ function request_card(array $r, string $extra = ''): string
 {
     $badge = $r['kind'] === 'skubu' ? '<span class="tag urgent">Skubu</span>' : '<span class="tag">'.e(KINDS[$r['kind']] ?? '').'</span>';
     $pay = $r['pay'] !== '' ? '<span class="tag pay">'.e($r['pay']).'</span>' : '';
-    $people = (int) $r['people'] > 1 ? ' · reikia '.(int) $r['people'].' žm.' : '';
+    $people = (int) $r['people'] > 1 ? ' · reikia darbuotojų: '.(int) $r['people'] : '';
     return '<div class="card"><a class="card-link" href="/darbas/'.(int) $r['id'].'"><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
         .'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p>'
         .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').'</p>'

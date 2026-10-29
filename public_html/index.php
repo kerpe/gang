@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -57,5 +57,6 @@ match (true) {
     $is('/atsiliepimas/(\d+)/atmesti') && $post => decide_response_action((int) $m[1], false),
     $is('/vertinti/(\d+)') => review_page((int) $m[1]),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
+    $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
     default => not_found(),
 };
