@@ -51,11 +51,6 @@ function home_page(): never
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
-    $roles = '';
-    foreach (ROLES as $label) {
-        $roles .= '<span>'.e($label).'</span>';
-    }
-
     page('', <<<HTML
 <section class="hero home-hero">
   <div class="cams">$slides</div>
@@ -72,7 +67,6 @@ function home_page(): never
   $tabs
 </section>
 
-<div class="ticker" aria-hidden="true"><div>$roles$roles</div></div>
 
 <section class="wrap home-block">
   <div class="audience">
