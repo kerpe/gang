@@ -2,46 +2,140 @@
 
 declare(strict_types=1);
 
+// Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
+// A camera without a photo yet shows a "no signal" tile instead.
+const CAMS = [
+    '01' => ['Salė ir baras', 'Barmenai, padavėjai, baristos, someljė, salės vadovai.'],
+    '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
+    '03' => ['Aptarnavimas', 'Padavėjai, administratoriai, papildomos rankos renginiams.'],
+];
+
+function cam_photo(string $n): string
+{
+    return is_file(__DIR__.'/../../public_html/img/cam-'.$n.'.jpg') ? '/img/cam-'.$n : '';
+}
+
 function home_page(): never
 {
     $urgent = open_requests(['kind' => 'skubu'], 6);
     $latest = $urgent ?: open_requests([], 6);
-    $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbai';
-    $list = $latest ? '<div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div>' : '';
+    $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
+    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
-    $proof = $workers >= 50 ? "<p class=\"proof\">GANG jau užsiregistravo darbuotojų: $workers</p>" : '';
-    // Drop a photo at public_html/img/hero.jpg to replace the warm light gradient.
-    $photo = is_file(__DIR__.'/../../public_html/img/hero.jpg') ? ' style="background-image: linear-gradient(transparent, transparent), url(/img/hero.jpg)"' : '';
-    $cards = '';
-    foreach ([
-        ['/darbai', 'Darbai', 'Pamainos, sezoninis ir nuolatinis darbas.', '<path d="M4 8h16v11H4zM9 8V5h6v3M4 13h16"/>'],
-        ['/prisijungti?kaip=vadovas', 'Įstaigoms', 'Patikimi darbuotojai per kelias minutes.', '<path d="M7 3h10l-5 8zM12 11v8M8 21h8"/>'],
-        ['/prisijungti?kaip=darbuotojas', 'Darbuotojams', 'Pažymėkite laisvas dienas ir gaukite pasiūlymus.', '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.8a3.3 3.3 0 0 1 0 6.4M18 14.8c1.8.7 3 2.4 3.5 5.2"/>'],
-        ['/kaip-veikia', 'Kaip veikia', 'GANG kontraktai ir įvertinimai.', '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
-    ] as [$href, $title, $text, $icon]) {
-        $cards .= '<a class="navcard" href="'.$href.'"><svg viewBox="0 0 24 24" aria-hidden="true">'.$icon.'</svg><strong>'.$title.'</strong><span>'.$text.'</span><em class="arrow" aria-hidden="true">→</em></a>';
+    $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
+
+    // Hero: every camera that has a photo, cross-faded by the script below.
+    $slides = $tabs = '';
+    $preload = '';
+    foreach (CAMS as $n => [$label]) {
+        $src = cam_photo($n);
+        if ($src === '') {
+            continue;
+        }
+        $first = $slides === '';
+        $slides .= '<picture class="cam'.($first ? ' on' : '').'" data-cam="'.$n.'"><source media="(max-width: 720px)" srcset="'.$src.'-sm.jpg">'
+            .'<img src="'.$src.'.jpg" alt="" width="1600" height="1200"'.($first ? ' fetchpriority="high"' : ' loading="lazy"').'></picture>';
+        $tabs .= '<button type="button" class="'.($first ? 'on' : '').'" data-cam="'.$n.'">CAM '.$n.' · '.e($label).'</button>';
+        if ($first) {
+            $preload = '<link rel="preload" as="image" href="'.$src.'-sm.jpg" media="(max-width: 720px)"><link rel="preload" as="image" href="'.$src.'.jpg" media="(min-width: 721px)">';
+        }
     }
+    $tabs = substr_count($tabs, '<button') > 1 ? '<div class="cam-tabs">'.$tabs.'</div>' : '';
+
+    $tiles = '';
+    foreach (CAMS as $n => [$label, $roles]) {
+        $src = cam_photo($n);
+        $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span>';
+        $tiles .= '<a class="cam-tile" href="/darbai"><div class="cam-media">'.$media.'<span class="cam-label">CAM '.$n.'</span></div>'
+            .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
+    }
+
+    $roles = '';
+    foreach (ROLES as $label) {
+        $roles .= '<span>'.e($label).'</span>';
+    }
+
     page('', <<<HTML
-<section class="hero"><div class="hero-media"$photo></div><div class="wrap">
-  <p class="eyebrow">Hospitality komandoms</p>
-  <h1>Susirgo virėjas? <span class="hl">Pakaitinį darbuotoją rasite šiandien</span></h1>
-  <p class="lead">GANG padeda barams, restoranams ir kavinėms rasti patikimus darbuotojus: pavadavimui dienai ar mėnesiui, sezonui arba nuolatiniam darbui.</p>
-  <p class="cta"><a class="btn" href="/prisijungti">Prisijungti prie GANG →</a><a class="text-link" href="/kaip-veikia">Kaip tai veikia</a></p>
-  $proof
-</div></section>
-<section class="wrap">
-  <nav class="navcards" aria-label="Skiltys">$cards</nav>
-  $list
+<section class="hero home-hero">
+  <div class="cams">$slides</div>
+  <div class="hero-shade"></div>
+  <div class="grain" aria-hidden="true"></div>
+  <p class="rec" aria-hidden="true"><i></i>REC</p>
+  <div class="wrap hero-body">
+    <p class="eyebrow">Darbas barams, restoranams ir kavinėms</p>
+    <h1>Salė. Baras. Virtuvė. <span class="hl">Patikimi žmonės šiandien.</span></h1>
+    <p class="lead">GANG padeda įstaigoms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
+    <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
+    <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir įstaigoms</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
+  </div>
+  $tabs
+</section>
+
+<div class="ticker" aria-hidden="true"><div>$roles$roles</div></div>
+
+<section class="wrap home-block">
+  <div class="audience">
+    <div class="aud worker">
+      <p class="eyebrow">Darbuotojams</p>
+      <h2>Dirbkite tada, kai jums patogu</h2>
+      <ul>
+        <li><strong>Papildomos pajamos</strong>Kalendoriuje pažymite laisvas dienas, o tinkami pasiūlymai ateina el. paštu.</li>
+        <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų profilį.</li>
+        <li><strong>Jūsų pasirinkimas</strong>Patys sprendžiate, kur, kada ir su kokia komanda dirbti.</li>
+      </ul>
+      <a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>
+    </div>
+    <div class="aud venue">
+      <p class="eyebrow">Įstaigoms</p>
+      <h2>Darbuotojas reikiamą dieną</h2>
+      <ul>
+        <li><strong>Skubus pavadavimas</strong>Paskelbtas poreikis iš karto pasiekia laisvus darbuotojus jūsų mieste.</li>
+        <li><strong>Matote, ką kviečiate</strong>Kandidato nuotrauka, patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
+        <li><strong>Salė ir virtuvė</strong>Nuo barmeno iki indų plovėjo – visos komandos pareigos.</li>
+      </ul>
+      <a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti įstaigą</a>
+    </div>
+  </div>
+</section>
+
+$list
+
+<section class="wrap home-block">
+  <div class="section-head"><h2>Visa komanda vienoje vietoje</h2><a href="/darbai">Peržiūrėti pasiūlymus →</a></div>
+  <div class="cam-tiles">$tiles</div>
+</section>
+
+<section class="wrap home-block">
   <div class="section-head"><h2>Kaip veikia</h2><a href="/kaip-veikia">Daugiau →</a></div>
   <ol class="steps">
     <li><strong>Vadovas paskelbia poreikį</strong>Pavyzdžiui, „virėjas rytoj, 10–22 val.“ arba „padavėjai vasaros sezonui“.</li>
     <li><strong>Tinkami darbuotojai gauna pranešimą</strong>ir pateikia kandidatūrą vienu paspaudimu.</li>
     <li><strong>Vadovas patvirtina kandidatą</strong>Sudaromas GANG kontraktas: abi šalys gauna viena kitos kontaktus.</li>
-    <li><strong>Abi šalys įvertina viena kitą</strong>Taip kaupiama patikimumo istorija.</li>
+    <li><strong>Abi šalys įvertina viena kitą</strong>Įvertinimai paskelbiami tik tada, kai įvertina abi šalys arba praėjus 7 dienoms.</li>
   </ol>
-  <p class="cities">Veikiame <strong>Vilniuje, Kaune, Klaipėdoje ir Palangoje</strong>. Šiuo metu GANG paslaugos nemokamos.</p>
 </section>
-HTML, ['canonical' => '/']);
+
+<section class="wrap home-block">
+  <div class="final-cta">
+    <h2>Prisijunkite prie GANG</h2>
+    <p>Registracija trunka kelias minutes. Šiuo metu GANG paslaugos nemokamos.</p>
+    <p class="cta"><a class="btn dark" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn dark ghost" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
+  </div>
+</section>
+<script>
+(function () {
+  var cams = document.querySelectorAll('.home-hero .cam'), tabs = document.querySelectorAll('.cam-tabs button'), i = 0, timer;
+  if (cams.length < 2) return;
+  function show(n) {
+    i = (n + cams.length) % cams.length;
+    cams.forEach(function (c, k) { c.classList.toggle('on', k === i); });
+    tabs.forEach(function (t, k) { t.classList.toggle('on', k === i); });
+  }
+  tabs.forEach(function (t, k) { t.addEventListener('click', function () { clearInterval(timer); show(k); }); });
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(function () { show(i + 1); }, 7000);
+})();
+</script>
+HTML, ['canonical' => '/', 'head' => $preload]);
 }
 
 function jobs_page(): never

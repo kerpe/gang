@@ -20,6 +20,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 - Admin = the user whose email equals `admin_email` in config.
 - Schema changes: bump `SCHEMA_VERSION` in `schema.php` and add the statements; the marker file in `private/data/` makes it run once.
 - Worker photos are stored in `private/data/photos/` (outside the web root, never overwritten by deploys) and served by `/nuotrauka/{id}` only to managers, the worker and the admin.
+- Home page photos: run `tools/cctv.sh photo.png 02` (needs ImageMagick) to make `public_html/img/cam-02.jpg` in the CCTV style; cameras 01 salė, 02 virtuvė, 03 aptarnavimas.
 
 ## Preview lock
 
