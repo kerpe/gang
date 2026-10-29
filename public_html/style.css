@@ -174,7 +174,9 @@ legend { font-weight: 500; margin-bottom: 8px; }
 .range label { display: grid; gap: 4px; font-size: .9rem; }
 .range input { width: auto; }
 .cal-hint { margin: 6px 0 14px; }
-.calendar { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px 22px; }
+.calendar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px 28px; }
+@media (max-width: 900px) { .calendar { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .calendar { grid-template-columns: 1fr; } }
 .month h3 { font-size: .8rem; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
 .week, .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
 .week span { font-size: .7rem; color: var(--muted); text-align: center; padding-bottom: 2px; }

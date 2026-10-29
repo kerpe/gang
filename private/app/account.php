@@ -158,7 +158,7 @@ function dashboard_page(): never
     $body = $u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u);
     $admin = is_admin($u) ? ' · <a href="/admin">Administravimas</a>' : '';
     page('Mano GANG', '<section class="wrap">'.$body
-        .'<p class="account-links"><a href="/profilis">Redaguoti profilį</a>'.$admin.' · '.post_button('/atsijungti', 'Atsijungti', [], 'linkish').'</p></section>', ['noindex' => true]);
+        .'<div class="account-links"><a href="/profilis">Redaguoti profilį</a>'.$admin.' · '.post_button('/atsijungti', 'Atsijungti', [], 'linkish').'</div></section>', ['noindex' => true]);
 }
 
 function worker_dashboard(array $u): string
@@ -243,12 +243,10 @@ function availability_panel(array $u): string
     $months = ['', 'Sausis', 'Vasaris', 'Kovas', 'Balandis', 'Gegužė', 'Birželis', 'Liepa', 'Rugpjūtis', 'Rugsėjis', 'Spalis', 'Lapkritis', 'Gruodis'];
     $cal = '';
     $first = strtotime(date('Y-m-01'));
-    for ($i = 0; $i <= AVAILABILITY_MONTHS; $i++) {
+    for ($i = 0; $i < AVAILABILITY_MONTHS; $i++) {
         $m = strtotime("+$i months", $first);
-        if (date('Y-m-d', $m) > $last) {
-            break;
-        }
-        $cells = str_repeat('<span class="day pad"></span>', (int) date('N', $m) - 1);
+        $lead = (int) date('N', $m) - 1;
+        $cells = str_repeat('<span class="day pad"></span>', $lead);
         for ($d = 1; $d <= (int) date('t', $m); $d++) {
             $date = date('Y-m-', $m).sprintf('%02d', $d);
             $weekend = (int) date('N', strtotime($date)) >= 6 ? ' weekend' : '';
@@ -259,6 +257,8 @@ function availability_panel(array $u): string
             $cells .= '<label class="day'.$weekend.($date === today() ? ' today' : '').'"><input type="checkbox" name="d[]" value="'.$date.'"'.(isset($marked[$date]) ? ' checked' : '')
                 .' aria-label="'.e(date_lt($date)).'"><span>'.$d.'</span></label>';
         }
+        // Always six week rows, so every month block has the same height.
+        $cells .= str_repeat('<span class="day pad"></span>', 42 - $lead - (int) date('t', $m));
         $cal .= '<div class="month"><h3>'.$months[(int) date('n', $m)].' '.date('Y', $m).'</h3>'
             .'<div class="week"><span>Pr</span><span>An</span><span>Tr</span><span>Kt</span><span>Pn</span><span>Št</span><span>Sk</span></div>'
             .'<div class="days">'.$cells.'</div></div>';
@@ -270,7 +270,7 @@ function availability_panel(array $u): string
         ? '<p class="meta">Pažymėti laikotarpiai: '.e(implode('; ', array_map('range_lt', $ranges))).'</p>'
         : '<p class="meta">Laisvų dienų dar nepažymėjote.</p>';
     return '<div class="panel avail" id="laisvumas"><h2>Mano laisvos dienos papildomam darbui</h2>'
-        .'<p>Pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus. Įstaigų vadovai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
+        .'<p>Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Įstaigų vadovai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
         .$status.$summary
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
         // First submit button handles Enter in the date fields: save, not "today".
