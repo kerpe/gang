@@ -45,8 +45,9 @@ function home_page(): never
     $tiles = '';
     foreach (CAMS as $n => [$label, $roles]) {
         $src = cam_photo($n);
-        $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span>';
-        $tiles .= '<a class="cam-tile" href="/darbai"><div class="cam-media">'.$media.'<span class="cam-label">CAM '.$n.'</span></div>'
+        // Photos carry their own burned-in camera label.
+        $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span><span class="cam-label">CAM '.$n.'</span>';
+        $tiles .= '<a class="cam-tile" href="/darbai"><div class="cam-media">'.$media.'</div>'
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
