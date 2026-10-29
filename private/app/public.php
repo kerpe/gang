@@ -64,7 +64,7 @@ function home_page(): never
   <p class="rec" aria-hidden="true"><i></i>REC</p>
   <div class="wrap hero-body">
     <p class="eyebrow">Darbas barams, restoranams ir kavinėms</p>
-    <h1>Salė. Baras. Virtuvė. <span class="hl">Patikimi žmonės šiandien.</span></h1>
+    <h1>FOH &amp; BOH. <span class="hl">Patikimi žmonės šiandien.</span></h1>
     <p class="lead">GANG padeda įstaigoms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
     <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir įstaigoms</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
