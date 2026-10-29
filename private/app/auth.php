@@ -60,11 +60,11 @@ function login_page(): never
         } else {
             $recent = (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$email, date('Y-m-d H:i:s', time() - 3600)])->fetchColumn();
             if ($recent >= 5) {
-                $error = 'Per daug bandymų. Pabandykite po valandos.';
+                $error = 'Viršytas bandymų skaičius. Bandykite dar kartą po valandos.';
             } else {
                 $code = (string) random_int(100000, 999999);
                 insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now()]);
-                send_mail($email, "GANG prisijungimo kodas: $code", "Jūsų prisijungimo prie GANG.lt kodas:\n\n$code\n\nKodas galioja 15 minučių. Jei jo neprašėte, šį laišką tiesiog ištrinkite.");
+                send_mail($email, "GANG prisijungimo kodas: $code", "Laba diena,\n\njūsų prisijungimo prie GANG.lt kodas:\n\n$code\n\nKodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.");
                 $_SESSION['login_email'] = $email;
                 redirect('/prisijungti/kodas');
             }
@@ -77,9 +77,9 @@ function login_page(): never
         default => 'Prisijungti arba užsiregistruoti',
     };
     $lead = match ($kind) {
-        'worker' => 'Įrašykite el. paštą, atsiųsime kodą. Po to užpildysite trumpą profilį ir gausite pasiūlymus iš barų, restoranų ir kavinių.',
-        'manager' => 'Įrašykite el. paštą, atsiųsime kodą. Po to užregistruosite įstaigą ir galėsite ieškoti žmonių.',
-        default => 'Slaptažodžio nereikia: įrašykite el. paštą ir atsiųsime 6 skaitmenų kodą.',
+        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
+        'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite įstaigą ir galėsite skelbti darbuotojų poreikius.',
+        default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
@@ -100,15 +100,15 @@ function login_code_page(): never
         $code = preg_replace('/\D/', '', input('code'));
         $row = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? ORDER BY id DESC LIMIT 1', [$email, now()])->fetch();
         if (!$row || $row['attempts'] >= 5) {
-            $error = 'Kodas nebegalioja. Paprašykite naujo.';
+            $error = 'Kodas nebegalioja. Paprašykite naujo kodo.';
         } elseif (!hash_equals($row['code_hash'], hash('sha256', $email.$code))) {
             sql('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [$row['id']]);
-            $error = 'Neteisingas kodas.';
+            $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';
         } else {
             sql('DELETE FROM login_codes WHERE email = ?', [$email]);
             $user = sql('SELECT * FROM users WHERE email = ?', [$email])->fetch();
             if ($user && $user['blocked']) {
-                $error = 'Ši paskyra užblokuota. Parašykite mums, jei manote, kad tai klaida.';
+                $error = 'Ši paskyra užblokuota. Jei manote, kad tai klaida, susisiekite su mumis.';
             } else {
                 if (!$user) {
                     $kind = $_SESSION['signup_kind'] ?? '';
@@ -122,7 +122,7 @@ function login_code_page(): never
             }
         }
     }
-    page('Įveskite kodą', '<section class="wrap narrow"><h1>Patikrinkite el. paštą</h1><p class="lead">Išsiuntėme 6 skaitmenų kodą į <strong>'.e($email).'</strong>. Jei nematote, pažiūrėkite į „Spam“ aplanką.</p>'
+    page('Įveskite kodą', '<section class="wrap narrow"><h1>Patikrinkite el. paštą</h1><p class="lead">Išsiuntėme 6 skaitmenų kodą adresu <strong>'.e($email).'</strong>. Jei laiško nematote, patikrinkite brukalo („Spam“) aplanką.</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>Kodas <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required autofocus class="code">'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
         .'<button class="btn">Prisijungti</button></form><p><a href="/prisijungti">Siųsti kodą iš naujo arba pakeisti el. paštą</a></p></section>', ['noindex' => true]);
@@ -145,10 +145,10 @@ function choose_kind_page(): never
             finish_login($existing ? (int) $existing : insert('users', ['kind' => $kind, 'email' => $email, 'created_at' => now()]));
         }
     }
-    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, kaip naudosite GANG.</p>'
+    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, kaip naudositės GANG.</p>'
         .'<form method="post" class="pick">'.csrf_field()
         .'<button name="kind" value="worker" class="pick-card"><strong>Ieškau darbo</strong><span>Barmenas, padavėjas, virėjas ar kitas hospitality darbuotojas</span></button>'
-        .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau žmonių</strong><span>Baro, restorano, kavinės ar viešbučio vadovas</span></button>'
+        .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau darbuotojų</strong><span>Baro, restorano, kavinės ar viešbučio vadovas</span></button>'
         .'</form></section>', ['noindex' => true]);
 }
 

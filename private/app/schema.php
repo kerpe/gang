@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 function migrate(PDO $db): void
 {
@@ -25,6 +25,7 @@ function migrate(PDO $db): void
             roles VARCHAR(255) NOT NULL DEFAULT '',
             cities VARCHAR(255) NOT NULL DEFAULT '',
             about TEXT NULL,
+            photo VARCHAR(64) NULL,
             available_until DATE NULL,
             notify TINYINT NOT NULL DEFAULT 1,
             blocked TINYINT NOT NULL DEFAULT 0,
@@ -79,11 +80,27 @@ function migrate(PDO $db): void
             rating INT NOT NULL,
             text TEXT NULL,
             created_at DATETIME NOT NULL",
+        // Days a worker is open to offers, as inclusive date ranges.
+        'availability' => "id $id,
+            user_id INT NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL",
     ];
     foreach ($tables as $name => $cols) {
         $db->exec("CREATE TABLE IF NOT EXISTS $name ($cols)$tail");
     }
+    // Version 2: profile photo; availability moved from users.available_until to ranges.
+    try {
+        $db->exec('ALTER TABLE users ADD photo VARCHAR(64) NULL');
+    } catch (PDOException) {
+        // Already there.
+    }
+    if (!$db->query('SELECT 1 FROM availability LIMIT 1')->fetchColumn()) {
+        $db->prepare('INSERT INTO availability (user_id, start_date, end_date) SELECT id, ?, available_until FROM users WHERE available_until >= ?')
+            ->execute([date('Y-m-d'), date('Y-m-d')]);
+    }
     $indexes = [
+        'availability_user' => 'availability (user_id)',
         'responses_request' => 'responses (request_id)',
         'contracts_worker' => 'contracts (worker_id)',
         'reviews_contract' => 'reviews (contract_id)',

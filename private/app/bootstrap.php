@@ -22,6 +22,7 @@ const KINDS = [
     'nuolat' => 'Nuolatinis darbas',
 ];
 const REVIEW_HIDE_DAYS = 7;
+const AVAILABILITY_MONTHS = 6;
 
 function private_root(): string
 {
@@ -160,14 +161,14 @@ function check_csrf(): void
 {
     if (!hash_equals(csrf_token(), (string) ($_POST['csrf'] ?? ''))) {
         http_response_code(400);
-        exit('Forma pasibaigė. Grįžkite atgal, atnaujinkite puslapį ir bandykite dar kartą.');
+        exit('Formos galiojimo laikas baigėsi. Grįžkite atgal, atnaujinkite puslapį ir bandykite dar kartą.');
     }
 }
 
 function send_mail(string $to, string $subject, string $text, string $replyTo = ''): bool
 {
     $c = config();
-    $text .= "\n\n--\nGANG.lt – darbas hospitality komandoms\n".url('/');
+    $text .= "\n\nPagarbiai\nGANG komanda\n\n--\nGANG.lt – darbas hospitality komandoms\n".url('/');
     if (defined('GANG_MAIL_CAPTURE')) {
         file_put_contents(GANG_MAIL_CAPTURE, "To: $to\nSubject: $subject\n\n$text\n-----\n", FILE_APPEND);
         return true;

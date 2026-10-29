@@ -88,9 +88,60 @@ function completed_count(int $workerId): int
     return (int) sql('SELECT COUNT(*) FROM contracts WHERE worker_id = ?', [$workerId])->fetchColumn();
 }
 
-function is_available(array $worker): bool
+// Open to offers on at least one day between $from and $to (default: today).
+function is_available(int $userId, ?string $from = null, ?string $to = null): bool
 {
-    return $worker['available_until'] !== null && $worker['available_until'] >= today();
+    $from ??= today();
+    return (bool) sql('SELECT 1 FROM availability WHERE user_id = ? AND start_date <= ? AND end_date >= ? LIMIT 1', [$userId, $to ?? $from, $from])->fetchColumn();
+}
+
+function availability_ranges(int $userId): array
+{
+    return sql('SELECT start_date, end_date FROM availability WHERE user_id = ? AND end_date >= ? ORDER BY start_date', [$userId, today()])->fetchAll();
+}
+
+function availability_days(int $userId): array
+{
+    $days = [];
+    foreach (availability_ranges($userId) as $r) {
+        for ($t = strtotime($r['start_date']); $t <= strtotime($r['end_date']); $t = strtotime('+1 day', $t)) {
+            $days[date('Y-m-d', $t)] = true;
+        }
+    }
+    return $days;
+}
+
+// Replaces the upcoming availability with the given days, stored as consecutive ranges.
+function save_availability(int $userId, array $days): void
+{
+    $last = availability_last_day();
+    $days = array_unique(array_filter($days, fn ($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d >= today() && $d <= $last));
+    sort($days);
+    // Past days stay as history; a range running through today is cut at yesterday.
+    sql('UPDATE availability SET end_date = ? WHERE user_id = ? AND start_date < ? AND end_date >= ?', [date('Y-m-d', strtotime('-1 day')), $userId, today(), today()]);
+    sql('DELETE FROM availability WHERE user_id = ? AND start_date >= ?', [$userId, today()]);
+    $start = $prev = null;
+    foreach ([...$days, null] as $d) {
+        if ($d !== null && $prev !== null && $d === date('Y-m-d', strtotime($prev.' +1 day'))) {
+            $prev = $d;
+            continue;
+        }
+        if ($start !== null) {
+            insert('availability', ['user_id' => $userId, 'start_date' => $start, 'end_date' => $prev]);
+        }
+        $start = $prev = $d;
+    }
+}
+
+function availability_last_day(): string
+{
+    // Last day of the sixth calendar month shown, counting the current one.
+    return date('Y-m-t', strtotime(date('Y-m-01').' +'.(AVAILABILITY_MONTHS - 1).' months'));
+}
+
+function range_lt(array $r): string
+{
+    return $r['start_date'] === $r['end_date'] ? date_lt($r['start_date']) : date_lt($r['start_date']).' – '.date_lt($r['end_date']);
 }
 
 function first_name(string $name): string
@@ -107,23 +158,24 @@ function notify_workers(array $r): int
         ['%,'.$r['role'].',%', '%,'.$r['city'].',%'])->fetchAll();
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
-    $subject = ($r['kind'] === 'skubu' ? 'Skubiai reikia: ' : 'Darbas: ').$role.' – '.$r['venue_name'].', '.$city;
-    $body = "{$r['venue_name']} ($city) ieško: $role\n"
-        .'Kada: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
+    $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
+    $body = "{$r['venue_name']} ($city) ieško darbuotojo: $role\n"
+        .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
         .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
         ."\n{$r['description']}\n\n"
-        ."Jei tinka, atsiliepkite čia:\n".url('/darbas/'.$r['id'])
-        ."\n\nŠiuos laiškus gaunate, nes jūsų GANG profilyje pažymėtos šios pareigos ir miestas. Išjungti galite profilyje: ".url('/profilis');
+        ."Jei pasiūlymas jums tinka, kandidatūrą galite pateikti čia:\n".url('/darbas/'.$r['id'])
+        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos ir miestas. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
     foreach ($workers as $w) {
-        send_mail($w['email'], $subject, "Sveiki, ".first_name($w['name']).",\n\n".$body);
+        send_mail($w['email'], $subject, "Laba diena,\n\n".$body);
     }
     sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
     return count($workers);
 }
 
-function matching_workers_count(string $role, string $city): array
+// Matching workers, and how many of them marked $date as free.
+function matching_workers_count(string $role, string $city, string $date): array
 {
-    $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN available_until >= ? THEN 1 ELSE 0 END) AS free FROM users
-        WHERE kind = 'worker' AND blocked = 0 AND roles LIKE ? AND cities LIKE ?", [today(), '%,'.$role.',%', '%,'.$city.',%'])->fetch();
+    $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM availability a WHERE a.user_id = u.id AND a.start_date <= ? AND a.end_date >= ?) THEN 1 ELSE 0 END) AS free FROM users u
+        WHERE kind = 'worker' AND blocked = 0 AND roles LIKE ? AND cities LIKE ?", [$date, $date, '%,'.$role.',%', '%,'.$city.',%'])->fetch();
     return [(int) $row['n'], (int) $row['free']];
 }

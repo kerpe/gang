@@ -19,11 +19,11 @@ function review_page(int $contractId): never
         not_found();
     }
     if ($c['start_date'] > today()) {
-        flash('Įvertinti galėsite, kai darbas prasidės.');
+        flash('Įvertinti galėsite pradėjus darbą.');
         redirect('/mano');
     }
     if (sql('SELECT 1 FROM reviews WHERE contract_id = ? AND author = ?', [$contractId, $author])->fetchColumn()) {
-        flash('Jau įvertinote.');
+        flash('Šį darbą jau įvertinote.');
         redirect('/mano');
     }
     $errors = [];
@@ -34,23 +34,23 @@ function review_page(int $contractId): never
         $rating = (int) input('rating');
         $text = input('text');
         if ($rating < 1 || $rating > 5) {
-            $errors['rating'] = 'Pasirinkite nuo 1 iki 5 žvaigždučių.';
+            $errors['rating'] = 'Pasirinkite įvertinimą nuo 1 iki 5 žvaigždučių.';
         }
         if (mb_strlen($text) > 1000) {
-            $errors['text'] = 'Iki 1000 simbolių.';
+            $errors['text'] = 'Komentaras gali būti ne ilgesnis nei 1000 simbolių.';
         }
         if ($rating > 0 && $rating <= 2 && mb_strlen($text) < 10) {
-            $errors['text'] = 'Prie žemo įvertinimo trumpai parašykite, kas nutiko.';
+            $errors['text'] = 'Pateikdami žemą įvertinimą, trumpai nurodykite jo priežastį.';
         }
         if (!$errors) {
             insert('reviews', ['contract_id' => $contractId, 'author' => $author, 'rating' => $rating, 'text' => $text, 'created_at' => now()]);
-            flash('Ačiū! Įvertinimas bus matomas, kai įvertins ir kita pusė arba po '.REVIEW_HIDE_DAYS.' dienų.');
+            flash('Dėkojame. Įvertinimas bus paskelbtas, kai įvertins ir kita šalis arba po '.REVIEW_HIDE_DAYS.' dienų.');
             redirect('/mano');
         }
     }
     $who = $author === 'manager' ? first_name($c['worker_name']) : $c['venue_name'];
-    $question = $author === 'manager' ? 'Kaip sekėsi dirbti su '.e($who).'?' : 'Kaip sekėsi dirbti '.e($who).'?';
-    $hint = $author === 'manager' ? 'Atvyko laiku? Dirbo gerai? Kviestumėte vėl?' : 'Ar sąlygos atitiko sutartas? Ar laiku sumokėjo? Ar rekomenduotumėte kitiems?';
+    $question = $author === 'manager' ? 'Įvertinkite darbuotoją: '.e($who) : 'Įvertinkite įstaigą: '.e($who);
+    $hint = $author === 'manager' ? 'ar atvyko laiku, kaip atliko darbą, ar kviestumėte dar kartą' : 'ar sąlygos atitiko sutartas, ar atlygis sumokėtas laiku, ar rekomenduotumėte įstaigą kitiems';
     $starsInput = '<div class="star-input">';
     for ($i = 5; $i >= 1; $i--) {
         $starsInput .= '<input type="radio" name="rating" id="s'.$i.'" value="'.$i.'"'.($rating === $i ? ' checked' : '').'><label for="s'.$i.'" title="'.$i.'">★</label>';
@@ -60,8 +60,8 @@ function review_page(int $contractId): never
         .'<p class="meta">'.e(ROLES[$c['role']] ?? '').' · '.e(period($c)).'</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<fieldset><legend>Įvertinimas</legend>'.$starsInput.err($errors, 'rating').'</fieldset>'
-        .'<label>Komentaras <small>(nebūtina; '.e($hint).')</small><textarea name="text" rows="4" maxlength="1000">'.e($text).'</textarea>'.err($errors, 'text').'</label>'
-        .'<p class="fine">Jūsų vardas prie įvertinimo nerodomas. Įvertinimas bus matomas, kai įvertins ir kita pusė arba po '.REVIEW_HIDE_DAYS.' dienų. Rašykite sąžiningai ir be asmeninės informacijos.</p>'
+        .'<label>Komentaras <small>(neprivaloma; pavyzdžiui, '.e($hint).')</small><textarea name="text" rows="4" maxlength="1000">'.e($text).'</textarea>'.err($errors, 'text').'</label>'
+        .'<p class="fine">Jūsų vardas prie įvertinimo nerodomas. Įvertinimas bus paskelbtas, kai įvertins ir kita šalis arba po '.REVIEW_HIDE_DAYS.' dienų. Vertinkite objektyviai ir nenurodykite asmeninės informacijos.</p>'
         .'<button class="btn">Siųsti įvertinimą</button></form></section>', ['noindex' => true]);
 }
 
