@@ -33,7 +33,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=7">
+<link rel="stylesheet" href="/style.css?v=9">
 $head
 </head>
 <body>
