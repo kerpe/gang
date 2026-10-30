@@ -21,6 +21,22 @@ const KINDS = [
     'sezonas' => 'Sezonas',
     'nuolat' => 'Nuolatinis darbas',
 ];
+// Levels are ordered: a worker matches a request when experience >= min_experience.
+// 0 on a worker means not stated yet (profiles created before the field existed).
+const EXPERIENCE = [
+    1 => 'Be patirties',
+    2 => 'Iki 1 metų',
+    3 => '1–3 metai',
+    4 => '3–5 metai',
+    5 => 'Daugiau nei 5 metai',
+];
+const EXPERIENCE_REQUIRED = [
+    1 => 'Patirtis nebūtina',
+    2 => 'Bent kelių mėnesių patirtis',
+    3 => 'Ne mažiau kaip 1 metai',
+    4 => 'Ne mažiau kaip 3 metai',
+    5 => 'Daugiau nei 5 metai',
+];
 const REVIEW_HIDE_DAYS = 7;
 const AVAILABILITY_MONTHS = 6;
 

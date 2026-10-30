@@ -11,14 +11,17 @@ function page(string $title, string $body, array $opt = []): never
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
     $head = $opt['head'] ?? '';
     $user = current_user();
-    if ($user) {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="btn small" href="/mano">Mano GANG</a>';
+    if (prelaunch()) {
+        $nav = '<a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/laukiantieji">Stoti į laukiančiųjų sąrašą</a>';
+    } elseif ($user) {
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG</a>';
     } else {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
     }
     $flash = flash();
     $flash = $flash !== '' ? '<div class="wrap"><div class="notice ok flash">'.e($flash).'</div></div>' : '';
     $year = date('Y');
+    $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
     echo <<<HTML
 <!doctype html>
 <html lang="lt">
@@ -33,7 +36,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=10">
+<link rel="stylesheet" href="/style.css?v=13">
 $head
 </head>
 <body>
@@ -47,7 +50,7 @@ $body
 </main>
 <footer class="foot"><div class="wrap">
   <p><strong>GANG.lt</strong> – patikimi darbuotojai barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
-  <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/darbai">Darbai</a> · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
+  <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>$jobsLink · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
 </div></footer>
 </body>
 </html>
@@ -83,7 +86,7 @@ function radios(string $name, array $items, string $checked): string
 {
     $out = '<div class="choices">';
     foreach ($items as $value => $label) {
-        $out .= '<label class="choice"><input type="radio" name="'.$name.'" value="'.e($value).'"'.($value === $checked ? ' checked' : '').'> '.e($label).'</label>';
+        $out .= '<label class="choice"><input type="radio" name="'.$name.'" value="'.e((string) $value).'"'.((string) $value === $checked ? ' checked' : '').'> '.e($label).'</label>';
     }
     return $out.'</div>';
 }

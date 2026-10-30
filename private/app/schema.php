@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 4;
 
 function migrate(PDO $db): void
 {
@@ -26,6 +26,7 @@ function migrate(PDO $db): void
             cities VARCHAR(255) NOT NULL DEFAULT '',
             about TEXT NULL,
             photo VARCHAR(64) NULL,
+            experience TINYINT NOT NULL DEFAULT 0,
             available_until DATE NULL,
             notify TINYINT NOT NULL DEFAULT 1,
             blocked TINYINT NOT NULL DEFAULT 0,
@@ -55,6 +56,7 @@ function migrate(PDO $db): void
             hours VARCHAR(120) NOT NULL DEFAULT '',
             pay VARCHAR(80) NOT NULL DEFAULT '',
             description TEXT NOT NULL,
+            min_experience TINYINT NOT NULL DEFAULT 1,
             status VARCHAR(10) NOT NULL DEFAULT 'open',
             notified INT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
@@ -85,15 +87,31 @@ function migrate(PDO $db): void
             user_id INT NOT NULL,
             start_date DATE NOT NULL,
             end_date DATE NOT NULL",
+        // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
+        'waitlist' => "id $id,
+            email VARCHAR(190) NOT NULL UNIQUE,
+            kind VARCHAR(10) NOT NULL,
+            city VARCHAR(20) NOT NULL DEFAULT '',
+            ip_hash CHAR(64) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            invited_at DATETIME NULL",
     ];
     foreach ($tables as $name => $cols) {
         $db->exec("CREATE TABLE IF NOT EXISTS $name ($cols)$tail");
     }
     // Version 2: profile photo; availability moved from users.available_until to ranges.
-    try {
-        $db->exec('ALTER TABLE users ADD photo VARCHAR(64) NULL');
-    } catch (PDOException) {
-        // Already there.
+    // Version 4: worker experience and the experience a request requires.
+    $columns = [
+        'users ADD photo VARCHAR(64) NULL',
+        'users ADD experience TINYINT NOT NULL DEFAULT 0',
+        'requests ADD min_experience TINYINT NOT NULL DEFAULT 1',
+    ];
+    foreach ($columns as $column) {
+        try {
+            $db->exec("ALTER TABLE $column");
+        } catch (PDOException) {
+            // Already there.
+        }
     }
     if (!$db->query('SELECT 1 FROM availability LIMIT 1')->fetchColumn()) {
         $db->prepare('INSERT INTO availability (user_id, start_date, end_date) SELECT id, ?, available_until FROM users WHERE available_until >= ?')

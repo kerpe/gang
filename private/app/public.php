@@ -17,8 +17,11 @@ function cam_photo(string $n): string
 
 function home_page(): never
 {
-    $urgent = open_requests(['kind' => 'skubu'], 6);
-    $latest = $urgent ?: open_requests([], 6);
+    // Before launch there are no real listings yet, and job pages lead to the waitlist.
+    $urgent = prelaunch() ? [] : open_requests(['kind' => 'skubu'], 6);
+    $latest = $urgent ?: (prelaunch() ? [] : open_requests([], 6));
+    $jobs = prelaunch() ? '/laukiantieji' : '/darbai';
+    $jobsLabel = prelaunch() ? 'Stoti į laukiančiųjų sąrašą →' : 'Peržiūrėti pasiūlymus →';
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
@@ -47,7 +50,7 @@ function home_page(): never
         $src = cam_photo($n);
         // Photos carry their own burned-in camera label.
         $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span><span class="cam-label">CAM '.$n.'</span>';
-        $tiles .= '<a class="cam-tile" href="/darbai"><div class="cam-media">'.$media.'</div>'
+        $tiles .= '<a class="cam-tile" href="'.$jobs.'"><div class="cam-media">'.$media.'</div>'
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
@@ -59,7 +62,7 @@ function home_page(): never
   <p class="rec" aria-hidden="true"><i></i>REC</p>
   <div class="wrap hero-body">
     <p class="eyebrow">Darbas barams, restoranams ir kavinėms</p>
-    <h1>FOH &amp; BOH. <span class="hl">Patikimi žmonės šiandien.</span></h1>
+    <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda įstaigoms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
     <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir įstaigoms</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
@@ -96,7 +99,7 @@ function home_page(): never
 $list
 
 <section class="wrap home-block">
-  <div class="section-head"><h2>Visa komanda vienoje vietoje</h2><a href="/darbai">Peržiūrėti pasiūlymus →</a></div>
+  <div class="section-head"><h2>Visa komanda vienoje vietoje</h2><a href="$jobs">$jobsLabel</a></div>
   <div class="cam-tiles">$tiles</div>
 </section>
 
@@ -170,9 +173,9 @@ function how_page(): never
 <section class="wrap narrow prose">
   <h1>Kaip veikia GANG</h1>
   <h2>Įstaigoms</h2>
-  <p>Užregistruokite įstaigą ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų nuotrauka, patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>
+  <p>Užregistruokite įstaigą ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų nuotrauka, patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>
   <h2>Darbuotojams</h2>
-  <p>Susikurkite profilį, įkelkite nuotrauką ir pažymėkite pareigas bei miestus. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: įstaigų vadovai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Vadovui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir įstaigos adresą.</p>
+  <p>Susikurkite profilį, įkelkite nuotrauką, pažymėkite pareigas, miestus ir nurodykite darbo patirtį. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: įstaigų vadovai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Vadovui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir įstaigos adresą.</p>
   <h2>GANG kontraktas</h2>
   <p>GANG kontraktas sudaromas, kai įstaigos vadovas patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas įstaiga ir darbuotojas suderina tiesiogiai.</p>
   <h2>Įvertinimai</h2>
@@ -185,6 +188,31 @@ function how_page(): never
   </ul>
 </section>
 HTML, ['canonical' => '/kaip-veikia']);
+}
+
+function about_page(): never
+{
+    page('Apie GANG', <<<HTML
+<section class="wrap narrow prose">
+  <h1>Apie GANG</h1>
+  <p class="lead">GANG sukūrė žmonės, kurie patys dirba barų, restoranų ir kavinių versle ir kasdien susiduria su tais pačiais iššūkiais kaip ir jūs.</p>
+  <h2>Problema, kurią gerai pažįstame</h2>
+  <ul>
+    <li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>
+    <li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>
+    <li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių įstaiga negali veikti.</li>
+    <li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>
+    <li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li>
+  </ul>
+  <h2>Kaip ją sprendžiame</h2>
+  <p>GANG tiesiogiai sujungia įstaigas ir hospitality specialistus. Įstaiga paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl vadovas iš karto mato, kas yra laisvas.</p>
+  <p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas įstaiga ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>
+  <p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>
+  <h2>Apie įkūrėją</h2>
+  <p>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</p>
+  <p><strong>Vilius</strong>, GANG įkūrėjas</p>
+</section>
+HTML, ['canonical' => '/apie']);
 }
 
 function privacy_page(): never
@@ -212,7 +240,7 @@ function sitemap(): never
 {
     header('Content-Type: application/xml; charset=utf-8');
     $out = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-    $paths = ['/', '/darbai', '/kaip-veikia', '/privatumas'];
+    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/privatumas'];
     foreach (array_keys(CITIES) as $c) {
         $paths[] = '/darbai?miestas='.$c;
     }

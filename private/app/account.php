@@ -6,7 +6,7 @@ function profile_page(): never
 {
     $u = require_user();
     $worker = $u['kind'] === 'worker';
-    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'notify' => (bool) $u['notify']];
+    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'experience' => (int) $u['experience'] ? (string) $u['experience'] : '', 'notify' => (bool) $u['notify']];
     $errors = [];
     if (is_post()) {
         // A file over post_max_size empties $_POST, so say that instead of "form expired".
@@ -16,7 +16,7 @@ function profile_page(): never
         }
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
-            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'notify' => isset($_POST['notify'])];
+            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'experience' => input('experience'), 'notify' => isset($_POST['notify'])];
         if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
             $errors['name'] = 'Įrašykite vardą ir pavardę.';
         }
@@ -25,6 +25,9 @@ function profile_page(): never
         }
         if ($worker && to_list($v['roles'], ROLES) === '') {
             $errors['roles'] = 'Pažymėkite bent vienas pareigas.';
+        }
+        if ($worker && !isset(EXPERIENCE[(int) $v['experience']])) {
+            $errors['experience'] = 'Nurodykite savo darbo patirtį hospitality srityje.';
         }
         if ($worker && to_list($v['cities'], CITIES) === '') {
             $errors['cities'] = 'Pažymėkite bent vieną miestą.';
@@ -49,8 +52,8 @@ function profile_page(): never
         }
         if (!$errors) {
             $first = !profile_complete($u);
-            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, notify = ?, photo = ? WHERE id = ?', [
-                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $v['notify'] ? 1 : 0, $photo, $u['id'],
+            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, experience = ?, notify = ?, photo = ? WHERE id = ?', [
+                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? (int) $v['experience'] : 0, $v['notify'] ? 1 : 0, $photo, $u['id'],
             ]);
             if ($photo !== $u['photo']) {
                 delete_photo($u['photo']);
@@ -73,6 +76,8 @@ function profile_page(): never
             .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Nuotrauką mato tik prisijungę įstaigų vadovai.</p>'
             .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $workerFields = '<fieldset><legend>Pareigos, kurias galite eiti</legend>'.checkboxes('roles', ROLES, $v['roles']).err($errors, 'roles').'</fieldset>'
+            .'<fieldset><legend>Darbo patirtis hospitality srityje</legend><p class="hint">Nurodykite bendrą darbo baruose, restoranuose, kavinėse ar renginiuose trukmę. Pagal ją darbo pasiūlymus gausite iš įstaigų, kurių reikalavimus atitinkate.</p>'
+            .radios('experience', EXPERIENCE, $v['experience']).err($errors, 'experience').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';

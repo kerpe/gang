@@ -154,17 +154,18 @@ function first_name(string $name): string
 // Emails every matching worker about a new request; available workers are told it is urgent first.
 function notify_workers(array $r): int
 {
-    $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND roles LIKE ? AND cities LIKE ? LIMIT 500",
-        ['%,'.$r['role'].',%', '%,'.$r['city'].',%'])->fetchAll();
+    $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND roles LIKE ? AND cities LIKE ? AND (experience >= ? OR ? <= 1) LIMIT 500",
+        ['%,'.$r['role'].',%', '%,'.$r['city'].',%', (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
     $body = "{$r['venue_name']} ($city) ieško darbuotojo: $role\n"
         .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
         .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
+        .'Reikalaujama patirtis: '.(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')."\n"
         ."\n{$r['description']}\n\n"
         ."Jei pasiūlymas jums tinka, kandidatūrą galite pateikti čia:\n".url('/darbas/'.$r['id'])
-        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos ir miestas. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
+        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas ir patirtis. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
     foreach ($workers as $w) {
         send_mail($w['email'], $subject, "Laba diena,\n\n".$body);
     }
@@ -173,9 +174,9 @@ function notify_workers(array $r): int
 }
 
 // Matching workers, and how many of them marked $date as free.
-function matching_workers_count(string $role, string $city, string $date): array
+function matching_workers_count(string $role, string $city, string $date, int $minExperience = 1): array
 {
     $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM availability a WHERE a.user_id = u.id AND a.start_date <= ? AND a.end_date >= ?) THEN 1 ELSE 0 END) AS free FROM users u
-        WHERE kind = 'worker' AND blocked = 0 AND roles LIKE ? AND cities LIKE ?", [$date, $date, '%,'.$role.',%', '%,'.$city.',%'])->fetch();
+        WHERE kind = 'worker' AND blocked = 0 AND roles LIKE ? AND cities LIKE ? AND (experience >= ? OR ? <= 1)", [$date, $date, '%,'.$role.',%', '%,'.$city.',%', $minExperience, $minExperience])->fetch();
     return [(int) $row['n'], (int) $row['free']];
 }
