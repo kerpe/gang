@@ -2,23 +2,37 @@
 
 declare(strict_types=1);
 
-// Until launch the whole site sits behind one shared preview password.
+// Until launch everything except the home, how-it-works and privacy pages sits behind
+// one shared preview password; every other page shows the waitlist instead.
 // 'public' => true in config opens it; without a preview_password nobody gets in.
+const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/privatumas', '/favicon.svg', '/robots.txt'];
+
+// True for visitors who see the pre-launch site: links to sign-up lead to the waitlist.
+function prelaunch(?bool $set = null): bool
+{
+    static $on = false;
+    return $set === null ? $on : $on = $set;
+}
+
 function preview_gate(string $path): void
 {
     $c = config();
-    if (!empty($c['public']) || in_array($path, ['/favicon.svg', '/robots.txt'], true)) {
+    if (!empty($c['public'])) {
         return;
     }
-    header('X-Robots-Tag: noindex, nofollow');
     $password = (string) ($c['preview_password'] ?? '');
     $token = $password !== '' ? hash_hmac('sha256', 'preview', $password) : '';
     if ($token !== '' && hash_equals($token, (string) ($_COOKIE['gang_preview'] ?? ''))) {
         return;
     }
+    prelaunch(true);
+    if (in_array($path, PRELAUNCH_PAGES, true)) {
+        return;
+    }
+    header('X-Robots-Tag: noindex, nofollow');
     $error = '';
     $joined = false;
-    $wl = ['email' => '', 'kind' => '', 'city' => ''];
+    $wl = ['email' => '', 'kind' => ['darbuotojas' => 'worker', 'vadovas' => 'manager'][$_GET['kaip'] ?? ''] ?? '', 'city' => ''];
     $wlErrors = [];
     if ($path === '/laukiantieji' && is_post()) {
         [$joined, $wl, $wlErrors] = waitlist_join();
@@ -33,7 +47,7 @@ function preview_gate(string $path): void
         }
         $error = '<span class="err">Neteisingas slaptažodis.</span>';
     }
-    http_response_code($path === '/laukiantieji' ? 200 : 401);
+    http_response_code($path === '/perziura' && $error ? 401 : 200);
     $next = $path === '/perziura' ? (string) ($_POST['next'] ?? '/') : ($_SERVER['REQUEST_URI'] ?? '/');
     if (in_array($next, ['/laukiantieji', '/perziura'], true)) {
         $next = '/';
@@ -54,11 +68,11 @@ function preview_gate(string $path): void
             .'<button class="btn">Stoti į laukiančiųjų sąrašą</button>'
             .'<p class="fine">El. pašto adresą naudosime tik tam, kad praneštume apie GANG paleidimą. Iš sąrašo galite išsiregistruoti bet kada, atsakę į kvietimo laišką.</p></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=12"></head>'
-        .'<body><main><section class="wrap narrow soon"><p class="logo">GANG<span>.lt</span></p>'
+        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=13"></head>'
+        .'<body><main><section class="wrap narrow soon"><a class="logo" href="/">GANG<span>.lt</span></a>'
         .'<h1>Netrukus</h1><p class="lead">Kuriame platformą, padėsiančią barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų.</p>'
         .'<p>Užsiregistruokite laukiančiųjų sąraše ir paleidimo dieną gausite kvietimą prisijungti vieni pirmųjų.</p>'
-        .$form.$team.'</section></main></body></html>';
+        .$form.'<p class="back"><a href="/">← Grįžti į pagrindinį puslapį</a></p>'.$team.'</section></main></body></html>';
     exit;
 }
 

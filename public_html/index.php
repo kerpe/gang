@@ -35,6 +35,7 @@ match (true) {
     $path === '/' => home_page(),
     $path === '/darbai' => jobs_page(),
     $path === '/kaip-veikia' => how_page(),
+    $path === '/apie' => about_page(),
     $path === '/privatumas' => privacy_page(),
     $path === '/sitemap.xml' => sitemap(),
     $path === '/prisijungti' => login_page(),

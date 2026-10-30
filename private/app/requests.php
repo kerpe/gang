@@ -77,7 +77,7 @@ function request_form_page(): never
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $tomorrow = date('Y-m-d', strtotime('+1 day'));
-    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'start_date' => $tomorrow, 'end_date' => '', 'hours' => '', 'pay' => '', 'description' => ''];
+    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'start_date' => $tomorrow, 'end_date' => '', 'hours' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
     $errors = [];
     if (is_post()) {
         check_csrf();
@@ -111,6 +111,9 @@ function request_form_page(): never
         } elseif ($v['kind'] !== 'skubu') {
             $errors['end_date'] = 'Nurodykite, iki kada reikalingas darbuotojas.';
         }
+        if (!isset(EXPERIENCE_REQUIRED[(int) $v['min_experience']])) {
+            $errors['min_experience'] = 'Nurodykite reikalaujamą darbo patirtį.';
+        }
         if (mb_strlen($v['hours']) > 120) {
             $errors['hours'] = 'Tekstas gali būti ne ilgesnis nei 120 simbolių.';
         }
@@ -124,7 +127,7 @@ function request_form_page(): never
             $id = insert('requests', [
                 'venue_id' => (int) $v['venue_id'], 'role' => $v['role'], 'kind' => $v['kind'], 'people' => $people,
                 'start_date' => $v['start_date'], 'end_date' => $v['end_date'] ?: null, 'hours' => $v['hours'], 'pay' => $v['pay'],
-                'description' => $v['description'], 'created_at' => now(),
+                'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
             ]);
             $sent = notify_workers(find_request($id));
             flash($sent ? "Poreikis paskelbtas. Pranešimą gavo tinkamų darbuotojų: $sent. Atsiliepimus matysite šiame puslapyje ir gausite el. paštu." : 'Poreikis paskelbtas. Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai.');
@@ -138,6 +141,7 @@ function request_form_page(): never
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
         .'<fieldset><legend>Darbo trukmė</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
+        .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<div class="row"><label>Nuo <input type="date" name="start_date" min="'.today().'" value="'.e($v['start_date']).'" required>'.err($errors, 'start_date').'</label>'
         .'<label class="end">Iki <small class="opt">(jei ilgiau nei viena diena)</small><input type="date" name="end_date" min="'.today().'" value="'.e($v['end_date']).'">'.err($errors, 'end_date').'</label></div>'
         .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
@@ -166,6 +170,7 @@ function request_page(int $id): never
         .($r['hours'] !== '' ? '<li><b>Darbo laikas</b>'.e($r['hours']).'</li>' : '')
         .($r['pay'] !== '' ? '<li><b>Atlygis</b>'.e($r['pay']).'</li>' : '')
         .'<li><b>Tipas</b>'.e(KINDS[$r['kind']] ?? '').'</li>'
+        .'<li><b>Patirtis</b>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</li>'
         .((int) $r['people'] > 1 ? '<li><b>Reikia</b>'.(int) $r['people'].' žm.</li>' : '').'</ul>';
     $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/istaiga/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
@@ -225,7 +230,10 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     if (!$isOpen) {
         return '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
-    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'
+    $below = (int) $r['min_experience'] > 1 && (int) $u['experience'] < (int) $r['min_experience']
+        ? '<p class="notice tip">Įstaigos reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
+        : '';
+    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .'<label>Žinutė vadovui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
@@ -234,7 +242,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
 
 function owner_panel(array $r, bool $isOpen): string
 {
-    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone FROM responses s JOIN users w ON w.id = s.worker_id
+    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, w.experience FROM responses s JOIN users w ON w.id = s.worker_id
         WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['id']])->fetchAll();
     $list = '';
     foreach ($responses as $s) {
@@ -244,11 +252,11 @@ function owner_panel(array $r, bool $isOpen): string
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $s['phone'])).'">'.e($s['phone']).'</a></p>'
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
-        $list .= '<div class="responder">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n).'<p class="meta">Darbų per GANG: '.$done.$free.'</p>'
+        $list .= '<div class="responder">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n).'<p class="meta">'.(isset(EXPERIENCE[(int) $s['experience']]) ? 'Patirtis: '.e(EXPERIENCE[(int) $s['experience']]).' · ' : '').'Darbų per GANG: '.$done.$free.'</p>'
             .($s['note'] ? '<p class="note">„'.e($s['note']).'“</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
-    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()));
+    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience']);
     $reach = '<p class="meta">Pranešimą gavo: '.(int) $r['notified'].' · Tinkamų darbuotojų mieste: '.$total.', iš jų darbo pradžios dieną laisvi: '.$freeNow.'</p>';
     $status = ['open' => 'Aktyvus', 'filled' => 'Užpildytas', 'cancelled' => 'Atšauktas', 'expired' => 'Pasibaigęs'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti poreikį', [], 'btn small ghost', 'Ar tikrai norite uždaryti šį poreikį? Darbuotojai jo nebematys.') : '';
@@ -370,7 +378,8 @@ function worker_profile_page(int $id): never
     $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
         .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
-        .'<ul class="facts"><li><b>Pareigos</b>'.e(labels($w['roles'], ROLES)).'</li><li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
+        .'<ul class="facts"><li><b>Pareigos</b>'.e(labels($w['roles'], ROLES)).'</li>'
+        .(isset(EXPERIENCE[(int) $w['experience']]) ? '<li><b>Patirtis</b>'.e(EXPERIENCE[(int) $w['experience']]).'</li>' : '').'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }

@@ -38,7 +38,7 @@ function require_user(?string $kind = null): array
 
 function profile_complete(array $u): bool
 {
-    return $u['name'] !== '' && $u['phone'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== ''));
+    return $u['name'] !== '' && $u['phone'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
 }
 
 function login_page(): never
