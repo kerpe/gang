@@ -41,15 +41,10 @@ main > section.wrap, main > article.wrap { padding-top: 36px; }
 /* Header */
 .top { border-bottom: 1px solid var(--line); background: rgba(23,23,23,.92); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10; }
 .top .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 68px; }
-.logo { display: inline-block; font-family: var(--display); font-size: 2rem; letter-spacing: .06em; line-height: 1; text-decoration: none; transform: rotate(-4deg); padding: 4px 2px;
-  color: #f4ffc8;
-  text-shadow: 0 0 2px #fff, 0 0 8px var(--lime), 0 0 18px rgba(216,255,54,.7), 0 0 38px rgba(216,255,54,.35);
-  animation: neon-on 1.6s steps(1) 1 both; }
-.logo span { color: #ffd2c8; font-size: .62em; letter-spacing: .02em; margin-left: 3px;
-  text-shadow: 0 0 2px #fff, 0 0 7px var(--orange), 0 0 16px rgba(255,101,74,.7); }
-.logo:hover { color: #fff; }
-/* A neon sign switching on: a couple of flickers, then steady. */
-@keyframes neon-on { 0%, 12%, 22%, 30% { opacity: .25; } 8%, 18%, 26%, 100% { opacity: 1; } }
+.logo { display: inline-block; font-family: var(--display); font-size: 2rem; letter-spacing: .04em; line-height: 1; text-decoration: none; transform: rotate(-3deg);
+  color: var(--lime); text-shadow: 0 0 14px rgba(216,255,54,.35); }
+.logo span { color: var(--orange); font-size: .62em; letter-spacing: .02em; margin-left: 2px; text-shadow: none; }
+.logo:hover { color: #e6ff73; }
 .top nav { display: flex; align-items: center; gap: 22px; }
 .top nav a:not(.btn) { text-decoration: none; font-size: .95rem; color: var(--ink); opacity: .85; }
 .top nav a:not(.btn):hover { opacity: 1; color: var(--lime); }
@@ -100,7 +95,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .cam-tabs { padding: 0 16px 20px; }
   .rec { top: 14px; right: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { .grain, .rec i, .logo { animation: none; } .cam { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .grain, .rec i { animation: none; } .cam { transition: none; } }
 
 
 .home-block { padding-top: 8px; }
