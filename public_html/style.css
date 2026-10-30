@@ -300,3 +300,11 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .foot a:hover { color: var(--ink); }
 .foot strong { color: var(--ink); }
 .panel p .btn + a { margin-left: 14px; white-space: nowrap; display: inline-block; margin-top: 8px; }
+
+/* Coming soon page */
+.soon { padding-top: 10vh; }
+.soon .logo { margin-bottom: 36px; }
+.waitlist { margin: 28px 0; padding: 22px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.team-access { margin-top: 36px; color: var(--muted); font-size: .9rem; }
+.team-access summary { cursor: pointer; }
+.team-access .form { margin-top: 14px; max-width: 360px; }

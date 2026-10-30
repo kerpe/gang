@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 function migrate(PDO $db): void
 {
@@ -85,6 +85,14 @@ function migrate(PDO $db): void
             user_id INT NOT NULL,
             start_date DATE NOT NULL,
             end_date DATE NOT NULL",
+        // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
+        'waitlist' => "id $id,
+            email VARCHAR(190) NOT NULL UNIQUE,
+            kind VARCHAR(10) NOT NULL,
+            city VARCHAR(20) NOT NULL DEFAULT '',
+            ip_hash CHAR(64) NOT NULL DEFAULT '',
+            created_at DATETIME NOT NULL,
+            invited_at DATETIME NULL",
     ];
     foreach ($tables as $name => $cols) {
         $db->exec("CREATE TABLE IF NOT EXISTS $name ($cols)$tail");

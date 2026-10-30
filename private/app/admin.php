@@ -17,13 +17,14 @@ function admin_page(): never
             'unblock' => sql('UPDATE users SET blocked = 0 WHERE id = ?', [$id]),
             'delete_review' => sql('DELETE FROM reviews WHERE id = ?', [$id]),
             'close_request' => sql("UPDATE requests SET status = 'cancelled' WHERE id = ?", [$id]),
+            'invite_waitlist' => flash(invite_waitlist().' kvietimų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
             default => null,
         };
         flash('Pakeitimas atliktas.');
         redirect('/admin'.(isset($_GET['tab']) ? '?tab='.urlencode((string) $_GET['tab']) : ''));
     }
     $tab = $_GET['tab'] ?? 'stats';
-    $tabs = ['stats' => 'Rodikliai', 'requests' => 'Poreikiai', 'users' => 'Nariai', 'reviews' => 'Įvertinimai'];
+    $tabs = ['stats' => 'Rodikliai', 'requests' => 'Poreikiai', 'users' => 'Nariai', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji'];
     $nav = '<nav class="tabs">';
     foreach ($tabs as $k => $label) {
         $nav .= '<a href="/admin?tab='.$k.'"'.($tab === $k ? ' class="active"' : '').'>'.$label.'</a>';
@@ -33,6 +34,7 @@ function admin_page(): never
         'requests' => admin_requests(),
         'users' => admin_users(),
         'reviews' => admin_reviews(),
+        'waitlist' => admin_waitlist(),
         default => admin_stats(),
     };
     page('Administravimas', '<section class="wrap"><h1>Administravimas</h1>'.$nav.$body.'</section>', ['noindex' => true]);
@@ -113,4 +115,44 @@ function admin_reviews(): string
             .post_button('/admin?tab=reviews', 'Ištrinti', ['action' => 'delete_review', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite ištrinti šį įvertinimą?').'</td></tr>';
     }
     return '<div class="scroll">'.$html.'</table></div>';
+}
+
+function admin_waitlist(): string
+{
+    $rows = sql('SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 2000')->fetchAll();
+    $count = fn (string $kind) => count(array_filter($rows, fn ($r) => $r['kind'] === $kind));
+    $pending = count(array_filter($rows, fn ($r) => !$r['invited_at']));
+    $invite = !empty(config()['public'])
+        ? ($pending ? post_button('/admin?tab=waitlist', 'Siųsti kvietimus ('.$pending.')', ['action' => 'invite_waitlist', 'id' => 0], 'btn small', 'Išsiųsti kvietimus visiems dar nepakviestiems laukiantiesiems?') : '<p class="meta">Visi laukiantieji pakviesti.</p>')
+        : '<p class="meta">Kvietimus galėsite išsiųsti, kai svetainė bus atverta visiems (SITE_PUBLIC = true).</p>';
+    $html = '<div class="tiles"><div class="tile"><span>Iš viso</span><strong>'.count($rows).'</strong></div><div class="tile"><span>Ieško darbo</span><strong>'.$count('worker').'</strong></div>'
+        .'<div class="tile"><span>Ieško darbuotojų</span><strong>'.$count('manager').'</strong></div><div class="tile"><span>Nepakviesti</span><strong>'.$pending.'</strong></div></div>'.$invite
+        .'<table class="data"><tr><th>Data</th><th>El. paštas</th><th>Ieško</th><th>Miestas</th><th>Pakviesta</th></tr>';
+    foreach ($rows as $r) {
+        $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td>'.e($r['email']).'</td><td>'.($r['kind'] === 'worker' ? 'Darbo' : 'Darbuotojų').'</td>'
+            .'<td>'.e(CITIES[$r['city']] ?? '–').'</td><td>'.e($r['invited_at'] ? substr($r['invited_at'], 0, 10) : '–').'</td></tr>';
+    }
+    return '<div class="scroll">'.$html.'</table></div>';
+}
+
+// Launch day: one invitation per waiting address, each marked so a second click never repeats it.
+function invite_waitlist(): int
+{
+    if (empty(config()['public'])) {
+        return 0;
+    }
+    $sent = 0;
+    foreach (sql('SELECT * FROM waitlist WHERE invited_at IS NULL ORDER BY id LIMIT 500')->fetchAll() as $r) {
+        $worker = $r['kind'] === 'worker';
+        $link = url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'));
+        $text = $worker
+            ? "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.\n\nRegistracija trunka kelias minutes:\n$link"
+            : "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų užregistruoti įstaigą ir rasti patikimų darbuotojų pavadavimui, sezonui ar nuolatiniam darbui.\n\nRegistracija trunka kelias minutes:\n$link";
+        $text .= "\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
+        sql('UPDATE waitlist SET invited_at = ? WHERE id = ?', [now(), $r['id']]);
+        if (send_mail($r['email'], 'GANG jau veikia: kvietimas registruotis', $text)) {
+            $sent++;
+        }
+    }
+    return $sent;
 }
