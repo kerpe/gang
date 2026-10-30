@@ -5,9 +5,9 @@ declare(strict_types=1);
 // Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
 // A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
-    '01' => ['Salė ir baras', 'Barmenai, padavėjai, baristos, someljė, salės vadovai.'],
+    '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
     '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
-    '03' => ['Aptarnavimas', 'Padavėjai, administratoriai, papildomos rankos renginiams.'],
+    '03' => ['Staliukai', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
 ];
 
 function cam_photo(string $n): string
