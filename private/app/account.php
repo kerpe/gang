@@ -68,12 +68,12 @@ function profile_page(): never
     $title = profile_complete($u) ? 'Mano profilis' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
     $workerFields = $photoField = '';
     if ($worker) {
-        $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti nuotrauką</label>' : '';
-        $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka</legend>'
+        $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
+        $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
             .'<div class="photo-row">'.avatar($u, 'large').'<div>'
-            .'<p class="hint">Rekomenduojame įkelti aiškią, šviesią nuotrauką, kurioje gerai matyti jūsų veidas. Profiliai su nuotrauka paprastai sulaukia daugiau darbdavių dėmesio ir darbo pasiūlymų.</p>'
+            .'<p class="hint">Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje. Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
             .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-resize="1600">'
-            .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Nuotrauką mato tik prisijungę darbdaviai.</p>'
+            .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik prisijungę darbdaviai.</p>'
             .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $workerFields = '<fieldset><legend>Pareigos, kurias galite eiti</legend>'.checkboxes('roles', ROLES, $v['roles']).err($errors, 'roles').'</fieldset>'
             .'<fieldset><legend>Darbo patirtis hospitality srityje</legend><p class="hint">Nurodykite bendrą darbo baruose, restoranuose, kavinėse ar renginiuose trukmę. Pagal ją darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
@@ -192,10 +192,9 @@ function worker_dashboard(array $u): string
     foreach ($pending as $r) {
         $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>');
     }
-    $photoTip = $u['photo'] ? '' : '<p class="notice tip">Įkelkite profilio nuotrauką: profiliai su nuotrauka paprastai sulaukia daugiau darbo pasiūlymų. <a href="/profilis">Įkelti nuotrauką</a></p>';
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · Darbų per GANG: '.count($contracts).'</p></div></div>'
-        .$photoTip.$availability
+        .$availability
         .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2>Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards;
