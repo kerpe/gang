@@ -150,9 +150,8 @@ function availability_action(): never
         'today' => $add(today(), today()),
         'week' => $add(today(), date('Y-m-d', strtotime('+6 days'))),
         'month' => $add(today(), date('Y-m-d', strtotime('+1 month -1 day'))),
-        'range' => preg_match('/^\d{4}-\d{2}-\d{2}$/', input('from')) && preg_match('/^\d{4}-\d{2}-\d{2}$/', input('to') ?: input('from'))
-            && (input('to') ?: input('from')) >= input('from')
-            ? $add(max(input('from'), today()), min(input('to') ?: input('from'), availability_last_day()))
+        'range' => ($from = picked_date('from')) !== '' && ($to = picked_date('to') ?: $from) >= $from
+            ? $add(max($from, today()), min($to, availability_last_day()))
             : $error = 'Nurodykite laikotarpio pradžios ir pabaigos datas.',
         'clear' => $days = [],
         default => null,
@@ -295,14 +294,39 @@ function availability_panel(array $u): string
         .'<button class="btn small ghost" name="add" value="today">Šiandien</button>'
         .'<button class="btn small ghost" name="add" value="week">Artimiausios 7 dienos</button>'
         .'<button class="btn small ghost" name="add" value="month">Artimiausias mėnuo</button></div>'
-        .'<div class="range"><label>Nuo <input type="date" name="from" min="'.today().'" max="'.$last.'"></label>'
-        .'<label>Iki <input type="date" name="to" min="'.today().'" max="'.$last.'"></label>'
+        .'<div class="range">'.date_picker('from', 'Nuo', $months).date_picker('to', 'Iki', $months)
         .'<button class="btn small ghost" name="add" value="range">Pažymėti laikotarpį</button></div>'
         .'<p class="meta cal-hint">Spustelėkite dieną, kad ją pažymėtumėte arba atšauktumėte. Norėdami pažymėti laikotarpį, spustelėkite pirmąją ir, laikydami nuspaudę „Shift“, paskutinę dieną.</p>'
         .'<div class="calendar">'.$cal.'</div>'
         .'<div class="cal-actions"><button class="btn">Išsaugoti laisvas dienas</button>'
         .($ranges ? '<button class="btn small ghost" name="add" value="clear" onclick="return confirm(\'Pašalinti visas pažymėtas laisvas dienas?\')">Pašalinti visas</button>' : '').'</div>'
         .'</form></div>'.calendar_script();
+}
+
+// Month and day selects instead of <input type=date>: the browsers' own pickers
+// make it awkward to get back to the days after choosing a month.
+function date_picker(string $name, string $label, array $months): string
+{
+    $monthOptions = ['' => 'Mėnuo'];
+    for ($i = 0; $i < AVAILABILITY_MONTHS; $i++) {
+        $t = strtotime(date('Y-m-01').' +'.$i.' month');
+        $monthOptions[date('Y-m', $t)] = $months[(int) date('n', $t)].' '.date('Y', $t);
+    }
+    $days = ['' => 'Diena'] + array_combine(range(1, 31), array_map('strval', range(1, 31)));
+    return '<fieldset class="date-pick"><legend>'.e($label).'</legend>'
+        .'<select name="'.$name.'_m" aria-label="'.e($label).': mėnuo">'.options($monthOptions, '').'</select>'
+        .'<select name="'.$name.'_d" aria-label="'.e($label).': diena">'.options($days, '').'</select></fieldset>';
+}
+
+// Y-m-d from the month and day selects; a day past the month's end means its last day.
+function picked_date(string $name): string
+{
+    $month = input($name.'_m');
+    $day = (int) input($name.'_d');
+    if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) || $day < 1 || $day > 31) {
+        return '';
+    }
+    return $month.'-'.sprintf('%02d', min($day, (int) date('t', strtotime($month.'-01'))));
 }
 
 function calendar_script(): string
