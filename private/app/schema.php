@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 function migrate(PDO $db): void
 {
@@ -87,6 +87,11 @@ function migrate(PDO $db): void
             user_id INT NOT NULL,
             start_date DATE NOT NULL,
             end_date DATE NOT NULL",
+        // Experience per role a worker can take on (users.roles lists the same roles).
+        'worker_roles' => "id $id,
+            user_id INT NOT NULL,
+            role VARCHAR(30) NOT NULL,
+            experience TINYINT NOT NULL DEFAULT 0",
         // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
         'waitlist' => "id $id,
             email VARCHAR(190) NOT NULL UNIQUE,
@@ -117,7 +122,18 @@ function migrate(PDO $db): void
         $db->prepare('INSERT INTO availability (user_id, start_date, end_date) SELECT id, ?, available_until FROM users WHERE available_until >= ?')
             ->execute([date('Y-m-d'), date('Y-m-d')]);
     }
+    // Version 5: experience moved from one value per worker to one per role.
+    if (!$db->query('SELECT 1 FROM worker_roles LIMIT 1')->fetchColumn()) {
+        $insert = $db->prepare('INSERT INTO worker_roles (user_id, role, experience) VALUES (?, ?, ?)');
+        foreach ($db->query("SELECT id, roles, experience FROM users WHERE kind = 'worker'")->fetchAll() as $w) {
+            foreach (array_filter(explode(',', (string) $w['roles'])) as $role) {
+                $insert->execute([$w['id'], $role, $w['experience']]);
+            }
+        }
+    }
     $indexes = [
+        'worker_roles_user' => 'worker_roles (user_id)',
+        'worker_roles_role' => 'worker_roles (role, experience)',
         'availability_user' => 'availability (user_id)',
         'responses_request' => 'responses (request_id)',
         'contracts_worker' => 'contracts (worker_id)',

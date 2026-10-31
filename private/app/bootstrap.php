@@ -8,9 +8,9 @@ const ROLES = [
     'padavejas' => 'Padavėjas',
     'barista' => 'Barista',
     'virejas' => 'Virėjas',
-    'sefas' => 'Šefas / su-šefas',
+    'sefas' => 'Šefas',
     'plovejas' => 'Indų plovėjas',
-    'administratorius' => 'Administratorius / hostas',
+    'administratorius' => 'Administratorius',
     'vadovas' => 'Salės ar baro vadovas',
     'someljee' => 'Someljė',
     'pagalbinis' => 'Pagalbinis darbuotojas',
@@ -21,8 +21,9 @@ const KINDS = [
     'sezonas' => 'Sezonas',
     'nuolat' => 'Nuolatinis darbas',
 ];
-// Levels are ordered: a worker matches a request when experience >= min_experience.
-// 0 on a worker means not stated yet (profiles created before the field existed).
+// Levels are ordered: a worker matches a request when their experience in the requested
+// role (worker_roles.experience) >= min_experience. users.experience keeps the lowest
+// level across the worker's roles; 0 means not stated yet.
 const EXPERIENCE = [
     1 => 'Be patirties',
     2 => 'Iki 1 metų',
