@@ -228,6 +228,8 @@ function manager_dashboard(array $u): string
         [$avg, $n] = venue_rating((int) $v['id']);
         $venueHtml .= '<li><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a> · '.e(CITIES[$v['city']] ?? '').' · '.stars($avg, $n).' · <a href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></li>';
     }
+    $short = array_filter($venues, fn ($v) => mb_strlen(trim((string) $v['about'])) < VENUE_ABOUT_MIN);
+    $aboutTip = $short ? '<p class="notice tip">Papildykite darbovietės aprašymą: kokia tai vieta, kokia komanda ir kokios darbo sąlygos. Tai padeda darbuotojams apsispręsti. <a href="/darboviete/'.(int) reset($short)['id'].'/redaguoti">Papildyti aprašymą</a></p>' : '';
     $ids = array_column($venues, 'id');
     $in = implode(',', array_map('intval', $ids));
     [$where, $params] = open_where();
@@ -248,7 +250,7 @@ function manager_dashboard(array $u): string
             .'<p class="meta">'.e($c['venue_name']).' · '.e(period($c)).' · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $c['worker_phone'])).'">'.e($c['worker_phone']).'</a></p></div>'
             .review_link($c, (bool) $c['reviewed']).'</div>';
     }
-    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
+    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
         .'<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>'
         .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<p class="empty">Aktyvių poreikių nėra. Jei susirgo darbuotojas ar artėja sezonas, paskelbkite poreikį: tinkami darbuotojai pranešimą gaus iš karto.</p>')
         .($contractHtml ? '<h2>GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
