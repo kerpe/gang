@@ -65,7 +65,7 @@ function home_page(): never
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda barams, restoranams ir kavinėms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
-    <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir darbdaviams</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
+    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
   </div>
   $tabs
 </section>
@@ -98,11 +98,9 @@ function home_page(): never
 
 <section class="wrap home-block">
   <div class="bento">
-    <div class="bt t-2 lime"><span class="k">Kaina šiuo metu</span><span class="big">0 €</span><p>Darbdaviams ir darbuotojams. Jokių valandinių mokesčių.</p></div>
-    <div class="bt t-2"><span class="k">Darbuotojams</span><span class="big">6 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
+    <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">6 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
     <div class="bt t-2"><span class="k">Miestai</span><span class="big">4</span><p>Vilnius, Kaunas, Klaipėda ir Palanga.</p></div>
-    <div class="bt t-3"><span class="k">Įvertinimai</span><span class="big">★ 1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu, abipusiai ir neskelbiant autoriaus.</p></div>
-    <div class="bt t-3 orange"><span class="k">Sąžiningumas</span><span class="big">7 d.</span><p>Įvertinimas paskelbiamas, kai įvertina abi šalys arba praėjus 7 dienoms.</p></div>
+    <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">★ 1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
 </section>
 
@@ -126,7 +124,7 @@ $list
 <section class="wrap home-block">
   <div class="final-cta">
     <h2>Prisijunkite prie GANG</h2>
-    <p>Registracija trunka kelias minutes. Šiuo metu GANG paslaugos nemokamos.</p>
+    <p>Registracija trunka kelias minutes ir šiuo metu yra nemokama.</p>
     <p class="cta"><a class="btn dark" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn dark ghost" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
   </div>
 </section>
