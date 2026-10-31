@@ -59,7 +59,7 @@ function profile_page(): never
                 delete_photo($u['photo']);
             }
             if (!$worker && !sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn()) {
-                redirect('/istaiga/nauja');
+                redirect('/darboviete/nauja');
             }
             flash($first ? 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.' : 'Profilio pakeitimai išsaugoti.');
             redirect('/mano');
@@ -68,21 +68,21 @@ function profile_page(): never
     $title = profile_complete($u) ? 'Mano profilis' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
     $workerFields = $photoField = '';
     if ($worker) {
-        $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti nuotrauką</label>' : '';
-        $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka</legend>'
+        $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
+        $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
             .'<div class="photo-row">'.avatar($u, 'large').'<div>'
-            .'<p class="hint">Rekomenduojame įkelti aiškią, šviesią nuotrauką, kurioje gerai matyti jūsų veidas. Profiliai su nuotrauka paprastai sulaukia daugiau įstaigų vadovų dėmesio ir darbo pasiūlymų.</p>'
+            .'<p class="hint">Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje. Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
             .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-resize="1600">'
-            .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Nuotrauką mato tik prisijungę įstaigų vadovai.</p>'
+            .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik prisijungę darbdaviai.</p>'
             .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $workerFields = '<fieldset><legend>Pareigos, kurias galite eiti</legend>'.checkboxes('roles', ROLES, $v['roles']).err($errors, 'roles').'</fieldset>'
-            .'<fieldset><legend>Darbo patirtis hospitality srityje</legend><p class="hint">Nurodykite bendrą darbo baruose, restoranuose, kavinėse ar renginiuose trukmę. Pagal ją darbo pasiūlymus gausite iš įstaigų, kurių reikalavimus atitinkate.</p>'
+            .'<fieldset><legend>Darbo patirtis hospitality srityje</legend><p class="hint">Nurodykite bendrą darbo baruose, restoranuose, kavinėse ar renginiuose trukmę. Pagal ją darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .radios('experience', EXPERIENCE, $v['experience']).err($errors, 'experience').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
-    $phoneNote = $worker ? 'Numerį įstaigos vadovas matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
+    $phoneNote = $worker ? 'Numerį darbdavys matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
@@ -150,7 +150,7 @@ function availability_action(): never
         redirect('/mano#laisvumas');
     }
     save_availability((int) $u['id'], $days);
-    flash(availability_ranges((int) $u['id']) ? 'Laisvos dienos išsaugotos.' : 'Laisvos dienos pašalintos. Įstaigų vadovai matys, kad šiuo metu darbo pasiūlymų nepriimate.');
+    flash(availability_ranges((int) $u['id']) ? 'Laisvos dienos išsaugotos.' : 'Laisvos dienos pašalintos. Darbdaviai matys, kad šiuo metu darbo pasiūlymų nepriimate.');
     redirect('/mano#laisvumas');
 }
 
@@ -190,12 +190,11 @@ function worker_dashboard(array $u): string
     $pending = sql(REQUEST_SELECT.' JOIN responses s ON s.request_id = r.id WHERE s.worker_id = ? AND s.status = \'sent\' AND r.status = \'open\' ORDER BY s.created_at DESC', [$u['id']])->fetchAll();
     $pendingHtml = '';
     foreach ($pending as $r) {
-        $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama įstaigos vadovo sprendimo</p>');
+        $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>');
     }
-    $photoTip = $u['photo'] ? '' : '<p class="notice tip">Įkelkite profilio nuotrauką: profiliai su nuotrauka paprastai sulaukia daugiau darbo pasiūlymų. <a href="/profilis">Įkelti nuotrauką</a></p>';
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · Darbų per GANG: '.count($contracts).'</p></div></div>'
-        .$photoTip.$availability
+        .$availability
         .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2>Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards;
@@ -205,12 +204,12 @@ function manager_dashboard(array $u): string
 {
     $venues = sql('SELECT * FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll();
     if (!$venues) {
-        redirect('/istaiga/nauja');
+        redirect('/darboviete/nauja');
     }
     $venueHtml = '';
     foreach ($venues as $v) {
         [$avg, $n] = venue_rating((int) $v['id']);
-        $venueHtml .= '<li><a href="/istaiga/'.(int) $v['id'].'">'.e($v['name']).'</a> · '.e(CITIES[$v['city']] ?? '').' · '.stars($avg, $n).' · <a href="/istaiga/'.(int) $v['id'].'/redaguoti">Redaguoti</a></li>';
+        $venueHtml .= '<li><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a> · '.e(CITIES[$v['city']] ?? '').' · '.stars($avg, $n).' · <a href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></li>';
     }
     $ids = array_column($venues, 'id');
     $in = implode(',', array_map('intval', $ids));
@@ -232,11 +231,11 @@ function manager_dashboard(array $u): string
             .'<p class="meta">'.e($c['venue_name']).' · '.e(period($c)).' · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $c['worker_phone'])).'">'.e($c['worker_phone']).'</a></p></div>'
             .review_link($c, (bool) $c['reviewed']).'</div>';
     }
-    return '<p class="eyebrow">Įstaigos vadovo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
+    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>'
         .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<p class="empty">Aktyvių poreikių nėra. Jei susirgo darbuotojas ar artėja sezonas, paskelbkite poreikį: tinkami darbuotojai pranešimą gaus iš karto.</p>')
         .($contractHtml ? '<h2>GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
-        .'<h2>Mano įstaigos</h2><ul class="plain">'.$venueHtml.'</ul><p><a href="/istaiga/nauja">+ Pridėti kitą įstaigą</a></p>';
+        .'<h2>Mano darbovietės</h2><ul class="plain">'.$venueHtml.'</ul><p><a href="/darboviete/nauja">+ Pridėti kitą darbovietę</a></p>';
 }
 
 // Six-month calendar of days the worker is open to offers. Works as a plain form; the script only adds range selection.
@@ -275,7 +274,7 @@ function availability_panel(array $u): string
         ? '<p class="meta">Pažymėti laikotarpiai: '.e(implode('; ', array_map('range_lt', $ranges))).'</p>'
         : '<p class="meta">Laisvų dienų dar nepažymėjote.</p>';
     return '<div class="panel avail" id="laisvumas"><h2>Mano laisvos dienos papildomam darbui</h2>'
-        .'<p>Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Įstaigų vadovai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
+        .'<p>Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
         .$status.$summary
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
         // First submit button handles Enter in the date fields: save, not "today".
