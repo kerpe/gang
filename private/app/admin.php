@@ -47,7 +47,7 @@ function admin_stats(): string
     $tiles = [
         'Darbuotojų' => $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"),
         'Laisvi šiandien' => $count("SELECT COUNT(DISTINCT user_id) FROM availability WHERE start_date <= ? AND end_date >= ?", [today(), today()]),
-        'Įstaigų' => $count('SELECT COUNT(*) FROM venues'),
+        'Darboviečių' => $count('SELECT COUNT(*) FROM venues'),
         'Poreikių (30 d.)' => $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]),
         'Kontraktų (30 d.)' => $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]),
         'Įvertinimų' => $count('SELECT COUNT(*) FROM reviews'),
@@ -81,7 +81,7 @@ function admin_requests(): string
 {
     $rows = sql('SELECT r.*, v.name AS venue_name, v.city, (SELECT COUNT(*) FROM responses s WHERE s.request_id = r.id) AS responses, (SELECT COUNT(*) FROM contracts c WHERE c.request_id = r.id) AS contracts
         FROM requests r JOIN venues v ON v.id = r.venue_id ORDER BY r.created_at DESC LIMIT 200')->fetchAll();
-    $html = '<table class="data"><tr><th>Sukurta</th><th>Įstaiga</th><th>Pareigos</th><th>Tipas</th><th>Kada</th><th>Laiškų</th><th>Atsil.</th><th>Kontr.</th><th>Būsena</th><th></th></tr>';
+    $html = '<table class="data"><tr><th>Sukurta</th><th>Darbovietė</th><th>Pareigos</th><th>Tipas</th><th>Kada</th><th>Laiškų</th><th>Atsil.</th><th>Kontr.</th><th>Būsena</th><th></th></tr>';
     foreach ($rows as $r) {
         $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td>'.e($r['venue_name']).', '.e(CITIES[$r['city']] ?? '').'</td><td><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? '').'</a></td>'
             .'<td>'.e($r['kind']).'</td><td>'.e(period($r)).'</td><td>'.(int) $r['notified'].'</td><td>'.(int) $r['responses'].'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['status']).'</td>'
@@ -99,7 +99,7 @@ function admin_users(): string
             ? post_button('/admin?tab=users', 'Atblokuoti', ['action' => 'unblock', 'id' => $r['id']], 'btn small ghost')
             : post_button('/admin?tab=users', 'Blokuoti', ['action' => 'block', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite užblokuoti šį narį?');
         $name = $r['kind'] === 'worker' ? '<a href="/darbuotojas/'.(int) $r['id'].'">'.e($r['name']).'</a>' : e($r['name']);
-        $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Vadovas').'</td><td>'.$name.'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+        $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td><td>'.$name.'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
             .'<td>'.e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small></td><td>'.(int) $r['contracts'].'</td><td>'.$btn.'</td></tr>';
     }
     return '<div class="scroll">'.$html.'</table></div>';
@@ -147,7 +147,7 @@ function invite_waitlist(): int
         $link = url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'));
         $text = $worker
             ? "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.\n\nRegistracija trunka kelias minutes:\n$link"
-            : "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų užregistruoti įstaigą ir rasti patikimų darbuotojų pavadavimui, sezonui ar nuolatiniam darbui.\n\nRegistracija trunka kelias minutes:\n$link";
+            : "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.\n\nRegistracija trunka kelias minutes:\n$link";
         $text .= "\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
         sql('UPDATE waitlist SET invited_at = ? WHERE id = ?', [now(), $r['id']]);
         if (send_mail($r['email'], 'GANG jau veikia: kvietimas registruotis', $text)) {

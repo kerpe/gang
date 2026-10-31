@@ -63,9 +63,9 @@ function home_page(): never
   <div class="wrap hero-body">
     <p class="eyebrow">Darbas barams, restoranams ir kavinėms</p>
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
-    <p class="lead">GANG padeda įstaigoms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
+    <p class="lead">GANG padeda barams, restoranams ir kavinėms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
-    <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir įstaigoms</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
+    <ul class="hero-facts"><li><strong>Nemokamai</strong> darbuotojams ir darbdaviams</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
   </div>
   $tabs
 </section>
@@ -84,14 +84,14 @@ function home_page(): never
       <a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>
     </div>
     <div class="aud venue">
-      <p class="eyebrow">Įstaigoms</p>
+      <p class="eyebrow">Darbdaviams</p>
       <h2>Darbuotojas reikiamą dieną</h2>
       <ul>
         <li><strong>Skubus pavadavimas</strong>Paskelbtas poreikis iš karto pasiekia laisvus darbuotojus jūsų mieste.</li>
-        <li><strong>Matote, ką kviečiate</strong>Kandidato nuotrauka, patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
+        <li><strong>Matote, ką kviečiate</strong>Kandidato patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
         <li><strong>Salė ir virtuvė</strong>Nuo barmeno iki indų plovėjo – visos komandos pareigos.</li>
       </ul>
-      <a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti įstaigą</a>
+      <a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>
     </div>
   </div>
 </section>
@@ -106,9 +106,9 @@ $list
 <section class="wrap home-block">
   <div class="section-head"><h2>Kaip veikia</h2><a href="/kaip-veikia">Daugiau →</a></div>
   <ol class="steps">
-    <li><strong>Vadovas paskelbia poreikį</strong>Pavyzdžiui, „virėjas rytoj, 10–22 val.“ arba „padavėjai vasaros sezonui“.</li>
+    <li><strong>Darbdavys paskelbia poreikį</strong>Pavyzdžiui, „virėjas rytoj, 10–22 val.“ arba „padavėjai vasaros sezonui“.</li>
     <li><strong>Tinkami darbuotojai gauna pranešimą</strong>ir pateikia kandidatūrą vienu paspaudimu.</li>
-    <li><strong>Vadovas patvirtina kandidatą</strong>Sudaromas GANG kontraktas: abi šalys gauna viena kitos kontaktus.</li>
+    <li><strong>Darbdavys patvirtina kandidatą</strong>Sudaromas GANG kontraktas: abi šalys gauna viena kitos kontaktus.</li>
     <li><strong>Abi šalys įvertina viena kitą</strong>Įvertinimai paskelbiami tik tada, kai įvertina abi šalys arba praėjus 7 dienoms.</li>
   </ol>
 </section>
@@ -172,19 +172,19 @@ function how_page(): never
     page('Kaip veikia GANG', <<<HTML
 <section class="wrap narrow prose">
   <h1>Kaip veikia GANG</h1>
-  <h2>Įstaigoms</h2>
-  <p>Užregistruokite įstaigą ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų nuotrauka, patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>
+  <h2>Darbdaviams</h2>
+  <p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>
   <h2>Darbuotojams</h2>
-  <p>Susikurkite profilį, įkelkite nuotrauką, pažymėkite pareigas, miestus ir nurodykite darbo patirtį. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: įstaigų vadovai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Vadovui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir įstaigos adresą.</p>
+  <p>Susikurkite profilį, įkelkite nuotrauką, pažymėkite pareigas, miestus ir nurodykite darbo patirtį. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: darbdaviai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir darbovietės adresą.</p>
   <h2>GANG kontraktas</h2>
-  <p>GANG kontraktas sudaromas, kai įstaigos vadovas patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas įstaiga ir darbuotojas suderina tiesiogiai.</p>
+  <p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>
   <h2>Įvertinimai</h2>
   <ul>
     <li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>
-    <li>Vadovas vertina darbuotoją, o darbuotojas – įstaigą (nuo 1 iki 5 žvaigždučių ir komentaras).</li>
+    <li>Darbdavys vertina darbuotoją, o darbuotojas – darbdavį (nuo 1 iki 5 žvaigždučių ir komentaras).</li>
     <li>Įvertinimas tampa matomas, kai įvertina abi šalys arba praėjus $days dienoms. Taip užtikrinama, kad vienos šalies įvertinimas nedarytų įtakos kitos šalies vertinimui.</li>
     <li>Įvertinimo autorius neskelbiamas: rodomas tik miestas ir data.</li>
-    <li>Darbuotojų įvertinimus mato tik prisijungę įstaigų vadovai, o įstaigų įvertinimus – tik prisijungę darbuotojai.</li>
+    <li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li>
   </ul>
 </section>
 HTML, ['canonical' => '/kaip-veikia']);
@@ -200,13 +200,13 @@ function about_page(): never
   <ul>
     <li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>
     <li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>
-    <li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių įstaiga negali veikti.</li>
+    <li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių neįsivaizduojama nė viena komanda.</li>
     <li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>
     <li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li>
   </ul>
   <h2>Kaip ją sprendžiame</h2>
-  <p>GANG tiesiogiai sujungia įstaigas ir hospitality specialistus. Įstaiga paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl vadovas iš karto mato, kas yra laisvas.</p>
-  <p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas įstaiga ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>
+  <p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>
+  <p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>
   <p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>
   <h2>Apie įkūrėją</h2>
   <p>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</p>
@@ -223,15 +223,15 @@ function privacy_page(): never
   <h1>Privatumas ir taisyklės</h1>
   <p><em>Preliminari redakcija. Galutinė redakcija bus paskelbta prieš oficialų svetainės paleidimą.</em></p>
   <h2>Kokius duomenis renkame</h2>
-  <p>Renkame el. pašto adresą, vardą ir pavardę, telefono numerį, profilio nuotrauką (jei ją įkeliate), pareigas, miestus, pažymėtas laisvas dienas ir jūsų pateiktą informaciją apie save ar įstaigą. Telefono numeris kitai šaliai rodomas tik po GANG kontrakto. Profilio nuotrauką mato tik prisijungę įstaigų vadovai.</p>
+  <p>Renkame el. pašto adresą, vardą ir pavardę, telefono numerį, profilio nuotrauką (jei ją įkeliate), pareigas, miestus, pažymėtas laisvas dienas ir jūsų pateiktą informaciją apie save ar savo darbovietę. Telefono numeris kitai šaliai rodomas tik po GANG kontrakto. Profilio nuotrauką mato tik prisijungę darbdaviai.</p>
   <h2>Kam naudojame</h2>
-  <p>Duomenis naudojame tam, kad padėtume įstaigoms ir darbuotojams rasti vieni kitus: siunčiame pranešimus apie tinkamus darbo pasiūlymus ir kandidatūras, rodome įvertinimus. Duomenų neparduodame ir reklamos tikslais neperduodame.</p>
+  <p>Duomenis naudojame tam, kad padėtume darbdaviams ir darbuotojams rasti vieni kitus: siunčiame pranešimus apie tinkamus darbo pasiūlymus ir kandidatūras, rodome įvertinimus. Duomenų neparduodame ir reklamos tikslais neperduodame.</p>
   <h2>Įvertinimai</h2>
   <p>Įvertinimai skelbiami nenurodant autoriaus. Jei manote, kad įvertinimas neteisingas, susisiekite su mumis. Netinkamus, įžeidžiančius ar asmeninę informaciją atskleidžiančius komentarus pašaliname.</p>
   <h2>Paskyros ištrynimas</h2>
   <p>Norėdami ištrinti paskyrą ir duomenis, parašykite mums iš el. pašto adreso, kuriuo esate užsiregistravę. Duomenis ištrinsime per 30 dienų.</p>
   <h2>Taisyklės</h2>
-  <p>Skelbiami tik tikri darbo pasiūlymai svetingumo sektoriaus įstaigose. Draudžiama diskriminacija, klaidinanti informacija ir piktnaudžiavimas įvertinimais. Taisyklių nesilaikančių narių paskyros blokuojamos.</p>
+  <p>Skelbiami tik tikri darbo pasiūlymai baruose, restoranuose, kavinėse ir kitose hospitality sektoriaus darbovietėse. Draudžiama diskriminacija, klaidinanti informacija ir piktnaudžiavimas įvertinimais. Taisyklių nesilaikančių narių paskyros blokuojamos.</p>
 </section>
 HTML, ['canonical' => '/privatumas']);
 }

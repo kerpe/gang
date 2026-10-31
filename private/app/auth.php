@@ -30,7 +30,7 @@ function require_user(?string $kind = null): array
         redirect('/prisijungti');
     }
     if ($kind !== null && $user['kind'] !== $kind) {
-        flash($kind === 'manager' ? 'Šis veiksmas skirtas įstaigų vadovams.' : 'Šis veiksmas skirtas darbuotojams.');
+        flash($kind === 'manager' ? 'Šis veiksmas skirtas darbdaviams.' : 'Šis veiksmas skirtas darbuotojams.');
         redirect('/mano');
     }
     return $user;
@@ -73,12 +73,12 @@ function login_page(): never
     $kind = $_SESSION['signup_kind'] ?? '';
     $title = match ($kind) {
         'worker' => 'Registracija darbuotojams',
-        'manager' => 'Registracija įstaigoms',
+        'manager' => 'Registracija darbdaviams',
         default => 'Prisijungti arba užsiregistruoti',
     };
     $lead = match ($kind) {
         'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
-        'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite įstaigą ir galėsite skelbti darbuotojų poreikius.',
+        'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų poreikius.',
         default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'

@@ -49,8 +49,8 @@ function review_page(int $contractId): never
         }
     }
     $who = $author === 'manager' ? first_name($c['worker_name']) : $c['venue_name'];
-    $question = $author === 'manager' ? 'Įvertinkite darbuotoją: '.e($who) : 'Įvertinkite įstaigą: '.e($who);
-    $hint = $author === 'manager' ? 'ar atvyko laiku, kaip atliko darbą, ar kviestumėte dar kartą' : 'ar sąlygos atitiko sutartas, ar atlygis sumokėtas laiku, ar rekomenduotumėte įstaigą kitiems';
+    $question = $author === 'manager' ? 'Įvertinkite darbuotoją: '.e($who) : 'Įvertinkite darbdavį: '.e($who);
+    $hint = $author === 'manager' ? 'ar atvyko laiku, kaip atliko darbą, ar kviestumėte dar kartą' : 'ar sąlygos atitiko sutartas, ar atlygis sumokėtas laiku, ar rekomenduotumėte šį darbdavį kitiems';
     $starsInput = '<div class="star-input">';
     for ($i = 5; $i >= 1; $i--) {
         $starsInput .= '<input type="radio" name="rating" id="s'.$i.'" value="'.$i.'"'.($rating === $i ? ' checked' : '').'><label for="s'.$i.'" title="'.$i.'">★</label>';

@@ -1,6 +1,6 @@
 # GANG.lt
 
-Darbo birža hospitality komandoms: įstaigos skelbia poreikius (skubus pavadavimas, savaitė ar mėnuo, sezonas, nuolatinis darbas), tinkami darbuotojai gauna laišką ir atsiliepia, vadovas patvirtina (GANG kontraktas), po darbo abu vienas kitą įvertina.
+Darbo birža hospitality komandoms: darbdaviai (barai, restoranai, kavinės) skelbia poreikius (skubus pavadavimas, savaitė ar mėnuo, sezonas, nuolatinis darbas), tinkami darbuotojai gauna laišką ir atsiliepia, darbdavys patvirtina (GANG kontraktas), po darbo abu vienas kitą įvertina.
 
 Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 
