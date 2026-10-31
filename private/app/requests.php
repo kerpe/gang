@@ -23,7 +23,9 @@ function venue_form_page(?int $id = null): never
         if (mb_strlen($v['address']) > 190) {
             $errors['address'] = 'Adresas gali būti ne ilgesnis nei 190 simbolių.';
         }
-        if (mb_strlen($v['about']) > 2000) {
+        if (mb_strlen($v['about']) < VENUE_ABOUT_MIN) {
+            $errors['about'] = 'Aprašymas padeda darbuotojams apsispręsti. Parašykite bent '.VENUE_ABOUT_MIN.' simbolių: kokia tai vieta, kokia komanda ir kokios darbo sąlygos.';
+        } elseif (mb_strlen($v['about']) > 2000) {
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
         if (!$errors) {
@@ -43,8 +45,27 @@ function venue_form_page(?int $id = null): never
         .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
         .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'
         .'<label>Adresas <small>(darbuotojas matys tik po patvirtinimo)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
-        .'<label>Apie darbovietę <small>(neprivaloma)</small><textarea name="about" rows="4" maxlength="2000" placeholder="Trumpai apibūdinkite vietą, komandą ir darbo sąlygas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
-        .'<button class="btn">Išsaugoti</button></form></section>', ['noindex' => true]);
+        .'<label>Apie darbovietę <small>(bent '.VENUE_ABOUT_MIN.' simbolių)</small><textarea name="about" rows="5" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, darbas vakarais, apmokymai vietoje.">'.e($v['about']).'</textarea>'
+        .'<span class="counter meta" aria-live="polite"></span>'.err($errors, 'about').'</label>'
+        .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
+}
+
+// Live "dar X simbolių" under textareas with data-min.
+function counter_script(): string
+{
+    return <<<'HTML'
+<script>
+document.querySelectorAll('textarea[data-min]').forEach(function (t) {
+  var out = t.parentNode.querySelector('.counter'), min = +t.dataset.min;
+  function show() {
+    var left = min - t.value.trim().length;
+    out.textContent = left > 0 ? 'Dar reikia simbolių: ' + left : 'Aprašymo ilgis pakankamas.';
+    out.classList.toggle('ok-text', left <= 0);
+  }
+  t.addEventListener('input', show); show();
+});
+</script>
+HTML;
 }
 
 function venue_page(int $id): never

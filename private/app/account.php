@@ -172,13 +172,13 @@ function dashboard_page(): never
         redirect('/profilis');
     }
     $body = $u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u);
-    $profileHint = $u['kind'] === 'worker' ? 'Vardas, kontaktai, pareigos, patirtis, miestai ir pranešimai.' : 'Vardas, kontaktai ir pranešimai.';
-    $admin = is_admin($u) ? '<a class="account-card" href="/admin"><strong>Administravimas</strong><span>Nariai, skelbimai, laukiantieji ir statistika.</span></a>' : '';
+    $kind = $u['kind'] === 'worker' ? 'Darbuotojo paskyra' : 'Darbdavio paskyra';
+    $admin = is_admin($u) ? '<a class="btn small ghost" href="/admin">Administravimas</a>' : '';
     page('Mano GANG', '<section class="wrap">'.$body
-        .'<div class="account"><h2>Paskyra</h2><div class="account-grid">'
-        .'<a class="account-card" href="/profilis"><strong>Redaguoti profilį</strong><span>'.$profileHint.'</span></a>'.$admin
-        .'<div class="account-card quiet"><strong>Prisijungta kaip</strong><span>'.e($u['email']).'</span>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
-        .'</div></div></section>', ['noindex' => true]);
+        .'<div class="account-bar">'.avatar($u, 'account-avatar')
+        .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><strong>'.e($u['name']).'</strong><span class="meta">'.e($u['email']).'</span></div>'
+        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.$admin.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
+        .'</div></section>', ['noindex' => true]);
 }
 
 function worker_dashboard(array $u): string
@@ -226,8 +226,12 @@ function manager_dashboard(array $u): string
     $venueHtml = '';
     foreach ($venues as $v) {
         [$avg, $n] = venue_rating((int) $v['id']);
-        $venueHtml .= '<li><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a> · '.e(CITIES[$v['city']] ?? '').' · '.stars($avg, $n).' · <a href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></li>';
+        $venueHtml .= '<div class="venue-card"><a class="venue-name" href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a>'
+            .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'.stars($avg, $n)
+            .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'">Peržiūrėti</a></p></div>';
     }
+    $short = array_filter($venues, fn ($v) => mb_strlen(trim((string) $v['about'])) < VENUE_ABOUT_MIN);
+    $aboutTip = $short ? '<p class="notice tip">Papildykite darbovietės aprašymą: kokia tai vieta, kokia komanda ir kokios darbo sąlygos. Tai padeda darbuotojams apsispręsti. <a href="/darboviete/'.(int) reset($short)['id'].'/redaguoti">Papildyti aprašymą</a></p>' : '';
     $ids = array_column($venues, 'id');
     $in = implode(',', array_map('intval', $ids));
     [$where, $params] = open_where();
@@ -248,11 +252,14 @@ function manager_dashboard(array $u): string
             .'<p class="meta">'.e($c['venue_name']).' · '.e(period($c)).' · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $c['worker_phone'])).'">'.e($c['worker_phone']).'</a></p></div>'
             .review_link($c, (bool) $c['reviewed']).'</div>';
     }
-    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>'
-        .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<p class="empty">Aktyvių poreikių nėra. Jei susirgo darbuotojas ar artėja sezonas, paskelbkite poreikį: tinkami darbuotojai pranešimą gaus iš karto.</p>')
+    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
+        .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>' : '')
+        .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių poreikių nėra</h3>'
+            .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite poreikį. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
+            .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti poreikį</a></p></div></div>')
         .($contractHtml ? '<h2>GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
-        .'<h2>Mano darbovietės</h2><ul class="plain">'.$venueHtml.'</ul><p><a href="/darboviete/nauja">+ Pridėti kitą darbovietę</a></p>';
+        .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
+        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }
 
 // Six-month calendar of days the worker is open to offers. Works as a plain form; the script only adds range selection.
