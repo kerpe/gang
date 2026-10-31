@@ -309,3 +309,50 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .team-access { margin-top: 36px; color: var(--muted); font-size: .9rem; }
 .team-access summary { cursor: pointer; }
 .team-access .form { margin-top: 14px; max-width: 360px; }
+
+/* Two-column text pages (Kaip veikia, Apie) */
+.split { padding-top: 40px; padding-bottom: 72px; }
+.side h1 { font-size: clamp(2.6rem, 5.4vw, 4.6rem); line-height: .95; }
+.side-cam { border-radius: 14px; overflow: hidden; margin-top: 26px; border: 1px solid var(--line); }
+.side-cam img { display: block; width: 100%; height: auto; }
+.side-index { list-style: none; padding: 0; margin: 26px 0 0; font: .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; }
+.side-index li { border-top: 1px solid var(--line); }
+.side-index a { display: block; padding: 9px 0; color: var(--muted); text-decoration: none; }
+.side-index a:hover { color: var(--lime); }
+.sec { border-top: 1px solid var(--line); padding: 32px 0 36px; display: grid; grid-template-columns: 96px 1fr; gap: 20px; scroll-margin-top: 90px; }
+.sec:first-child { border-top: 0; padding-top: 4px; }
+.sec .num { font-family: var(--display); font-size: 4rem; line-height: .9; color: transparent; -webkit-text-stroke: 1.5px var(--lime); }
+.sec h2 { margin: 6px 0 12px; font-size: 1.45rem; }
+.sec p, .sec li { color: #d9d5cc; }
+.sec ul { padding-left: 18px; }
+.sec li { margin-bottom: 8px; }
+.sec blockquote { margin: 0 0 14px; padding-left: 18px; border-left: 3px solid var(--lime); font-size: 1.08rem; color: var(--ink); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+.chips span { border: 1px solid var(--line-strong); border-radius: 99px; padding: 5px 12px; font-size: .85rem; color: var(--muted); }
+@media (min-width: 900px) {
+  .split { display: grid; grid-template-columns: 5fr 7fr; gap: 64px; padding-top: 48px; }
+  .side { position: sticky; top: 100px; align-self: start; }
+}
+@media (max-width: 899px) {
+  .side-index { display: none; }
+  .split-body { margin-top: 28px; }
+}
+@media (max-width: 560px) {
+  .sec { grid-template-columns: 1fr; gap: 6px; }
+  .sec .num { font-size: 2.8rem; }
+}
+
+/* Bento facts on the home page */
+.bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+.bt { grid-column: span 6; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; }
+.bt .k { display: block; margin-bottom: 14px; font: .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.bt .big { display: block; margin-bottom: 8px; font-family: var(--display); font-size: clamp(3.2rem, 6vw, 4.6rem); line-height: 1; color: var(--lime); }
+.bt p { margin: 0; color: var(--muted); }
+.bt.lime { background: var(--lime); border-color: var(--lime); }
+.bt.orange { background: var(--orange); border-color: var(--orange); }
+.bt.lime .big, .bt.orange .big { color: #151515; }
+.bt.lime p, .bt.lime .k, .bt.orange p, .bt.orange .k { color: #2a2a2a; }
+@media (min-width: 720px) {
+  .bt.t-2 { grid-column: span 2; }
+  .bt.t-3 { grid-column: span 3; }
+}
