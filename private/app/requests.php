@@ -230,8 +230,8 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     if (!$isOpen) {
         return '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
-    $below = (int) $r['min_experience'] > 1 && (int) $u['experience'] < (int) $r['min_experience']
-        ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
+    $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
+        ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
         : '';
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
@@ -242,8 +242,9 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
 
 function owner_panel(array $r, bool $isOpen): string
 {
-    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, w.experience FROM responses s JOIN users w ON w.id = s.worker_id
-        WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['id']])->fetchAll();
+    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, wr.experience FROM responses s JOIN users w ON w.id = s.worker_id
+        LEFT JOIN worker_roles wr ON wr.user_id = s.worker_id AND wr.role = ?
+        WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['role'], $r['id']])->fetchAll();
     $list = '';
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
@@ -378,8 +379,7 @@ function worker_profile_page(int $id): never
     $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
         .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
-        .'<ul class="facts"><li><b>Pareigos</b>'.e(labels($w['roles'], ROLES)).'</li>'
-        .(isset(EXPERIENCE[(int) $w['experience']]) ? '<li><b>Patirtis</b>'.e(EXPERIENCE[(int) $w['experience']]).'</li>' : '').'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
+        .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }

@@ -356,3 +356,14 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
   .bt.t-2 { grid-column: span 2; }
   .bt.t-3 { grid-column: span 3; }
 }
+
+/* Worker profile: roles with experience per role */
+.role-list { display: grid; gap: 8px; }
+.role-xp { display: grid; grid-template-columns: 1fr minmax(170px, 220px); gap: 10px; align-items: center; }
+.role-xp .choice { margin: 0; }
+.role-xp select { margin: 0; }
+.role-xp:not(:has(input:checked)) select { visibility: hidden; }
+@media (max-width: 560px) {
+  .role-xp { grid-template-columns: 1fr; gap: 6px; }
+  .role-xp:not(:has(input:checked)) select { display: none; }
+}

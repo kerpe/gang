@@ -68,7 +68,7 @@ function preview_gate(string $path): void
             .'<button class="btn">Stoti į laukiančiųjų sąrašą</button>'
             .'<p class="fine">El. pašto adresą naudosime tik tam, kad praneštume apie GANG paleidimą. Iš sąrašo galite išsiregistruoti bet kada, atsakę į kvietimo laišką.</p></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=14"></head>'
+        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=15"></head>'
         .'<body><main><section class="wrap narrow soon"><a class="logo" href="/">GANG<span>.lt</span></a>'
         .'<h1>Netrukus</h1><p class="lead">Kuriame platformą, padėsiančią barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų.</p>'
         .'<p>Užsiregistruokite laukiančiųjų sąraše ir paleidimo dieną gausite kvietimą prisijungti vieni pirmųjų.</p>'

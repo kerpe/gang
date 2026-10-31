@@ -154,8 +154,9 @@ function first_name(string $name): string
 // Emails every matching worker about a new request; available workers are told it is urgent first.
 function notify_workers(array $r): int
 {
-    $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND roles LIKE ? AND cities LIKE ? AND (experience >= ? OR ? <= 1) LIMIT 500",
-        ['%,'.$r['role'].',%', '%,'.$r['city'].',%', (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
+    $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND cities LIKE ?
+        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = users.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1)) LIMIT 500",
+        ['%,'.$r['city'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
@@ -177,6 +178,33 @@ function notify_workers(array $r): int
 function matching_workers_count(string $role, string $city, string $date, int $minExperience = 1): array
 {
     $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM availability a WHERE a.user_id = u.id AND a.start_date <= ? AND a.end_date >= ?) THEN 1 ELSE 0 END) AS free FROM users u
-        WHERE kind = 'worker' AND blocked = 0 AND roles LIKE ? AND cities LIKE ? AND (experience >= ? OR ? <= 1)", [$date, $date, '%,'.$role.',%', '%,'.$city.',%', $minExperience, $minExperience])->fetch();
+        WHERE kind = 'worker' AND blocked = 0 AND cities LIKE ?
+        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$date, $date, '%,'.$city.',%', $role, $minExperience, $minExperience])->fetch();
     return [(int) $row['n'], (int) $row['free']];
+}
+
+// [role => experience level] for a worker, in ROLES order.
+function role_experience(int $userId): array
+{
+    $rows = sql('SELECT role, experience FROM worker_roles WHERE user_id = ?', [$userId])->fetchAll();
+    $map = array_column($rows, 'experience', 'role');
+    return array_map('intval', array_intersect_key(array_replace(ROLES, $map), $map));
+}
+
+function save_role_experience(int $userId, array $map): void
+{
+    sql('DELETE FROM worker_roles WHERE user_id = ?', [$userId]);
+    foreach ($map as $role => $level) {
+        insert('worker_roles', ['user_id' => $userId, 'role' => $role, 'experience' => (int) $level]);
+    }
+}
+
+// "Barmenas (1–3 metai), Virėjas (3–5 metai)"
+function roles_with_experience(int $userId): string
+{
+    $out = [];
+    foreach (role_experience($userId) as $role => $level) {
+        $out[] = (ROLES[$role] ?? $role).(isset(EXPERIENCE[$level]) ? ' ('.mb_strtolower(EXPERIENCE[$level]).')' : '');
+    }
+    return implode(', ', $out);
 }
