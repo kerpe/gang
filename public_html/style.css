@@ -265,7 +265,21 @@ label.day.weekend span { color: var(--orange); }
 .ok-text { margin: 0; }
 .cta-row { margin: 8px 0 4px; }
 .plain { padding-left: 1.2em; }
-.account-links { margin-top: 48px; color: var(--muted); }
+.account { margin-top: 56px; padding-top: 28px; border-top: 1px solid var(--line); }
+.account h2 { margin-top: 0; }
+.account-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.account-card { display: grid; gap: 6px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; text-decoration: none; color: var(--ink); transition: border-color .15s; }
+a.account-card::after { content: "→"; color: var(--lime); font-weight: 700; margin-top: 4px; }
+a.account-card:hover { border-color: var(--lime); }
+.account-card span { color: var(--muted); font-size: .92rem; overflow-wrap: anywhere; }
+.account-card.quiet { background: transparent; }
+.account-card form { margin-top: 8px; }
+.empty-state { display: flex; gap: 22px; align-items: flex-start; background: var(--surface); border: 1px dashed var(--line-strong); border-radius: 16px; padding: 24px 26px; }
+.empty-state h3 { margin: 4px 0 6px; font-size: 1.15rem; }
+.empty-state p { margin: 0 0 6px; color: var(--muted); max-width: 640px; }
+.empty-mark { font-family: var(--display); font-size: 3.4rem; line-height: 1; color: transparent; -webkit-text-stroke: 1.5px var(--lime); }
+.empty-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px !important; }
+@media (max-width: 560px) { .empty-state { flex-direction: column; gap: 6px; padding: 20px; } }
 .linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-strong); text-underline-offset: 3px; cursor: pointer; }
 
 /* Ratings */

@@ -172,9 +172,13 @@ function dashboard_page(): never
         redirect('/profilis');
     }
     $body = $u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u);
-    $admin = is_admin($u) ? ' · <a href="/admin">Administravimas</a>' : '';
+    $profileHint = $u['kind'] === 'worker' ? 'Vardas, kontaktai, pareigos, patirtis, miestai ir pranešimai.' : 'Vardas, kontaktai ir pranešimai.';
+    $admin = is_admin($u) ? '<a class="account-card" href="/admin"><strong>Administravimas</strong><span>Nariai, skelbimai, laukiantieji ir statistika.</span></a>' : '';
     page('Mano GANG', '<section class="wrap">'.$body
-        .'<div class="account-links"><a href="/profilis">Redaguoti profilį</a>'.$admin.' · '.post_button('/atsijungti', 'Atsijungti', [], 'linkish').'</div></section>', ['noindex' => true]);
+        .'<div class="account"><h2>Paskyra</h2><div class="account-grid">'
+        .'<a class="account-card" href="/profilis"><strong>Redaguoti profilį</strong><span>'.$profileHint.'</span></a>'.$admin
+        .'<div class="account-card quiet"><strong>Prisijungta kaip</strong><span>'.e($u['email']).'</span>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
+        .'</div></div></section>', ['noindex' => true]);
 }
 
 function worker_dashboard(array $u): string
@@ -185,7 +189,9 @@ function worker_dashboard(array $u): string
     $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities'])], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
     $jobs = array_filter($jobs, fn ($r) => !isset($responded[$r['id']]));
-    $jobCards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '<p class="empty">Šiuo metu jums tinkančių naujų darbo pasiūlymų nėra. Kai jų atsiras, informuosime jus el. paštu.</p>';
+    $jobCards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
+        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas ir miestą atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
+        .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
 
     $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.hours, v.name AS venue_name, v.address, v.city, m.name AS manager_name, m.phone AS manager_phone,
             (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed
