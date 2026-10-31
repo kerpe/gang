@@ -96,6 +96,16 @@ function home_page(): never
   </div>
 </section>
 
+<section class="wrap home-block">
+  <div class="bento">
+    <div class="bt t-2 lime"><span class="k">Kaina šiuo metu</span><span class="big">0 €</span><p>Darbdaviams ir darbuotojams. Jokių valandinių mokesčių.</p></div>
+    <div class="bt t-2"><span class="k">Darbuotojams</span><span class="big">6 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
+    <div class="bt t-2"><span class="k">Miestai</span><span class="big">4</span><p>Vilnius, Kaunas, Klaipėda ir Palanga.</p></div>
+    <div class="bt t-3"><span class="k">Įvertinimai</span><span class="big">★ 1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu, abipusiai ir neskelbiant autoriaus.</p></div>
+    <div class="bt t-3 orange"><span class="k">Sąžiningumas</span><span class="big">7 d.</span><p>Įvertinimas paskelbiamas, kai įvertina abi šalys arba praėjus 7 dienoms.</p></div>
+  </div>
+</section>
+
 $list
 
 <section class="wrap home-block">
@@ -166,53 +176,55 @@ function jobs_page(): never
 HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
 }
 
+// Two-column text page: sticky heading, CCTV photo and section index on the left,
+// numbered sections on the right. $sections is [[id, heading, html], ...].
+function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical): never
+{
+    $index = $body = '';
+    foreach ($sections as $i => [$id, $h, $html]) {
+        $n = sprintf('%02d', $i + 1);
+        $index .= '<li><a href="#'.$id.'">'.$n.' · '.e($h).'</a></li>';
+        $body .= '<section class="sec" id="'.$id.'"><span class="num" aria-hidden="true">'.$n.'</span><div><h2>'.e($h).'</h2>'.$html.'</div></section>';
+    }
+    $photo = cam_photo($cam);
+    $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
+    page($title, '<div class="wrap split"><aside class="side"><p class="eyebrow">'.e($eyebrow).'</p><h1>'.e($heading).'</h1>'.$photo
+        .'<ol class="side-index">'.$index.'</ol></aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
+}
+
 function how_page(): never
 {
     $days = REVIEW_HIDE_DAYS;
-    page('Kaip veikia GANG', <<<HTML
-<section class="wrap narrow prose">
-  <h1>Kaip veikia GANG</h1>
-  <h2>Darbdaviams</h2>
-  <p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>
-  <h2>Darbuotojams</h2>
-  <p>Susikurkite profilį, pažymėkite pareigas, miestus ir nurodykite darbo patirtį. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: darbdaviai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir darbovietės adresą.</p>
-  <h2>GANG kontraktas</h2>
-  <p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>
-  <h2>Įvertinimai</h2>
-  <ul>
-    <li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>
-    <li>Darbdavys vertina darbuotoją, o darbuotojas – darbdavį (nuo 1 iki 5 žvaigždučių ir komentaras).</li>
-    <li>Įvertinimas tampa matomas, kai įvertina abi šalys arba praėjus $days dienoms. Taip užtikrinama, kad vienos šalies įvertinimas nedarytų įtakos kitos šalies vertinimui.</li>
-    <li>Įvertinimo autorius neskelbiamas: rodomas tik miestas ir data.</li>
-    <li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li>
-  </ul>
-</section>
-HTML, ['canonical' => '/kaip-veikia']);
+    split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo poreikio iki pamainos', '03', [
+        ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite poreikį: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, iš karto gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį.</p>'
+            .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>'],
+        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, miestus ir nurodykite darbo patirtį. Kalendoriuje pažymėkite dienas per artimiausius šešis mėnesius, kuriomis galite priimti darbo pasiūlymus: darbdaviai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir darbovietės adresą.</p>'
+            .'<p class="chips"><span>Profilis</span><span>Laisvos dienos</span><span>Pranešimai el. paštu</span></p>'],
+        ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
+        ['ivertinimai', 'Įvertinimai', '<ul>'
+            .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
+            .'<li>Darbdavys vertina darbuotoją, o darbuotojas – darbdavį (nuo 1 iki 5 žvaigždučių ir komentaras).</li>'
+            ."<li>Įvertinimas tampa matomas, kai įvertina abi šalys arba praėjus $days dienoms. Taip užtikrinama, kad vienos šalies įvertinimas nedarytų įtakos kitos šalies vertinimui.</li>"
+            .'<li>Įvertinimo autorius neskelbiamas: rodomas tik miestas ir data.</li>'
+            .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>'],
+    ], '/kaip-veikia');
 }
 
 function about_page(): never
 {
-    page('Apie GANG', <<<HTML
-<section class="wrap narrow prose">
-  <h1>Apie GANG</h1>
-  <p class="lead">GANG sukūrė žmonės, kurie patys dirba barų, restoranų ir kavinių versle ir kasdien susiduria su tais pačiais iššūkiais kaip ir jūs.</p>
-  <h2>Problema, kurią gerai pažįstame</h2>
-  <ul>
-    <li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>
-    <li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>
-    <li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių neįsivaizduojama nė viena komanda.</li>
-    <li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>
-    <li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li>
-  </ul>
-  <h2>Kaip ją sprendžiame</h2>
-  <p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>
-  <p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>
-  <p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>
-  <h2>Apie įkūrėją</h2>
-  <p>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</p>
-  <p><strong>Vilius</strong>, GANG įkūrėjas</p>
-</section>
-HTML, ['canonical' => '/apie']);
+    split_page('Apie GANG', 'Apie GANG', 'Sukurta žmonių iš šios srities', '01', [
+        ['problema', 'Problema, kurią gerai pažįstame', '<p>GANG sukūrė žmonės, kurie patys dirba barų, restoranų ir kavinių versle ir kasdien susiduria su tais pačiais iššūkiais kaip ir jūs.</p><ul>'
+            .'<li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>'
+            .'<li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>'
+            .'<li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių neįsivaizduojama nė viena komanda.</li>'
+            .'<li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>'
+            .'<li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li></ul>'],
+        ['sprendimas', 'Kaip ją sprendžiame', '<p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
+            .'<p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>'
+            .'<p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>'],
+        ['ikurejas', 'Apie įkūrėją', '<blockquote>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</blockquote>'
+            .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
+    ], '/apie');
 }
 
 function privacy_page(): never
