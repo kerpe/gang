@@ -21,6 +21,13 @@ const KINDS = [
     'sezonas' => 'Sezonui',
     'nuolat' => 'Nuolat',
 ];
+// Shown under each duration option in the request form.
+const KIND_HINTS = [
+    'skubu' => 'Diena ar kelios',
+    'trumpai' => 'Savaitė ar mėnuo',
+    'sezonas' => 'Keli mėnesiai',
+    'nuolat' => 'Ilgalaikis darbas',
+];
 // Levels are ordered: a worker matches a request when their experience in the requested
 // role (worker_roles.experience) >= min_experience. users.experience keeps the lowest
 // level across the worker's roles; 0 means not stated yet.
