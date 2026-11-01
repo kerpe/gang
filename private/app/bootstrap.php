@@ -35,8 +35,6 @@ const EXPERIENCE_REQUIRED = [
     1 => 'Patirtis nebūtina',
     2 => 'Bent kelių mėnesių patirtis',
     3 => 'Ne mažiau kaip 1 metai',
-    4 => 'Ne mažiau kaip 3 metai',
-    5 => 'Daugiau nei 5 metai',
 ];
 const REVIEW_HIDE_DAYS = 7;
 const AVAILABILITY_MONTHS = 6;
@@ -227,9 +225,23 @@ function date_lt(?string $date): string
 
 function period(array $r): string
 {
-    $from = date_lt($r['start_date']);
-    if (!$r['end_date'] || $r['end_date'] === $r['start_date']) {
-        return $r['kind'] === 'nuolat' ? 'nuo '.$from : $from;
+    if (!empty($r['dates'])) {
+        return implode(', ', array_map(fn ($p) => span_lt(...explode(':', $p)), explode(',', $r['dates'])));
     }
-    return $from.' – '.date_lt($r['end_date']);
+    if (!$r['end_date'] || $r['end_date'] === $r['start_date']) {
+        return $r['kind'] === 'nuolat' ? 'nuo '.date_lt($r['start_date']) : date_lt($r['start_date']);
+    }
+    return span_lt($r['start_date'], $r['end_date']);
+}
+
+// "lapkričio 7 d.", "lapkričio 7–8 d." or "lapkričio 30 d. – gruodžio 2 d."
+function span_lt(string $from, string $to): string
+{
+    if ($from === $to) {
+        return date_lt($from);
+    }
+    if (substr($from, 0, 7) === substr($to, 0, 7)) {
+        return substr(date_lt($from), 0, -3).'–'.(int) substr($to, 8).' d.';
+    }
+    return date_lt($from).' – '.date_lt($to);
 }

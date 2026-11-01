@@ -189,8 +189,6 @@ legend { font-weight: 500; margin-bottom: 8px; }
 .choice:has(input:checked) { border-color: var(--lime); background: rgba(216,255,54,.08); }
 .choice input, .check input { width: auto; margin: 0; accent-color: var(--lime); }
 .check { display: flex !important; align-items: center; gap: 10px; font-weight: 400 !important; }
-.request-form:has(input[value="nuolat"]:checked) .end { visibility: hidden; }
-.request-form:not(:has(input[value="skubu"]:checked)) .opt { display: none; }
 .err { color: var(--err); font-weight: 400; font-size: .9rem; }
 .notice { border-radius: var(--radius); padding: 14px 16px; }
 .notice.ok { background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.4); color: var(--ink); }
@@ -406,3 +404,32 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .account-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .account-actions form { margin: 0; }
 @media (max-width: 560px) { .account-actions { flex-basis: 100%; } }
+
+/* Input with a unit after it */
+.input-suffix { position: relative; display: block; }
+.input-suffix input { padding-right: 76px; }
+.input-suffix > span { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+
+/* Request date picker: one day, a range or several ranges */
+.when .picker { position: relative; }
+.pick-nav { display: flex; justify-content: flex-end; gap: 6px; margin: 4px 0 10px; }
+.pick-nav .btn { padding: 6px 12px; }
+.pick-nav .btn:disabled { opacity: .35; cursor: default; }
+.pick-months { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+.pick-months .month:nth-child(2) { margin-top: 0; }
+@media (max-width: 560px) { .pick-months { grid-template-columns: 1fr; } .pick-months .month + .month { display: none; } }
+.picker button.day { cursor: pointer; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: .85rem; padding: 0; }
+.picker button.day:hover { border-color: var(--lime); }
+.picker button.day.weekend span { color: var(--orange); }
+.picker button.day.on, .picker button.day.preview { background: rgba(216, 255, 54, .22); border-color: transparent; }
+.picker button.day.first, .picker button.day.last, .picker button.day.anchor { background: var(--lime); border-color: var(--lime); }
+.picker button.day.first span, .picker button.day.last span, .picker button.day.anchor span { color: #171717; font-weight: 700; }
+.picker button.day.on span { font-weight: 700; }
+.picker button.day:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.pick-status { margin: 14px 0 0; font-size: .92rem; }
+.linkish { background: none; border: 0; padding: 0; color: var(--lime); font: inherit; text-decoration: underline; cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--lime); border-radius: 999px; font-size: .9rem; }
+.chip button { background: none; border: 0; color: var(--muted); font-size: 1.1rem; line-height: 1; padding: 0 6px; cursor: pointer; }
+.chip button:hover { color: var(--ink); }
+.when .meta { margin-top: 14px; }

@@ -193,7 +193,7 @@ function worker_dashboard(array $u): string
         .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas ir miestą atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
 
-    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.hours, v.name AS venue_name, v.address, v.city, m.name AS manager_name, m.phone AS manager_phone,
+    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, v.address, v.city, m.name AS manager_name, m.phone AS manager_phone,
             (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed
         FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users m ON m.id = v.manager_id
         WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll();
@@ -242,7 +242,7 @@ function manager_dashboard(array $u): string
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : '<p class="meta wait">Kandidatūrų dar negauta</p>';
         $openHtml .= request_card($r, $label);
     }
-    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.hours, v.name AS venue_name, w.name AS worker_name, w.phone AS worker_phone,
+    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, w.name AS worker_name, w.phone AS worker_phone,
             (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'manager\') AS reviewed
         FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users w ON w.id = c.worker_id
         WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll();
