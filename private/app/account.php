@@ -139,27 +139,26 @@ function availability_action(): never
 {
     $u = require_user('worker');
     check_csrf();
-    $days = (array) ($_POST['d'] ?? []);
-    $add = function (string $from, string $to) use (&$days): void {
-        for ($t = strtotime($from); $t <= strtotime($to); $t = strtotime('+1 day', $t)) {
+    $last = availability_last_day();
+    $days = [];
+    $add = function (string $from, string $to) use (&$days, $last): void {
+        for ($t = strtotime(max($from, today())); $t <= strtotime(min($to, $last)); $t = strtotime('+1 day', $t)) {
             $days[] = date('Y-m-d', $t);
         }
     };
-    $error = '';
+    // The calendar sends "from:to,…"; a page left open overnight may still hold yesterday, so ranges are clamped, not rejected.
+    foreach (array_filter(explode(',', input('dates'))) as $part) {
+        if (preg_match('/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/', $part, $m) && $m[1] <= $m[2]) {
+            $add($m[1], $m[2]);
+        }
+    }
     match (input('add')) {
         'today' => $add(today(), today()),
         'week' => $add(today(), date('Y-m-d', strtotime('+6 days'))),
         'month' => $add(today(), date('Y-m-d', strtotime('+1 month -1 day'))),
-        'range' => ($from = picked_date('from')) !== '' && ($to = picked_date('to') ?: $from) >= $from
-            ? $add(max($from, today()), min($to, availability_last_day()))
-            : $error = 'Nurodykite laikotarpio pradžios ir pabaigos datas.',
         'clear' => $days = [],
         default => null,
     };
-    if ($error !== '') {
-        flash($error);
-        redirect('/mano#laisvumas');
-    }
     save_availability((int) $u['id'], $days);
     flash(availability_ranges((int) $u['id']) ? 'Laisvos dienos išsaugotos.' : 'Laisvos dienos pašalintos. Darbdaviai matys, kad šiuo metu darbo pasiūlymų nepriimate.');
     redirect('/mano#laisvumas');
@@ -178,12 +177,105 @@ function dashboard_page(): never
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><strong>'.e($u['name']).'</strong><span class="meta">'.e($u['email']).'</span></div>'
         .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.$admin.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
-        .'</div></section>', ['noindex' => true]);
+        .'</div></section>'.date_picker_script(), ['noindex' => true]);
+}
+
+const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
+        m.name AS manager_name, m.phone AS manager_phone, w.name AS worker_name, w.phone AS worker_phone
+    FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users m ON m.id = v.manager_id JOIN users w ON w.id = c.worker_id';
+
+// Upcoming work first (soonest at the top), then past contracts (latest first).
+function sort_contracts(array $contracts): array
+{
+    $end = fn ($c) => $c['kind'] === 'nuolat' ? '9999-12-31' : ($c['end_date'] ?: $c['start_date']);
+    $upcoming = array_values(array_filter($contracts, fn ($c) => $end($c) >= today()));
+    $past = array_values(array_filter($contracts, fn ($c) => $end($c) < today()));
+    usort($upcoming, fn ($a, $b) => strcmp($a['start_date'], $b['start_date']));
+    usort($past, fn ($a, $b) => strcmp($b['start_date'], $a['start_date']));
+    return [...$upcoming, ...$past];
+}
+
+function tel_link(string $phone, string $label, string $class = 'btn small'): string
+{
+    return '<a class="'.$class.'" href="tel:'.e(preg_replace('/[^0-9+]/', '', $phone)).'">'.e($label).'</a>';
+}
+
+// Street address with the city added unless it is already there.
+function full_address(array $c): string
+{
+    $city = CITIES[$c['city']] ?? '';
+    $address = trim((string) $c['address']);
+    return $address === '' ? $city : ($city === '' || mb_stripos($address, $city) !== false ? $address : $address.', '.$city);
+}
+
+// One GANG contract with what each side needs next: who to call, where to go, the dates in a calendar.
+function contract_card(array $c, string $side, bool $reviewed): string
+{
+    $worker = $side === 'worker';
+    $end = $c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date']);
+    $started = $c['start_date'] <= today();
+    $over = $end < today();
+    $steps = ['Kandidatūra' => 'done', 'Patvirtinta' => 'done', 'Darbas' => $over || $reviewed ? 'done' : ($started ? 'now' : ''), 'Įvertinimas' => $reviewed ? 'done' : ($over ? 'now' : '')];
+    $stepper = '<ol class="stepper">';
+    foreach ($steps as $label => $state) {
+        $stepper .= '<li'.($state ? ' class="'.$state.'"' : '').'>'.$label.'</li>';
+    }
+    $stepper .= '</ol>';
+    $place = trim($c['address'] !== '' ? $c['address'] : (CITIES[$c['city']] ?? ''));
+    $info = $worker
+        ? '<div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).' · '.e($c['manager_phone']).'</dd></div>'
+        : '<div><dt>Darbuotojas</dt><dd><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a> · '.e($c['worker_phone']).'</dd></div><div><dt>Darbovietė</dt><dd>'.e($c['venue_name']).'</dd></div>';
+    $actions = tel_link($worker ? $c['manager_phone'] : $c['worker_phone'], 'Skambinti');
+    if ($worker && $place !== '') {
+        $query = full_address($c);
+        $actions .= '<a class="btn small ghost" href="https://www.google.com/maps/search/?api=1&amp;query='.rawurlencode($query).'" target="_blank" rel="noopener">Maršrutas</a>';
+    }
+    if (!$over) {
+        $actions .= '<a class="btn small ghost" href="/kontraktas/'.(int) $c['id'].'/kalendorius">Į kalendorių</a>';
+    }
+    $actions .= review_link($c, $reviewed);
+    $title = $worker ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e($c['worker_name']).' · '.e(ROLES[$c['role']] ?? '');
+    return '<article class="contract'.($over ? ' past' : '').'">'.$stepper
+        .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
+        .'<p class="meta">'.e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
+        .'<dl class="contract-info">'.$info.'</dl>'
+        .'<p class="contract-actions">'.$actions.'</p></article>';
+}
+
+function contract_ics(int $id): never
+{
+    $u = require_user();
+    $c = sql(CONTRACT_SELECT.' WHERE c.id = ?', [$id])->fetch();
+    if (!$c || ((int) $c['worker_id'] !== (int) $u['id'] && (int) $c['manager_id'] !== (int) $u['id'])) {
+        not_found();
+    }
+    $worker = (int) $c['worker_id'] === (int) $u['id'];
+    $ranges = $c['dates'] !== '' && $c['dates'] !== null
+        ? array_map(fn ($p) => explode(':', $p), explode(',', $c['dates']))
+        : [[$c['start_date'], $c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])]];
+    $text = fn (string $s) => str_replace(['\\', ';', ',', "\r", "\n"], ['\\\\', '\;', '\,', '', '\n'], $s);
+    $role = ROLES[$c['role']] ?? $c['role'];
+    $place = full_address($c);
+    $about = ($c['hours'] !== '' ? 'Darbo laikas: '.$c['hours']."\n" : '')
+        .($worker ? 'Kontaktas: '.$c['manager_name'].', '.$c['manager_phone'] : 'Darbuotojas: '.$c['worker_name'].', '.$c['worker_phone'])
+        ."\n".url('/darbas/'.$c['request_id']);
+    $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GANG//gang.lt//LT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
+    foreach ($ranges as $i => [$from, $to]) {
+        $lines = [...$lines, 'BEGIN:VEVENT', 'UID:gang-kontraktas-'.$id.'-'.$i.'@gang.lt', 'DTSTAMP:'.gmdate('Ymd\THis\Z'),
+            'DTSTART;VALUE=DATE:'.date('Ymd', strtotime($from)), 'DTEND;VALUE=DATE:'.date('Ymd', strtotime($to.' +1 day')),
+            'SUMMARY:'.$text('GANG: '.$role.' – '.$c['venue_name']), 'LOCATION:'.$text($place), 'DESCRIPTION:'.$text($about), 'END:VEVENT'];
+    }
+    $lines[] = 'END:VCALENDAR';
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: attachment; filename="gang-kontraktas-'.$id.'.ics"');
+    echo implode("\r\n", $lines)."\r\n";
+    exit;
 }
 
 function worker_dashboard(array $u): string
 {
     [$avg, $n] = worker_rating((int) $u['id']);
+    $hasDays = (bool) availability_ranges((int) $u['id']);
     $availability = availability_panel($u);
 
     $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities'])], 30);
@@ -193,28 +285,22 @@ function worker_dashboard(array $u): string
         .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas ir miestą atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
 
-    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, v.address, v.city, m.name AS manager_name, m.phone AS manager_phone,
-            (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed
-        FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users m ON m.id = v.manager_id
-        WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll();
-    $contractHtml = '';
-    foreach ($contracts as $c) {
-        $review = review_link($c, (bool) $c['reviewed']);
-        $contractHtml .= '<div class="row-item"><div><strong>'.e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']).'</strong>'
-            .'<p class="meta">'.e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'<br>'.e($c['address'] ?: CITIES[$c['city']] ?? '')
-            .' · '.e($c['manager_name']).' · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $c['manager_phone'])).'">'.e($c['manager_phone']).'</a></p></div>'.$review.'</div>';
-    }
+    $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed FROM contracts c', CONTRACT_SELECT)
+        .' WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll());
+    $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'worker', (bool) $c['reviewed']), $contracts));
     $pending = sql(REQUEST_SELECT.' JOIN responses s ON s.request_id = r.id WHERE s.worker_id = ? AND s.status = \'sent\' AND r.status = \'open\' ORDER BY s.created_at DESC', [$u['id']])->fetchAll();
     $pendingHtml = '';
     foreach ($pending as $r) {
         $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>');
     }
+    // Until the first days are marked, the calendar comes first; after that, work and offers do.
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · Darbų per GANG: '.count($contracts).'</p></div></div>'
-        .$availability
-        .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
+        .($hasDays ? '' : $availability)
+        .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2>Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
-        .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards;
+        .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
+        .($hasDays ? $availability : '');
 }
 
 function manager_dashboard(array $u): string
@@ -240,126 +326,67 @@ function manager_dashboard(array $u): string
     foreach ($open as $r) {
         $n = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'sent'", [$r['id']])->fetchColumn();
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : '<p class="meta wait">Kandidatūrų dar negauta</p>';
-        $openHtml .= request_card($r, $label);
+        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>');
     }
-    $contracts = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, w.name AS worker_name, w.phone AS worker_phone,
-            (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'manager\') AS reviewed
-        FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users w ON w.id = c.worker_id
-        WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll();
-    $contractHtml = '';
-    foreach ($contracts as $c) {
-        $contractHtml .= '<div class="row-item"><div><strong><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a> · '.e(ROLES[$c['role']] ?? '').'</strong>'
-            .'<p class="meta">'.e($c['venue_name']).' · '.e(period($c)).' · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $c['worker_phone'])).'">'.e($c['worker_phone']).'</a></p></div>'
-            .review_link($c, (bool) $c['reviewed']).'</div>';
+    $openIds = array_column($open, 'id') ?: [0];
+    $earlier = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND r.id NOT IN (".implode(',', array_map('intval', $openIds)).') ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
+    $earlierHtml = '';
+    foreach ($earlier as $r) {
+        $earlierHtml .= '<div class="row-item"><div><strong><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? '').'</a> · '.e($r['venue_name']).'</strong>'
+            .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').($r['pay'] !== '' ? ' · '.e($r['pay']) : '').'</p></div>'
+            .'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></div>';
     }
+    $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'manager\') AS reviewed FROM contracts c', CONTRACT_SELECT)
+        .' WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll());
+    $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'manager', (bool) $c['reviewed']), $contracts));
     return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
         .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>' : '')
         .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių poreikių nėra</h3>'
             .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite poreikį. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
             .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti poreikį</a></p></div></div>')
-        .($contractHtml ? '<h2>GANG kontraktai</h2><div class="rows">'.$contractHtml.'</div>' : '')
+        .($contractHtml ? '<h2>GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
+        .($earlierHtml ? '<h2>Ankstesni poreikiai</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }
 
-// Six-month calendar of days the worker is open to offers. Works as a plain form; the script only adds range selection.
+// Two weeks at a glance; the full calendar (the same one employers use for requests) opens on demand.
 function availability_panel(array $u): string
 {
-    $marked = availability_days((int) $u['id']);
     $ranges = availability_ranges((int) $u['id']);
-    $last = availability_last_day();
-    $months = ['', 'Sausis', 'Vasaris', 'Kovas', 'Balandis', 'Gegužė', 'Birželis', 'Liepa', 'Rugpjūtis', 'Rugsėjis', 'Spalis', 'Lapkritis', 'Gruodis'];
-    $cal = '';
-    $first = strtotime(date('Y-m-01'));
-    for ($i = 0; $i < AVAILABILITY_MONTHS; $i++) {
-        $m = strtotime("+$i months", $first);
-        $lead = (int) date('N', $m) - 1;
-        $cells = str_repeat('<span class="day pad"></span>', $lead);
-        for ($d = 1; $d <= (int) date('t', $m); $d++) {
-            $date = date('Y-m-', $m).sprintf('%02d', $d);
-            $weekend = (int) date('N', strtotime($date)) >= 6 ? ' weekend' : '';
-            if ($date < today() || $date > $last) {
-                $cells .= '<span class="day off'.$weekend.'">'.$d.'</span>';
-                continue;
-            }
-            $cells .= '<label class="day'.$weekend.($date === today() ? ' today' : '').'"><input type="checkbox" name="d[]" value="'.$date.'"'.(isset($marked[$date]) ? ' checked' : '')
-                .' aria-label="'.e(date_lt($date)).'"><span>'.$d.'</span></label>';
-        }
-        // Always six week rows, so every month block has the same height.
-        $cells .= str_repeat('<span class="day pad"></span>', 42 - $lead - (int) date('t', $m));
-        $cal .= '<div class="month"><h3>'.$months[(int) date('n', $m)].' '.date('Y', $m).'</h3>'
-            .'<div class="week"><span>Pr</span><span>An</span><span>Tr</span><span>Kt</span><span>Pn</span><span>Št</span><span>Sk</span></div>'
-            .'<div class="days">'.$cells.'</div></div>';
+    $marked = availability_days((int) $u['id']);
+    $wd = ['Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št', 'Sk'];
+    $strip = '';
+    for ($i = 0; $i < 14; $i++) {
+        $t = strtotime(today().' +'.$i.' days');
+        $d = date('Y-m-d', $t);
+        $strip .= '<span class="strip-day'.(isset($marked[$d]) ? ' on' : '').((int) date('N', $t) >= 6 ? ' weekend' : '').($i === 0 ? ' today' : '').'" title="'.e(date_lt($d)).'">'
+            .'<small>'.$wd[(int) date('N', $t) - 1].'</small>'.(int) date('j', $t).'</span>';
     }
     $status = is_available((int) $u['id'])
         ? '<p class="status on">● Šiandien galite priimti darbo pasiūlymus</p>'
         : '<p class="status off">● Šiandien laisvos dienos nepažymėtos</p>';
+    $labels = array_map('range_lt', $ranges);
     $summary = $ranges
-        ? '<p class="meta">Pažymėti laikotarpiai: '.e(implode('; ', array_map('range_lt', $ranges))).'</p>'
-        : '<p class="meta">Laisvų dienų dar nepažymėjote.</p>';
-    return '<div class="panel avail" id="laisvumas"><h2>Mano laisvos dienos papildomam darbui</h2>'
-        .'<p>Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
-        .$status.$summary
+        ? '<p class="meta">Pažymėta: '.e(implode('; ', array_slice($labels, 0, 4))).(count($labels) > 4 ? ' ir dar '.(count($labels) - 4) : '').'</p>'
+        : '<p class="meta">Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>';
+    $value = implode(',', array_map(fn ($r) => max($r['start_date'], today()).':'.$r['end_date'], $ranges));
+    return '<section class="panel avail" id="laisvumas"><h2>Mano laisvos dienos</h2>'.$status
+        .'<div class="strip" aria-label="Artimiausios dvi savaitės">'.$strip.'</div>'.$summary
+        .'<details class="avail-edit"'.($ranges ? '' : ' open').'><summary class="btn small'.($ranges ? ' ghost' : '').'">Tvarkyti laisvas dienas</summary>'
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
-        // First submit button handles Enter in the date fields: save, not "today".
+        // First submit button handles Enter: save, not "today".
         .'<button class="offscreen" tabindex="-1" aria-hidden="true">Išsaugoti</button>'
         .'<div class="quick"><span class="meta">Greitai pažymėti:</span>'
         .'<button class="btn small ghost" name="add" value="today">Šiandien</button>'
         .'<button class="btn small ghost" name="add" value="week">Artimiausios 7 dienos</button>'
         .'<button class="btn small ghost" name="add" value="month">Artimiausias mėnuo</button></div>'
-        .'<div class="range">'.date_picker('from', 'Nuo', $months).date_picker('to', 'Iki', $months)
-        .'<button class="btn small ghost" name="add" value="range">Pažymėti laikotarpį</button></div>'
-        .'<p class="meta cal-hint">Spustelėkite dieną, kad ją pažymėtumėte arba atšauktumėte. Norėdami pažymėti laikotarpį, spustelėkite pirmąją ir, laikydami nuspaudę „Shift“, paskutinę dieną.</p>'
-        .'<div class="calendar">'.$cal.'</div>'
+        .'<p class="hint">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Pažymėtą dieną ar laikotarpį pašalinsite spustelėję jį dar kartą arba ×.</p>'
+        .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'" data-limit="60" data-empty="Laisvų dienų dar nepažymėjote."><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
+        .'<input type="hidden" name="dates" value="'.e($value).'">'
         .'<div class="cal-actions"><button class="btn">Išsaugoti laisvas dienas</button>'
         .($ranges ? '<button class="btn small ghost" name="add" value="clear" onclick="return confirm(\'Pašalinti visas pažymėtas laisvas dienas?\')">Pašalinti visas</button>' : '').'</div>'
-        .'</form></div>'.calendar_script();
-}
-
-// Month and day selects instead of <input type=date>: the browsers' own pickers
-// make it awkward to get back to the days after choosing a month.
-function date_picker(string $name, string $label, array $months): string
-{
-    $monthOptions = ['' => 'Mėnuo'];
-    for ($i = 0; $i < AVAILABILITY_MONTHS; $i++) {
-        $t = strtotime(date('Y-m-01').' +'.$i.' month');
-        $monthOptions[date('Y-m', $t)] = $months[(int) date('n', $t)].' '.date('Y', $t);
-    }
-    $days = ['' => 'Diena'] + array_combine(range(1, 31), array_map('strval', range(1, 31)));
-    return '<fieldset class="date-pick"><legend>'.e($label).'</legend>'
-        .'<select name="'.$name.'_m" aria-label="'.e($label).': mėnuo">'.options($monthOptions, '').'</select>'
-        .'<select name="'.$name.'_d" aria-label="'.e($label).': diena">'.options($days, '').'</select></fieldset>';
-}
-
-// Y-m-d from the month and day selects; a day past the month's end means its last day.
-function picked_date(string $name): string
-{
-    $month = input($name.'_m');
-    $day = (int) input($name.'_d');
-    if (!preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) || $day < 1 || $day > 31) {
-        return '';
-    }
-    return $month.'-'.sprintf('%02d', min($day, (int) date('t', strtotime($month.'-01'))));
-}
-
-function calendar_script(): string
-{
-    return <<<'HTML'
-<script>
-(function () {
-  var boxes = [].slice.call(document.querySelectorAll('.calendar input[type=checkbox]')), last = null;
-  boxes.forEach(function (box, i) {
-    box.addEventListener('click', function (ev) {
-      if (ev.shiftKey && last !== null) {
-        var a = Math.min(last, i), b = Math.max(last, i);
-        for (var k = a; k <= b; k++) boxes[k].checked = box.checked;
-      }
-      last = i;
-    });
-  });
-})();
-</script>
-HTML;
+        .'</form></details></section>';
 }
 
 function review_link(array $c, bool $reviewed): string

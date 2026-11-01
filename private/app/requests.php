@@ -85,17 +85,19 @@ function ranges_string(array $ranges): string
     return implode(',', array_map(fn ($r) => $r[0].':'.$r[1], $ranges));
 }
 
-// One calendar for a single day, a from–to range or several ranges.
+// One calendar for a single day, a from–to range or several ranges. Used by the request form
+// and the worker's availability; each .picker writes "from:to,…" into the form's hidden "dates" input.
 function date_picker_script(): string
 {
     return <<<'HTML'
 <script>
-(function () {
-  var box = document.querySelector('.picker'), out = document.querySelector('input[name=dates]');
-  if (!box || !out) return;
+document.querySelectorAll('.picker').forEach(function (box) {
+  var form = box.closest('form'), out = form.querySelector('input[name=dates]');
+  if (!out) return;
   var MN = ['Sausis','Vasaris','Kovas','Balandis','Gegužė','Birželis','Liepa','Rugpjūtis','Rugsėjis','Spalis','Lapkritis','Gruodis'];
   var MG = ['sausio','vasario','kovo','balandžio','gegužės','birželio','liepos','rugpjūčio','rugsėjo','spalio','lapkričio','gruodžio'];
-  var min = box.dataset.min, max = box.dataset.max, hint = document.querySelector('.when-hint'), hintText = hint.textContent;
+  var min = box.dataset.min, max = box.dataset.max, limit = +box.dataset.limit || 12, empty = box.dataset.empty || 'Dienos dar nepažymėtos.';
+  var hint = form.querySelector('.when-hint'), hintText = hint ? hint.textContent : '';
   var ranges = out.value ? out.value.split(',').map(function (p) { return p.split(':'); }) : [];
   var pending = null, hover = null, view = (ranges[0] ? ranges[0][0] : min).slice(0, 7);
   function iso(y, m, d) { return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
@@ -107,7 +109,7 @@ function date_picker_script(): string
     if (r[0].slice(0, 7) === r[1].slice(0, 7)) return lt(r[0]) + '–' + +r[1].slice(8) + ' d.';
     return lt(r[0]) + ' d. – ' + lt(r[1]) + ' d.';
   }
-  function permanent() { var k = document.querySelector('input[name=kind]:checked'); return k && k.value === 'nuolat'; }
+  function permanent() { var k = form.querySelector('input[name=kind]:checked'); return k && k.value === 'nuolat'; }
   function normalize() {
     ranges.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
     var m = [];
@@ -120,7 +122,7 @@ function date_picker_script(): string
     else if (pending && d === pending[0]) { pending = null; }
     else if (pending && d > pending[0]) { pending[1] = d; pending = null; normalize(); }
     else if (find(d) >= 0) { ranges.splice(find(d), 1); pending = null; }
-    else if (ranges.length < 12) { pending = [d, d]; ranges.push(pending); normalize(); pending = ranges[find(d)]; }
+    else if (ranges.length < limit) { pending = [d, d]; ranges.push(pending); normalize(); pending = ranges[find(d)]; }
     render();
   }
   function month(ym) {
@@ -140,8 +142,9 @@ function date_picker_script(): string
     return h + '</div></div>';
   }
   function render() {
-    hint.textContent = permanent() ? hint.dataset.nuolat : hintText;
+    if (hint) hint.textContent = permanent() ? hint.dataset.nuolat : hintText;
     out.value = ranges.map(function (r) { return r[0] + ':' + r[1]; }).join(',');
+    out.dataset.label = ranges.map(label).join(', ');
     var first = view < min.slice(0, 7) ? min.slice(0, 7) : view, last = addMonth(max.slice(0, 7), -1);
     if (first > last) first = last; view = first;
     var status = pending
@@ -149,16 +152,17 @@ function date_picker_script(): string
       : '';
     var chips = ranges.length
       ? '<div class="chips">' + ranges.map(function (r, i) { return '<span class="chip">' + label(r) + '<button type="button" data-rm="' + i + '" aria-label="Pašalinti ' + label(r) + '">×</button></span>'; }).join('') + '</div>'
-      : '<p class="meta">Dienos dar nepažymėtos.</p>';
+      : '<p class="meta">' + empty + '</p>';
     box.innerHTML = '<div class="pick-nav"><button type="button" class="btn small ghost" data-nav="-1"' + (view <= min.slice(0, 7) ? ' disabled' : '') + ' aria-label="Ankstesnis mėnuo">←</button>'
       + '<button type="button" class="btn small ghost" data-nav="1"' + (view >= last ? ' disabled' : '') + ' aria-label="Kitas mėnuo">→</button></div>'
       + '<div class="pick-months">' + month(view) + month(addMonth(view, 1)) + '</div>' + status + chips;
   }
+  function changed() { out.dispatchEvent(new Event('change', {bubbles: true})); }
   box.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t) return;
-    if (t.dataset.d) pick(t.dataset.d);
+    if (t.dataset.d) { pick(t.dataset.d); changed(); }
     else if (t.dataset.nav) { view = addMonth(view, +t.dataset.nav); render(); }
-    else if (t.dataset.rm) { ranges.splice(+t.dataset.rm, 1); pending = null; render(); }
+    else if (t.dataset.rm) { ranges.splice(+t.dataset.rm, 1); pending = null; render(); changed(); }
     else if ('single' in t.dataset) { pending = null; render(); }
   });
   box.addEventListener('mouseover', function (e) {
@@ -166,11 +170,11 @@ function date_picker_script(): string
     hover = t.dataset.d;
     box.querySelectorAll('button[data-d]').forEach(function (b) { b.classList.toggle('preview', b.dataset.d > pending[0] && b.dataset.d <= hover); });
   });
-  document.querySelectorAll('input[name=kind]').forEach(function (k) {
+  form.querySelectorAll('input[name=kind]').forEach(function (k) {
     k.addEventListener('change', function () { if (permanent() && ranges.length) ranges = [[ranges[0][0], ranges[0][0]]]; pending = null; render(); });
   });
   render();
-})();
+});
 </script>
 HTML;
 }
@@ -223,6 +227,13 @@ function request_form_page(): never
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'hours' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
+    // "Pakartoti": the form comes filled in from an earlier request; only the dates are picked again.
+    $from = !is_post() && ctype_digit($_GET['pagal'] ?? '') ? find_request((int) $_GET['pagal']) : null;
+    if ($from && (int) $from['manager_id'] === (int) $u['id']) {
+        preg_match('/^\d+(?:,\d+)?/', (string) $from['pay'], $pay);
+        $v = ['venue_id' => (string) $from['venue_id'], 'role' => $from['role'], 'kind' => $from['kind'], 'people' => (string) $from['people'], 'dates' => '',
+            'hours' => $from['hours'], 'pay' => $pay[0] ?? '', 'min_experience' => (string) $from['min_experience'], 'description' => $from['description']];
+    }
     $errors = [];
     if (is_post()) {
         check_csrf();
@@ -274,12 +285,19 @@ function request_form_page(): never
         }
     }
     $kinds = radios('kind', KINDS, $v['kind']);
-    page('Naujas poreikis', '<section class="wrap narrow"><h1>Kokio darbuotojo ieškote?</h1>'
-        .'<form method="post" class="form request-form" novalidate>'.csrf_field()
+    $venueData = '';
+    foreach ($venues as $venue) {
+        $venueData .= ' data-v'.(int) $venue['id'].'="'.e($venue['name'].' · '.(CITIES[$venue['city']] ?? '')).'"';
+    }
+    $repeat = $from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnį poreikį. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '';
+    page('Naujas poreikis', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat
+        .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
+        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card"><div class="card-link"><h3 data-p="role">Pareigos</h3>'
+        .'<p class="meta" data-p="venue"></p><p class="meta" data-p="when">Datos nepažymėtos</p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag pay" data-p="pay" hidden></span></p></div></div></aside>'
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
-        .'<fieldset><legend>Darbo trukmė</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
+        .'<fieldset><legend>Darbo trukmė</legend><p class="hint">Skubiai – diena ar kelios, trumpam – savaitė ar mėnuo, sezonui – keli mėnesiai, nuolat – ilgalaikis darbas.</p>'.$kinds.err($errors, 'kind').'</fieldset>'
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'
         .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
@@ -288,7 +306,37 @@ function request_form_page(): never
         .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
         .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
-        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>'.date_picker_script(), ['noindex' => true]);
+        .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script(), ['noindex' => true]);
+}
+
+// Keeps the preview card next to the request form in step with the fields.
+function request_preview_script(): string
+{
+    return <<<'HTML'
+<script>
+(function () {
+  var f = document.querySelector('.request-form'); if (!f) return;
+  function el(k) { return f.querySelector('[data-p=' + k + ']'); }
+  function val(n) { var x = f.querySelector('[name=' + n + ']:checked') || f.querySelector('[name=' + n + ']'); return x ? x.value : ''; }
+  function update() {
+    var role = f.querySelector('select[name=role]'), kind = f.querySelector('input[name=kind]:checked');
+    el('role').textContent = role && role.value ? role.options[role.selectedIndex].text : 'Pareigos';
+    var people = +val('people');
+    el('venue').textContent = (f.dataset['v' + val('venue_id')] || '') + (people > 1 ? ' · reikia darbuotojų: ' + people : '');
+    var dates = f.querySelector('input[name=dates]'), hours = val('hours').trim();
+    el('when').textContent = ((dates && dates.dataset.label) || 'Datos nepažymėtos') + (hours ? ' · ' + hours : '');
+    var k = el('kind');
+    k.textContent = kind ? kind.parentNode.textContent.trim() : '';
+    k.className = 'tag' + (kind && kind.value === 'skubu' ? ' urgent' : '');
+    var pay = val('pay').trim().replace('.', ',');
+    el('pay').hidden = !/^\d+(,\d{1,2})?$/.test(pay);
+    el('pay').textContent = pay + ' €/val. į rankas';
+  }
+  f.addEventListener('input', update); f.addEventListener('change', update); f.addEventListener('click', function () { setTimeout(update); });
+  update();
+})();
+</script>
+HTML;
 }
 
 // Stored as display text, e.g. "12,50 €/val. į rankas".
@@ -368,7 +416,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $mine = sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetch();
     if ($mine) {
         return match ($mine['status']) {
-            'accepted' => '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2><p>Darbdavio kontaktus ir darbovietės adresą rasite <a href="/mano">savo paskyroje</a>.</p></div>',
+            'accepted' => accepted_panel($r, $u),
             'declined' => '<div class="panel"><p>Dėkojame už susidomėjimą. Šį kartą darbdavys pasirinko kitą kandidatą. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
             'withdrawn' => '<div class="panel"><p>Savo atsiliepimą atšaukėte.</p></div>',
             default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2><p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus.</p>'
@@ -388,6 +436,15 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
 }
 
+function accepted_panel(array $r, array $u): string
+{
+    $c = sql(str_replace(' FROM contracts c', ", (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = 'worker') AS reviewed FROM contracts c", CONTRACT_SELECT)
+        .' WHERE c.request_id = ? AND c.worker_id = ?', [$r['id'], $u['id']])->fetch();
+    return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
+        .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
+        .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>';
+}
+
 function owner_panel(array $r, bool $isOpen): string
 {
     $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, wr.experience FROM responses s JOIN users w ON w.id = s.worker_id
@@ -397,20 +454,29 @@ function owner_panel(array $r, bool $isOpen): string
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
         $done = completed_count((int) $s['worker_id']);
-        $free = is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? ' · <span class="free">laisvas šiomis dienomis</span>' : '';
+        $badges = [];
+        if (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
+            $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
+        }
+        if (isset(EXPERIENCE[(int) $s['experience']])) {
+            $badges[] = '<span class="badge">Patirtis: '.e(mb_strtolower(EXPERIENCE[(int) $s['experience']])).'</span>';
+        }
+        $badges[] = $done ? '<span class="badge">Darbų per GANG: '.$done.'</span>' : '<span class="badge">Naujas GANG narys</span>';
         $buttons = $s['status'] === 'accepted'
-            ? '<p class="ok-text">Patvirtinta · <a href="tel:'.e(preg_replace('/[^0-9+]/', '', $s['phone'])).'">'.e($s['phone']).'</a></p>'
+            ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
-        $list .= '<div class="responder">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n).'<p class="meta">'.(isset(EXPERIENCE[(int) $s['experience']]) ? 'Patirtis: '.e(EXPERIENCE[(int) $s['experience']]).' · ' : '').'Darbų per GANG: '.$done.$free.'</p>'
+        $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
+            .'<p class="badges">'.implode('', $badges).'</p>'
             .($s['note'] ? '<p class="note">„'.e($s['note']).'“</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
     [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience']);
-    $reach = '<p class="meta">Pranešimą gavo: '.(int) $r['notified'].' · Tinkamų darbuotojų mieste: '.$total.', iš jų darbo pradžios dieną laisvi: '.$freeNow.'</p>';
+    $reach = '<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvus', 'filled' => 'Užpildytas', 'cancelled' => 'Atšauktas', 'expired' => 'Pasibaigęs'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti poreikį', [], 'btn small ghost', 'Ar tikrai norite uždaryti šį poreikį? Darbuotojai jo nebematys.') : '';
-    return '<div class="panel owner"><h2>Atsiliepę darbuotojai</h2><p class="meta">Būsena: '.e($isOpen ? 'Aktyvus' : $status).'</p>'.$reach
-        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$close.'</div>';
+    return '<div class="panel owner"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvus' : $status).'</span></div>'.$reach
+        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>')
+        .'<p class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti poreikį</a></p></div>';
 }
 
 function respond_action(int $id): never

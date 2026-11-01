@@ -16,10 +16,10 @@ const ROLES = [
     'pagalbinis' => 'Pagalbinis darbuotojas',
 ];
 const KINDS = [
-    'skubu' => 'Skubiai: diena ar kelios',
-    'trumpai' => 'Savaitė ar mėnuo',
-    'sezonas' => 'Sezonas',
-    'nuolat' => 'Nuolatinis darbas',
+    'skubu' => 'Skubiai',
+    'trumpai' => 'Trumpam',
+    'sezonas' => 'Sezonui',
+    'nuolat' => 'Nuolat',
 ];
 // Levels are ordered: a worker matches a request when their experience in the requested
 // role (worker_roles.experience) >= min_experience. users.experience keeps the lowest

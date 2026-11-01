@@ -18,6 +18,32 @@ function page(string $title, string $body, array $opt = []): never
     } else {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
     }
+    // Phones: a guest menu behind one button; signed-in members get a bottom tab bar.
+    $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+    $menuLinks = prelaunch()
+        ? '<a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'
+        : '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti">Registruotis</a>');
+    $nav .= '<details class="mnav"><summary aria-label="Meniu"><span></span><span></span><span></span></summary><div class="mnav-links">'.$menuLinks.'</div></details>';
+    $tabbar = '';
+    if ($user && !prelaunch() && profile_complete($user)) {
+        $tabs = $user['kind'] === 'worker'
+            ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#laisvumas', 'Laisvos dienos', 'cal'], ['/profilis', 'Profilis', 'user']]
+            : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Naujas poreikis', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
+        $icons = [
+            'home' => '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
+            'list' => '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+            'cal' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+            'user' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+            'plus' => '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
+        ];
+        $tabbar = '<nav class="tabbar" aria-label="Pagrindinis meniu">';
+        foreach ($tabs as [$href, $label, $icon]) {
+            $current = $href === $path ? ' aria-current="page"' : '';
+            $tabbar .= '<a href="'.$href.'"'.$current.($icon === 'plus' ? ' class="accent"' : '').'><svg viewBox="0 0 24 24" aria-hidden="true">'.$icons[$icon].'</svg>'.e($label).'</a>';
+        }
+        $tabbar .= '</nav>';
+    }
+    $bodyClass = $tabbar ? ' class="has-tabbar"' : '';
     $flash = flash();
     $flash = $flash !== '' ? '<div class="wrap"><div class="notice ok flash">'.e($flash).'</div></div>' : '';
     $year = date('Y');
@@ -36,10 +62,10 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=21">
+<link rel="stylesheet" href="/style.css?v=22">
 $head
 </head>
-<body>
+<body$bodyClass>
 <header class="top"><div class="wrap">
   <a class="logo" href="/">GANG<span>.lt</span></a>
   <nav>$nav</nav>
@@ -52,6 +78,12 @@ $body
   <p><strong>GANG.lt</strong> – patikimi darbuotojai barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
   <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>$jobsLink · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
 </div></footer>
+$tabbar
+<script>
+// A field's error disappears as soon as the field is changed.
+document.addEventListener('input', clearErr); document.addEventListener('change', clearErr);
+function clearErr(e) { var box = e.target.closest && (e.target.closest('fieldset') || e.target.closest('label')); if (box && box.closest('form.form')) box.querySelectorAll('.err').forEach(function (x) { x.remove(); }); }
+</script>
 </body>
 </html>
 HTML;
