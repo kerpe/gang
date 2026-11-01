@@ -555,3 +555,8 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .form .row > label > small { display: inline; }
 .form .row > label > :is(input, select, .input-suffix) { margin-top: 6px; }
 .form .row > label > .err { display: block; margin-top: 6px; }
+
+/* Request form: pay on its own line, live error under it */
+.request-form .pay-field { max-width: 300px; }
+.err-live { display: block; margin-top: 6px; color: var(--err); font-weight: 400; font-size: .9rem; }
+.err-live[hidden] { display: none; }
