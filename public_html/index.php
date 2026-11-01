@@ -57,6 +57,7 @@ match (true) {
     $is('/atsiliepimas/(\d+)/patvirtinti') && $post => decide_response_action((int) $m[1], true),
     $is('/atsiliepimas/(\d+)/atmesti') && $post => decide_response_action((int) $m[1], false),
     $is('/vertinti/(\d+)') => review_page((int) $m[1]),
+    $is('/kontraktas/(\d+)/kalendorius') => contract_ics((int) $m[1]),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
     default => not_found(),
