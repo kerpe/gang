@@ -50,6 +50,25 @@ function venue_form_page(?int $id = null): never
         .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
 }
 
+// "Iki" can never be earlier than "Nuo": the end picker starts at the start date.
+function date_range_script(): string
+{
+    return <<<'HTML'
+<script>
+(function () {
+  var from = document.querySelector('input[name=start_date]'), to = document.querySelector('input[name=end_date]');
+  if (!from || !to) return;
+  function sync() {
+    if (!from.value) return;
+    to.min = from.value;
+    if (to.value && to.value < from.value) to.value = from.value;
+  }
+  from.addEventListener('change', sync); sync();
+})();
+</script>
+HTML;
+}
+
 // Live "dar X simbolių" under textareas with data-min.
 function counter_script(): string
 {
@@ -169,7 +188,7 @@ function request_form_page(): never
         .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
         .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
-        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>', ['noindex' => true]);
+        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>'.date_range_script(), ['noindex' => true]);
 }
 
 // Stored as display text, e.g. "12,50 €/val. į rankas".
