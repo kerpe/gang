@@ -35,8 +35,6 @@ const EXPERIENCE_REQUIRED = [
     1 => 'Patirtis nebūtina',
     2 => 'Bent kelių mėnesių patirtis',
     3 => 'Ne mažiau kaip 1 metai',
-    4 => 'Ne mažiau kaip 3 metai',
-    5 => 'Daugiau nei 5 metai',
 ];
 const REVIEW_HIDE_DAYS = 7;
 const AVAILABILITY_MONTHS = 6;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 function migrate(PDO $db): void
 {
@@ -131,6 +131,8 @@ function migrate(PDO $db): void
             }
         }
     }
+    // Version 6: a request requires at most one year of experience.
+    $db->exec('UPDATE requests SET min_experience = 3 WHERE min_experience > 3');
     $indexes = [
         'worker_roles_user' => 'worker_roles (user_id)',
         'worker_roles_role' => 'worker_roles (role, experience)',
