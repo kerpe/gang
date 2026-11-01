@@ -54,6 +54,7 @@ function home_page(): never
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
+    $mark = knives();
     page('', <<<HTML
 <section class="hero home-hero">
   <div class="cams">$slides</div>
@@ -100,7 +101,7 @@ function home_page(): never
   <div class="bento">
     <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">6 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
     <div class="bt t-2"><span class="k">Miestai</span><span class="big">4</span><p>Vilnius, Kaunas, Klaipėda ir Palanga.</p></div>
-    <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">★ 1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
+    <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">{$mark}1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
 </section>
 

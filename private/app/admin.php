@@ -108,7 +108,7 @@ function admin_users(): string
 function admin_reviews(): string
 {
     $rows = sql('SELECT rv.*, w.name AS worker_name, v.name AS venue_name FROM reviews rv JOIN contracts c ON c.id = rv.contract_id JOIN users w ON w.id = c.worker_id JOIN venues v ON v.id = c.venue_id ORDER BY rv.created_at DESC LIMIT 300')->fetchAll();
-    $html = '<p class="meta">Čia matomi visi įvertinimai, įskaitant dar nepaskelbtus. Trinkite tik įžeidžiančius, melagingus ar asmeninę informaciją atskleidžiančius įvertinimus.</p><table class="data"><tr><th>Data</th><th>Kas ką</th><th>★</th><th>Komentaras</th><th></th></tr>';
+    $html = '<p class="meta">Čia matomi visi įvertinimai, įskaitant dar nepaskelbtus. Trinkite tik įžeidžiančius, melagingus ar asmeninę informaciją atskleidžiančius įvertinimus.</p><table class="data"><tr><th>Data</th><th>Kas ką</th><th>Balas</th><th>Komentaras</th><th></th></tr>';
     foreach ($rows as $r) {
         $who = $r['author'] === 'manager' ? e($r['venue_name']).' → '.e($r['worker_name']) : e($r['worker_name']).' → '.e($r['venue_name']);
         $html .= '<tr><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.$who.'</td><td>'.(int) $r['rating'].'</td><td>'.nl2br(e($r['text'])).'</td><td>'

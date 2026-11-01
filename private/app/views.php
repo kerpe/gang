@@ -47,6 +47,7 @@ function page(string $title, string $body, array $opt = []): never
     $flash = flash();
     $flash = $flash !== '' ? '<div class="wrap"><div class="notice ok flash">'.e($flash).'</div></div>' : '';
     $year = date('Y');
+    $logoMark = knives();
     $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
     echo <<<HTML
 <!doctype html>
@@ -62,12 +63,12 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=22">
+<link rel="stylesheet" href="/style.css?v=24">
 $head
 </head>
 <body$bodyClass>
 <header class="top"><div class="wrap">
-  <a class="logo" href="/">GANG<span>.lt</span></a>
+  <a class="logo" href="/" aria-label="GANG.lt">{$logoMark}GANG<span>.lt</span></a>
   <nav>$nav</nav>
 </div></header>
 <main>
@@ -138,12 +139,22 @@ function post_button(string $action, string $label, array $fields = [], string $
     return '<form method="post" action="'.e($action).'" class="inline"'.$onsubmit.'>'.csrf_field().$hidden.'<button class="'.$class.'">'.e($label).'</button></form>';
 }
 
+/** GANG ženklas: sukryžiuoti virėjo peiliai (vertinimai, logotipas). */
+function knives(string $class = 'gk'): string
+{
+    $k = '<path d="M7.5 10.2H20.5C22.5 10.2 23.2 11 23 12C21.8 13.6 18 14.6 7.5 14.6Z"/><rect x="1" y="10.9" width="6.2" height="3" rx="1"/>';
+    $b = 'transform="translate(24 0) scale(-1 1) rotate(45 12 12)"';
+    return '<svg class="'.$class.'" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+        .'<mask id="gk-m" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><g '.$b.' fill="#000" stroke="#000" stroke-width="2.2" stroke-linejoin="round">'.$k.'</g></mask>'
+        .'<g mask="url(#gk-m)"><g transform="rotate(45 12 12)">'.$k.'</g></g><g '.$b.'>'.$k.'</g></svg>';
+}
+
 function stars(?float $avg, int $count): string
 {
     if ($count === 0 || $avg === null) {
         return '<span class="stars none">Įvertinimų dar nėra</span>';
     }
-    return '<span class="stars" title="'.number_format($avg, 1, ',', '').' iš 5">★ '.number_format($avg, 1, ',', '').' <small>('.$count.')</small></span>';
+    return '<span class="stars" title="'.number_format($avg, 1, ',', '').' iš 5">'.knives().' '.number_format($avg, 1, ',', '').' <small>('.$count.')</small></span>';
 }
 
 function request_card(array $r, string $extra = ''): string

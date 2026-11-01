@@ -53,7 +53,7 @@ function review_page(int $contractId): never
     $hint = $author === 'manager' ? 'ar atvyko laiku, kaip atliko darbą, ar kviestumėte dar kartą' : 'ar sąlygos atitiko sutartas, ar atlygis sumokėtas laiku, ar rekomenduotumėte šį darbdavį kitiems';
     $starsInput = '<div class="star-input">';
     for ($i = 5; $i >= 1; $i--) {
-        $starsInput .= '<input type="radio" name="rating" id="s'.$i.'" value="'.$i.'"'.($rating === $i ? ' checked' : '').'><label for="s'.$i.'" title="'.$i.'">★</label>';
+        $starsInput .= '<input type="radio" name="rating" id="s'.$i.'" value="'.$i.'"'.($rating === $i ? ' checked' : '').'><label for="s'.$i.'" title="'.$i.'">'.knives().'</label>';
     }
     $starsInput .= '</div>';
     page('Įvertinimas', '<section class="wrap narrow"><h1>'.$question.'</h1>'
@@ -72,7 +72,7 @@ function reviews_html(array $reviews, callable $who): string
     }
     $out = '<div class="reviews">';
     foreach ($reviews as $r) {
-        $out .= '<div class="review"><p><span class="stars">'.str_repeat('★', (int) $r['rating']).'<span class="dim">'.str_repeat('★', 5 - (int) $r['rating']).'</span></span> · <span class="meta">'.e($who($r)).', '.e(date_lt($r['created_at'])).' '.date('Y', strtotime($r['created_at'])).'</span></p>'
+        $out .= '<div class="review"><p><span class="stars">'.str_repeat(knives(), (int) $r['rating']).'<span class="dim">'.str_repeat(knives(), 5 - (int) $r['rating']).'</span></span> · <span class="meta">'.e($who($r)).', '.e(date_lt($r['created_at'])).' '.date('Y', strtotime($r['created_at'])).'</span></p>'
             .($r['text'] ? '<p>'.nl2br(e($r['text'])).'</p>' : '').'</div>';
     }
     return $out.'</div>';
