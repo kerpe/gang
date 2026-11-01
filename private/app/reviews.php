@@ -5,7 +5,7 @@ declare(strict_types=1);
 function review_page(int $contractId): never
 {
     $u = require_user();
-    $c = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, v.name AS venue_name, v.manager_id, w.name AS worker_name
+    $c = sql('SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, v.name AS venue_name, v.manager_id, w.name AS worker_name
         FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users w ON w.id = c.worker_id WHERE c.id = ?', [$contractId])->fetch();
     if (!$c) {
         not_found();

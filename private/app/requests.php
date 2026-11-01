@@ -50,20 +50,126 @@ function venue_form_page(?int $id = null): never
         .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
 }
 
-// "Iki" can never be earlier than "Nuo": the end picker starts at the start date.
-function date_range_script(): string
+// Parses "2026-11-07:2026-11-08,2026-11-14:2026-11-15" into sorted, merged [start, end] pairs.
+// Returns [] when anything is invalid, in the past or more than a year ahead.
+function parse_ranges(string $raw): array
+{
+    $max = date('Y-m-d', strtotime('+12 months'));
+    $ranges = [];
+    foreach (array_filter(explode(',', $raw)) as $part) {
+        if (!preg_match('/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/', $part, $m)
+            || !DateTime::createFromFormat('!Y-m-d', $m[1]) || !DateTime::createFromFormat('!Y-m-d', $m[2])
+            || $m[1] > $m[2] || $m[1] < today() || $m[2] > $max) {
+            return [];
+        }
+        $ranges[] = [$m[1], $m[2]];
+    }
+    if (count($ranges) > 12) {
+        return [];
+    }
+    sort($ranges);
+    $merged = [];
+    foreach ($ranges as [$a, $b]) {
+        $last = count($merged) - 1;
+        if ($last >= 0 && $a <= date('Y-m-d', strtotime($merged[$last][1].' +1 day'))) {
+            $merged[$last][1] = max($merged[$last][1], $b);
+        } else {
+            $merged[] = [$a, $b];
+        }
+    }
+    return $merged;
+}
+
+function ranges_string(array $ranges): string
+{
+    return implode(',', array_map(fn ($r) => $r[0].':'.$r[1], $ranges));
+}
+
+// One calendar for a single day, a from–to range or several ranges.
+function date_picker_script(): string
 {
     return <<<'HTML'
 <script>
 (function () {
-  var from = document.querySelector('input[name=start_date]'), to = document.querySelector('input[name=end_date]');
-  if (!from || !to) return;
-  function sync() {
-    if (!from.value) return;
-    to.min = from.value;
-    if (to.value && to.value < from.value) to.value = from.value;
+  var box = document.querySelector('.picker'), out = document.querySelector('input[name=dates]');
+  if (!box || !out) return;
+  var MN = ['Sausis','Vasaris','Kovas','Balandis','Gegužė','Birželis','Liepa','Rugpjūtis','Rugsėjis','Spalis','Lapkritis','Gruodis'];
+  var MG = ['sausio','vasario','kovo','balandžio','gegužės','birželio','liepos','rugpjūčio','rugsėjo','spalio','lapkričio','gruodžio'];
+  var min = box.dataset.min, max = box.dataset.max, hint = document.querySelector('.when-hint'), hintText = hint.textContent;
+  var ranges = out.value ? out.value.split(',').map(function (p) { return p.split(':'); }) : [];
+  var pending = null, hover = null, view = (ranges[0] ? ranges[0][0] : min).slice(0, 7);
+  function iso(y, m, d) { return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
+  function addMonth(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
+  function nextDay(s) { var d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
+  function lt(s) { return MG[+s.slice(5, 7) - 1] + ' ' + +s.slice(8); }
+  function label(r) {
+    if (r[0] === r[1]) return lt(r[0]) + ' d.';
+    if (r[0].slice(0, 7) === r[1].slice(0, 7)) return lt(r[0]) + '–' + +r[1].slice(8) + ' d.';
+    return lt(r[0]) + ' d. – ' + lt(r[1]) + ' d.';
   }
-  from.addEventListener('change', sync); sync();
+  function permanent() { var k = document.querySelector('input[name=kind]:checked'); return k && k.value === 'nuolat'; }
+  function normalize() {
+    ranges.sort(function (a, b) { return a[0] < b[0] ? -1 : 1; });
+    var m = [];
+    ranges.forEach(function (r) { var l = m[m.length - 1]; if (l && r[0] <= nextDay(l[1])) { if (r[1] > l[1]) l[1] = r[1]; } else m.push([r[0], r[1]]); });
+    ranges = m;
+  }
+  function find(d) { for (var i = 0; i < ranges.length; i++) if (d >= ranges[i][0] && d <= ranges[i][1]) return i; return -1; }
+  function pick(d) {
+    if (permanent()) { ranges = [[d, d]]; pending = null; }
+    else if (pending && d === pending[0]) { pending = null; }
+    else if (pending && d > pending[0]) { pending[1] = d; pending = null; normalize(); }
+    else if (find(d) >= 0) { ranges.splice(find(d), 1); pending = null; }
+    else if (ranges.length < 12) { pending = [d, d]; ranges.push(pending); normalize(); pending = ranges[find(d)]; }
+    render();
+  }
+  function month(ym) {
+    var y = +ym.slice(0, 4), m = +ym.slice(5), lead = (new Date(y, m - 1, 1).getDay() + 6) % 7, n = new Date(y, m, 0).getDate();
+    var h = '<div class="month"><h3>' + MN[m - 1] + ' ' + y + '</h3><div class="week"><span>Pr</span><span>An</span><span>Tr</span><span>Kt</span><span>Pn</span><span>Št</span><span>Sk</span></div><div class="days">';
+    for (var i = 0; i < lead; i++) h += '<span class="day pad"></span>';
+    for (var d = 1; d <= n; d++) {
+      var s = iso(y, m, d), wk = (lead + d - 1) % 7 >= 5 ? ' weekend' : '';
+      if (s < min || s > max) { h += '<span class="day off' + wk + '">' + d + '</span>'; continue; }
+      var i2 = find(s), c = i2 >= 0 ? ' on' : '';
+      if (i2 >= 0) { if (s === ranges[i2][0]) c += ' first'; if (s === ranges[i2][1]) c += ' last'; }
+      if (pending && hover && s > pending[0] && s <= hover) c += ' preview';
+      if (pending && s === pending[0]) c += ' anchor';
+      h += '<button type="button" class="day' + wk + c + (s === min ? ' today' : '') + '" data-d="' + s + '" aria-pressed="' + (i2 >= 0) + '" aria-label="' + lt(s) + ' d."><span>' + d + '</span></button>';
+    }
+    for (var j = lead + n; j < 42; j++) h += '<span class="day pad"></span>';
+    return h + '</div></div>';
+  }
+  function render() {
+    hint.textContent = permanent() ? hint.dataset.nuolat : hintText;
+    out.value = ranges.map(function (r) { return r[0] + ':' + r[1]; }).join(',');
+    var first = view < min.slice(0, 7) ? min.slice(0, 7) : view, last = addMonth(max.slice(0, 7), -1);
+    if (first > last) first = last; view = first;
+    var status = pending
+      ? '<p class="pick-status">Pažymėta ' + label(pending) + ' Spustelėkite paskutinę laikotarpio dieną arba <button type="button" class="linkish" data-single>palikite vieną dieną</button>.</p>'
+      : '';
+    var chips = ranges.length
+      ? '<div class="chips">' + ranges.map(function (r, i) { return '<span class="chip">' + label(r) + '<button type="button" data-rm="' + i + '" aria-label="Pašalinti ' + label(r) + '">×</button></span>'; }).join('') + '</div>'
+      : '<p class="meta">Dienos dar nepažymėtos.</p>';
+    box.innerHTML = '<div class="pick-nav"><button type="button" class="btn small ghost" data-nav="-1"' + (view <= min.slice(0, 7) ? ' disabled' : '') + ' aria-label="Ankstesnis mėnuo">←</button>'
+      + '<button type="button" class="btn small ghost" data-nav="1"' + (view >= last ? ' disabled' : '') + ' aria-label="Kitas mėnuo">→</button></div>'
+      + '<div class="pick-months">' + month(view) + month(addMonth(view, 1)) + '</div>' + status + chips;
+  }
+  box.addEventListener('click', function (e) {
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.d) pick(t.dataset.d);
+    else if (t.dataset.nav) { view = addMonth(view, +t.dataset.nav); render(); }
+    else if (t.dataset.rm) { ranges.splice(+t.dataset.rm, 1); pending = null; render(); }
+    else if ('single' in t.dataset) { pending = null; render(); }
+  });
+  box.addEventListener('mouseover', function (e) {
+    var t = e.target.closest('button[data-d]'); if (!pending || !t || t.dataset.d === hover) return;
+    hover = t.dataset.d;
+    box.querySelectorAll('button[data-d]').forEach(function (b) { b.classList.toggle('preview', b.dataset.d > pending[0] && b.dataset.d <= hover); });
+  });
+  document.querySelectorAll('input[name=kind]').forEach(function (k) {
+    k.addEventListener('change', function () { if (permanent() && ranges.length) ranges = [[ranges[0][0], ranges[0][0]]]; pending = null; render(); });
+  });
+  render();
 })();
 </script>
 HTML;
@@ -116,8 +222,7 @@ function request_form_page(): never
         redirect('/darboviete/nauja');
     }
     $venueOptions = array_column($venues, 'name', 'id');
-    $tomorrow = date('Y-m-d', strtotime('+1 day'));
-    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'start_date' => $tomorrow, 'end_date' => '', 'hours' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
+    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'hours' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
     $errors = [];
     if (is_post()) {
         check_csrf();
@@ -137,20 +242,13 @@ function request_form_page(): never
         if ($people < 1 || $people > 20) {
             $errors['people'] = 'Nurodykite skaičių nuo 1 iki 20.';
         }
-        $start = DateTime::createFromFormat('!Y-m-d', $v['start_date']);
-        if (!$start || $v['start_date'] < today() || $start > new DateTime('+1 year')) {
-            $errors['start_date'] = 'Nurodykite pradžios datą. Ji negali būti praeityje.';
+        $ranges = parse_ranges($v['dates']);
+        if (!$ranges) {
+            $errors['dates'] = 'Pažymėkite kalendoriuje bent vieną dieną, kada reikalingas darbuotojas.';
+        } elseif ($v['kind'] === 'nuolat') {
+            $ranges = [[$ranges[0][0], $ranges[0][0]]];
         }
-        if ($v['kind'] === 'nuolat') {
-            $v['end_date'] = '';
-        } elseif ($v['end_date'] !== '') {
-            $end = DateTime::createFromFormat('!Y-m-d', $v['end_date']);
-            if (!$end || $v['end_date'] < $v['start_date'] || $end > new DateTime('+18 months')) {
-                $errors['end_date'] = 'Pabaigos data negali būti ankstesnė už pradžios datą.';
-            }
-        } elseif ($v['kind'] !== 'skubu') {
-            $errors['end_date'] = 'Nurodykite, iki kada reikalingas darbuotojas.';
-        }
+        $v['dates'] = ranges_string($ranges);
         if (!isset(EXPERIENCE_REQUIRED[(int) $v['min_experience']])) {
             $errors['min_experience'] = 'Nurodykite reikalaujamą darbo patirtį.';
         }
@@ -167,7 +265,7 @@ function request_form_page(): never
         if (!$errors) {
             $id = insert('requests', [
                 'venue_id' => (int) $v['venue_id'], 'role' => $v['role'], 'kind' => $v['kind'], 'people' => $people,
-                'start_date' => $v['start_date'], 'end_date' => $v['end_date'] ?: null, 'hours' => $v['hours'], 'pay' => pay_label($rate),
+                'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => $v['hours'], 'pay' => pay_label($rate),
                 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
             ]);
             $sent = notify_workers(find_request($id));
@@ -183,12 +281,14 @@ function request_form_page(): never
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
         .'<fieldset><legend>Darbo trukmė</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
-        .'<div class="row"><label>Nuo <input type="date" name="start_date" min="'.today().'" value="'.e($v['start_date']).'" required>'.err($errors, 'start_date').'</label>'
-        .'<label class="end">Iki <small class="opt">(jei ilgiau nei viena diena)</small><input type="date" name="end_date" min="'.today().'" value="'.e($v['end_date']).'">'.err($errors, 'end_date').'</label></div>'
+        .'<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'
+        .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
+        .'<div class="picker" data-min="'.today().'" data-max="'.date('Y-m-d', strtotime('+12 months')).'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
+        .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
         .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
         .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
-        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>'.date_range_script(), ['noindex' => true]);
+        .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>'.date_picker_script(), ['noindex' => true]);
 }
 
 // Stored as display text, e.g. "12,50 €/val. į rankas".

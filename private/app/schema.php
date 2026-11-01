@@ -110,6 +110,8 @@ function migrate(PDO $db): void
         'users ADD photo VARCHAR(64) NULL',
         'users ADD experience TINYINT NOT NULL DEFAULT 0',
         'requests ADD min_experience TINYINT NOT NULL DEFAULT 1',
+        // Version 6: several date ranges in one request ("from:to,from:to"), empty for one range.
+        "requests ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
     ];
     foreach ($columns as $column) {
         try {
