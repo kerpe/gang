@@ -279,7 +279,7 @@ function request_form_page(): never
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
-        .'<fieldset><legend>Darbo trukmė</legend>'.$kinds.err($errors, 'kind').'</fieldset>'
+        .'<fieldset><legend>Darbo trukmė</legend><p class="hint">Skubiai – diena ar kelios, trumpam – savaitė ar mėnuo, sezonui – keli mėnesiai, nuolat – ilgalaikis darbas.</p>'.$kinds.err($errors, 'kind').'</fieldset>'
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'
         .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
