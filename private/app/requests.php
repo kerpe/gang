@@ -135,11 +135,12 @@ function request_form_page(): never
         if (!isset(EXPERIENCE_REQUIRED[(int) $v['min_experience']])) {
             $errors['min_experience'] = 'Nurodykite reikalaujamą darbo patirtį.';
         }
-        if (mb_strlen($v['hours']) > 120) {
-            $errors['hours'] = 'Tekstas gali būti ne ilgesnis nei 120 simbolių.';
+        if (mb_strlen($v['hours']) < 3 || mb_strlen($v['hours']) > 120) {
+            $errors['hours'] = 'Nurodykite darbo laiką, pavyzdžiui, 10–22 val. arba 2/2 grafikas.';
         }
-        if (mb_strlen($v['pay']) > 80) {
-            $errors['pay'] = 'Tekstas gali būti ne ilgesnis nei 80 simbolių.';
+        $rate = str_replace(',', '.', $v['pay']);
+        if (!is_numeric($rate) || (float) $rate < 1 || (float) $rate > 200) {
+            $errors['pay'] = 'Nurodykite valandinį atlygį į rankas eurais, pavyzdžiui, 10 arba 12,50.';
         }
         if (mb_strlen($v['description']) < 10 || mb_strlen($v['description']) > 3000) {
             $errors['description'] = 'Trumpai aprašykite darbo pobūdį ir pareigas (bent 10 simbolių).';
@@ -147,7 +148,7 @@ function request_form_page(): never
         if (!$errors) {
             $id = insert('requests', [
                 'venue_id' => (int) $v['venue_id'], 'role' => $v['role'], 'kind' => $v['kind'], 'people' => $people,
-                'start_date' => $v['start_date'], 'end_date' => $v['end_date'] ?: null, 'hours' => $v['hours'], 'pay' => $v['pay'],
+                'start_date' => $v['start_date'], 'end_date' => $v['end_date'] ?: null, 'hours' => $v['hours'], 'pay' => pay_label($rate),
                 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
             ]);
             $sent = notify_workers(find_request($id));
@@ -165,10 +166,17 @@ function request_form_page(): never
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<div class="row"><label>Nuo <input type="date" name="start_date" min="'.today().'" value="'.e($v['start_date']).'" required>'.err($errors, 'start_date').'</label>'
         .'<label class="end">Iki <small class="opt">(jei ilgiau nei viena diena)</small><input type="date" name="end_date" min="'.today().'" value="'.e($v['end_date']).'">'.err($errors, 'end_date').'</label></div>'
-        .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
-        .'<label>Atlygis <small>(rekomenduojame)</small><input name="pay" value="'.e($v['pay']).'" maxlength="80" placeholder="Pavyzdžiui: 10 €/val. į rankas">'.err($errors, 'pay').'</label></div>'
+        .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
+        .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
         .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
         .'<button class="btn">Paskelbti ir informuoti darbuotojus</button></form></section>', ['noindex' => true]);
+}
+
+// Stored as display text, e.g. "12,50 €/val. į rankas".
+function pay_label(string $rate): string
+{
+    $n = round((float) $rate, 2);
+    return str_replace('.', ',', (string) ($n == floor($n) ? (int) $n : number_format($n, 2, '.', ''))).' €/val. į rankas';
 }
 
 function request_page(int $id): never

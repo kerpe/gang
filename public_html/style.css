@@ -406,3 +406,8 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .account-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .account-actions form { margin: 0; }
 @media (max-width: 560px) { .account-actions { flex-basis: 100%; } }
+
+/* Input with a unit after it */
+.input-suffix { position: relative; display: block; }
+.input-suffix input { padding-right: 76px; }
+.input-suffix > span { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
