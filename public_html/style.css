@@ -45,6 +45,7 @@ main > section.wrap, main > article.wrap { padding-top: 36px; }
   color: var(--lime); text-shadow: 0 0 14px rgba(216,255,54,.35); }
 .logo span { color: var(--orange); font-size: .62em; letter-spacing: .02em; margin-left: 2px; text-shadow: none; }
 .logo:hover { color: #e6ff73; }
+.logo .gk { width: .95em; height: .95em; margin-right: .16em; vertical-align: -.06em; filter: drop-shadow(0 0 6px rgba(216,255,54,.35)); }
 .top nav { display: flex; align-items: center; gap: 22px; }
 .top nav a:not(.btn) { text-decoration: none; font-size: .95rem; color: var(--ink); opacity: .85; }
 .top nav a:not(.btn):hover { opacity: 1; color: var(--lime); }
@@ -284,12 +285,14 @@ a.account-card:hover { border-color: var(--lime); }
 .stars { color: var(--star); font-weight: 600; white-space: nowrap; }
 .stars.none { color: var(--muted); font-weight: 400; }
 .stars .dim { color: var(--line-strong); }
+.gk { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; }
+.stars > .gk { margin-right: .15em; }
 .reviews { display: grid; gap: 10px; }
 .review { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; }
 .review p { margin: 4px 0; }
 .star-input { display: inline-flex; flex-direction: row-reverse; gap: 4px; }
 .star-input input { position: absolute; opacity: 0; width: 1px; }
-.star-input label { font-size: 2.6rem; color: var(--line-strong); cursor: pointer; line-height: 1; }
+.star-input label { font-size: 2.4rem; color: var(--line-strong); cursor: pointer; line-height: 1; }
 .star-input input:checked ~ label, .star-input label:hover, .star-input label:hover ~ label { color: var(--star); }
 .star-input input:focus-visible + label { outline: 2px solid var(--lime); border-radius: 4px; }
 
@@ -367,6 +370,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .bt.lime { background: var(--lime); border-color: var(--lime); }
 .bt.orange { background: var(--orange); border-color: var(--orange); }
 .bt.lime .big, .bt.orange .big { color: #151515; }
+.bt .big .gk { width: .78em; height: .78em; margin-right: .16em; vertical-align: -.04em; }
 .bt.lime p, .bt.lime .k, .bt.orange p, .bt.orange .k { color: #2a2a2a; }
 @media (min-width: 720px) {
   .bt.t-2 { grid-column: span 2; }
