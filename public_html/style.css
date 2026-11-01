@@ -543,3 +543,11 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .kind-choices .choice > span { display: grid; gap: 2px; line-height: 1.3; }
 .kind-choices .choice-name { font-weight: 600; }
 .kind-choices small { color: var(--muted); font-size: .82rem; }
+
+/* Selects and text inputs share one height; fields side by side line up from the top, so an error under one does not push the other down */
+select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-height: 50px; }
+.form .row { align-items: start; }
+.form .row > label { display: block; }
+.form .row > label > small { display: inline; }
+.form .row > label > :is(input, select, .input-suffix) { margin-top: 6px; }
+.form .row > label > .err { display: block; margin-top: 6px; }
