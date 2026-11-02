@@ -152,11 +152,13 @@ function first_name(string $name): string
 }
 
 // Emails every matching worker about a new request; available workers are told it is urgent first.
-function notify_workers(array $r): int
+function notify_workers(array $r, array $skip = []): int
 {
     $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND cities LIKE ?
         AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = users.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1)) LIMIT 500",
         ['%,'.$r['city'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
+    // Team members invited personally already got their own email.
+    $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
@@ -207,4 +209,44 @@ function roles_with_experience(int $userId): string
         $out[] = (ROLES[$role] ?? $role).(isset(EXPERIENCE[$level]) ? ' ('.mb_strtolower(EXPERIENCE[$level]).')' : '');
     }
     return implode(', ', $out);
+}
+
+// "Mano komanda": workers who already had a GANG contract with one of the manager's venues,
+// most frequent first. jobs = contracts together, last = date of the latest one.
+function team_members(int $managerId): array
+{
+    return sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last
+        FROM contracts c JOIN venues v ON v.id = c.venue_id JOIN requests r ON r.id = c.request_id JOIN users u ON u.id = c.worker_id
+        WHERE v.manager_id = ? AND u.blocked = 0
+        GROUP BY u.id, u.name, u.photo, u.roles, u.email, u.notify ORDER BY jobs DESC, last DESC LIMIT 60", [$managerId])->fetchAll();
+}
+
+// Worker ids already invited to a request.
+function invited_ids(int $requestId): array
+{
+    return array_map('intval', sql('SELECT worker_id FROM invites WHERE request_id = ?', [$requestId])->fetchAll(PDO::FETCH_COLUMN));
+}
+
+// Personal invitation from the manager to a team member; one per request and worker.
+// The email respects the worker's notification setting; the invitation always shows in their account.
+function invite_worker(array $r, array $worker): bool
+{
+    if (sql('SELECT 1 FROM invites WHERE request_id = ? AND worker_id = ?', [$r['id'], $worker['id']])->fetchColumn()
+        || sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $worker['id']])->fetchColumn()) {
+        return false;
+    }
+    insert('invites', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'created_at' => now()]);
+    if ((int) $worker['notify'] === 1) {
+        $role = ROLES[$r['role']] ?? $r['role'];
+        send_mail($worker['email'], 'Asmeninis kvietimas: '.$role.' – '.$r['venue_name'],
+            "Laba diena,\n\n{$r['venue_name']} ("
+            .(CITIES[$r['city']] ?? '').") kviečia jus vėl dirbti kartu.\n\n"
+            ."Pareigos: $role\n"
+            .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
+            .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
+            ."\n{$r['description']}\n\n"
+            ."Jei pasiūlymas jums tinka, patvirtinkite susidomėjimą čia:\n".url('/darbas/'.$r['id'])
+            ."\n\nŠį asmeninį kvietimą gavote, nes anksčiau per GANG dirbote šioje darbovietėje.");
+    }
+    return true;
 }
