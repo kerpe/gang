@@ -24,7 +24,7 @@ function admin_page(): never
         redirect('/admin'.(isset($_GET['tab']) ? '?tab='.urlencode((string) $_GET['tab']) : ''));
     }
     $tab = $_GET['tab'] ?? 'stats';
-    $tabs = ['stats' => 'Rodikliai', 'requests' => 'Poreikiai', 'users' => 'Nariai', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji'];
+    $tabs = ['stats' => 'Rodikliai', 'requests' => 'Paieškos', 'users' => 'Nariai', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji'];
     $nav = '<nav class="tabs">';
     foreach ($tabs as $k => $label) {
         $nav .= '<a href="/admin?tab='.$k.'"'.($tab === $k ? ' class="active"' : '').'>'.$label.'</a>';
@@ -48,7 +48,7 @@ function admin_stats(): string
         'Darbuotojų' => $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"),
         'Laisvi šiandien' => $count("SELECT COUNT(DISTINCT user_id) FROM availability WHERE start_date <= ? AND end_date >= ?", [today(), today()]),
         'Darboviečių' => $count('SELECT COUNT(*) FROM venues'),
-        'Poreikių (30 d.)' => $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]),
+        'Paieškų (30 d.)' => $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]),
         'Kontraktų (30 d.)' => $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]),
         'Įvertinimų' => $count('SELECT COUNT(*) FROM reviews'),
     ];
@@ -59,7 +59,7 @@ function admin_stats(): string
     $html .= '</div>';
     // Fill rate and time to first contract, per kind: the numbers that later sell subscriptions.
     $rows = sql('SELECT r.kind, r.created_at, r.status, (SELECT MIN(c.created_at) FROM contracts c WHERE c.request_id = r.id) AS first_contract FROM requests r WHERE r.created_at > ?', [date('Y-m-d H:i:s', strtotime('-90 days'))])->fetchAll();
-    $table = '<h2>Kaip greitai užpildoma (90 d.)</h2><table class="data"><tr><th>Tipas</th><th>Poreikių</th><th>Užpildyta</th><th>Mediana iki patvirtinimo</th></tr>';
+    $table = '<h2>Kaip greitai užpildoma (90 d.)</h2><table class="data"><tr><th>Tipas</th><th>Paieškų</th><th>Užpildyta</th><th>Mediana iki patvirtinimo</th></tr>';
     foreach (KINDS as $k => $label) {
         $mine = array_filter($rows, fn ($r) => $r['kind'] === $k);
         $times = [];
@@ -85,7 +85,7 @@ function admin_requests(): string
     foreach ($rows as $r) {
         $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td>'.e($r['venue_name']).', '.e(CITIES[$r['city']] ?? '').'</td><td><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? '').'</a></td>'
             .'<td>'.e($r['kind']).'</td><td>'.e(period($r)).'</td><td>'.(int) $r['notified'].'</td><td>'.(int) $r['responses'].'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['status']).'</td>'
-            .'<td>'.($r['status'] === 'open' ? post_button('/admin?tab=requests', 'Uždaryti', ['action' => 'close_request', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite uždaryti šį poreikį?') : '').'</td></tr>';
+            .'<td>'.($r['status'] === 'open' ? post_button('/admin?tab=requests', 'Uždaryti', ['action' => 'close_request', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką?') : '').'</td></tr>';
     }
     return '<div class="scroll">'.$html.'</table></div>';
 }
@@ -130,7 +130,7 @@ function admin_waitlist(): string
         : 'Išsiųsti kvietimą užsiregistruoti visiems sąraše esantiems, kurie paskyros dar nesusikūrė ir kvietimo negavo?';
     $invite = $pending ? post_button('/admin?tab=waitlist', $label, ['action' => 'invite_waitlist', 'id' => 0], 'btn small', $confirm) : '<p class="meta">Visi laiškai išsiųsti.</p>';
     $note = $public
-        ? '<p class="meta">Paleidimo laiškai: darbuotojams – kvietimas žymėti laisvas dienas, darbdaviams – kvietimas paskelbti pirmą poreikį; dar neužsiregistravusiems iš sąrašo – kvietimas registruotis. Kiekvienas laiškas siunčiamas tik kartą.</p>'
+        ? '<p class="meta">Paleidimo laiškai: darbuotojams – kvietimas žymėti laisvas dienas, darbdaviams – kvietimas paskelbti pirmą paiešką; dar neužsiregistravusiems iš sąrašo – kvietimas registruotis. Kiekvienas laiškas siunčiamas tik kartą.</p>'
         : '<p class="meta">Iki paleidimo darbuotojai jau gali susikurti profilį, o darbdaviai – užregistruoti darbovietę. Senojo sąrašo nariams galite išsiųsti kvietimą užsiregistruoti. Kai svetainė bus atverta visiems (SITE_PUBLIC = true), čia galėsite išsiųsti paleidimo laiškus ('.$launchMails.').</p>';
     $venues = (int) sql('SELECT COUNT(DISTINCT manager_id) FROM venues')->fetchColumn();
     $html = '<div class="tiles"><div class="tile"><span>Darbuotojų profilių</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
@@ -169,7 +169,7 @@ function invite_waitlist(): int
                 : "susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti. ".(launch_when() !== '' ? launch_headline().'. Starto dieną' : 'Paleidimo dieną')." jūsų profilis jau bus matomas darbdaviams.\n\nNuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.")
             : ($public
                 ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
-                : "užregistruoti savo barą, restoraną ar kavinę.\n\n".(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos')." galėsite skelbti darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto."))
+                : "užregistruoti savo barą, restoraną ar kavinę.\n\n".(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos')." galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto."))
             ."\n\nRegistracija trunka kelias minutes:\n".url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))
             ."\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
         $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
@@ -188,7 +188,7 @@ function invite_waitlist(): int
         } elseif ($u['kind'] === 'worker') {
             $text = "Laba diena,\n\nGANG jau veikia. Jūsų profilis dabar matomas barams, restoranams ir kavinėms jūsų miestuose.\n\nKalendoriuje pažymėkite dienas, kuriomis galite dirbti: darbdaviai, ieškantys žmogaus konkrečiai datai, matys, kad esate laisvi, o tinkamus pasiūlymus gausite el. paštu.\n\nPažymėti laisvas dienas:\n".url('/mano#laisvumas');
         } else {
-            $text = "Laba diena,\n\nGANG jau veikia. Nuo šiandien galite skelbti darbuotojų poreikius: pavadavimui, sezonui ar nuolatiniam darbui. Paskelbtas poreikis iš karto pasiekia tinkamus darbuotojus jūsų mieste.\n\nPaskelbti pirmą poreikį:\n".url('/poreikis/naujas');
+            $text = "Laba diena,\n\nGANG jau veikia. Nuo šiandien galite skelbti darbuotojų paieškas: pavadavimui, sezonui ar nuolatiniam darbui. Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste.\n\nPaskelbti pirmą paiešką:\n".url('/poreikis/naujas');
         }
         if (send_mail($u['email'], 'GANG jau veikia', $text."\n\nŠį laišką gavote, nes užsiregistravote GANG.")) {
             $sent++;

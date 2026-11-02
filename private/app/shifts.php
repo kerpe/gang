@@ -132,7 +132,7 @@ function alert_manager(array $s, bool $declined): void
             ? "Darbuotojo telefonas: {$s['worker_phone']}\n\n"
             : "Rekomenduojame pirmiausia paskambinti darbuotojui ir įsitikinti, kad rytoj atvyks: {$s['worker_phone']}\n"
               ."Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.\n\n")
-        .($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas')." pakaitinis darbuotojas, skubų poreikį rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą:\n$link");
+        .($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas')." pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą:\n$link");
     send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks. Pakaitinis darbuotojas: '.$link : ' nepatvirtino rytojaus pamainos. Paskambinkite: '.sms_phone($s['worker_phone']).'. Pakaitinis: '.$link));
 }
 

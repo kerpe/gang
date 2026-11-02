@@ -73,7 +73,7 @@ function preview_gate(string $path): void
         .'<p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a></p></div>';
     $employerBox = '<div class="join-box employer"><p class="eyebrow">Darbdaviams</p><h2>Užregistruokite savo darbovietę</h2>'
         .'<p>Užregistruokite savo barą, restoraną ar kavinę: pavadinimą, miestą ir trumpą aprašymą apie komandą ir darbo sąlygas.</p>'
-        .'<p class="later"><strong>'.e(from_launch()).'</strong> skelbsite darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto.</p>'
+        .'<p class="later"><strong>'.e(from_launch()).'</strong> skelbsite darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.</p>'
         .'<p><a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti darbovietę</a></p></div>';
     $employerFirst = ($_GET['kaip'] ?? '') === 'vadovas';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
