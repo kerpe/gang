@@ -439,16 +439,25 @@ function request_page(int $id): never
     $city = CITIES[$r['city']] ?? '';
     $place = full_address($r);
     [$avg, $n] = venue_rating((int) $r['venue_id']);
-    $facts = '<ul class="facts"><li><b>Kada</b>'.e(period($r)).'</li>'
-        .($r['hours'] !== '' ? '<li><b>Darbo laikas</b>'.e($r['hours']).'</li>' : '')
-        .($r['pay'] !== '' ? '<li><b>Atlygis</b>'.e($r['pay']).'</li>' : '')
-        .'<li><b>Tipas</b>'.e(KINDS[$r['kind']] ?? '').'</li>'
-        .'<li><b>Patirtis</b>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</li>'
-        .((int) $r['people'] > 1 ? '<li><b>Reikia</b>'.(int) $r['people'].' žm.</li>' : '').'</ul>';
+    // Dates as separate chips; pay split into the amount and its unit so the amount stands out.
+    $dates = !empty($r['dates']) ? array_map(fn ($p) => span_lt(...explode(':', $p)), explode(',', $r['dates'])) : [period($r)];
+    $chips = '<ul class="date-chips">'.implode('', array_map(fn ($d) => '<li>'.e($d).'</li>', $dates)).'</ul>';
+    $payBox = '';
+    if ($r['pay'] !== '') {
+        $payBox = preg_match('/^([\d,]+)\s*€/u', $r['pay'], $m)
+            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).' €</strong><span class="unit">už valandą</span></div>'
+            : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
+    }
+    $facts = '<dl class="job-facts">'
+        .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
+        .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
+        .'<div><dt>Reikia darbuotojų</dt><dd>'.(int) $r['people'].'</dd></div>'
+        .'<div><dt>Darbovietė</dt><dd>'.($u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a>' : e($r['venue_name'])).'</dd></div>'
+        .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div></dl>';
+    $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
-    $urgent = $r['kind'] === 'skubu' ? '<span class="tag urgent">Skubu</span> ' : '';
     $e = 'e';
     $ld = '';
     if ($isOpen) {
@@ -465,14 +474,21 @@ function request_page(int $id): never
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
     page("$role – {$r['venue_name']}, $city", <<<HTML
-<article class="wrap narrow job">
+<article class="wrap job">
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
-  <p>$urgent</p>
-  <h1>{$e($role)}</h1>
-  <p class="meta">$venueLink · {$e($place)}</p>
-  $facts
-  <div class="desc">$desc</div>
-  $action
+  <header class="job-head">
+    <p class="job-tags"><span class="tag{$e($r['kind'] === 'skubu' ? ' urgent' : '')}">{$e(KINDS[$r['kind']] ?? '')}</span></p>
+    <h1>{$e($role)}</h1>
+    <p class="meta">$venueLink · {$e($city)}</p>
+  </header>
+  <div class="job-grid">
+    <aside class="job-side">$payBox$facts</aside>
+    <div class="job-main">
+      $when
+      <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      $action
+    </div>
+  </div>
 </article>
 HTML, [
         'description' => mb_substr("$role, {$r['venue_name']}, $city: ".preg_replace('/\s+/', ' ', $r['description']), 0, 155),
