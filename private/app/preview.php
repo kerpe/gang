@@ -68,18 +68,18 @@ function preview_gate(string $path): void
         .'<label>Peržiūros slaptažodis <input type="password" name="password" autocomplete="current-password" required>'.$error.'</label>'
         .'<button class="btn small ghost">Įeiti</button></form></details>';
     $workerBox = '<div class="join-box worker"><p class="eyebrow">Darbuotojams</p><h2>Susikurkite profilį jau dabar</h2>'
-        .'<p>Nurodykite pareigas, patirtį ir miestus, kuriuose galite dirbti. Paleidimo dieną jūsų profilis jau bus matomas darbdaviams.</p>'
-        .'<p class="later"><strong>Nuo paleidimo dienos</strong> kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.</p>'
+        .'<p>Nurodykite pareigas, patirtį ir miestus, kuriuose galite dirbti. Starto dieną jūsų profilis jau bus matomas darbdaviams.</p>'
+        .'<p class="later"><strong>'.e(from_launch()).'</strong> kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.</p>'
         .'<p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a></p></div>';
     $employerBox = '<div class="join-box employer"><p class="eyebrow">Darbdaviams</p><h2>Užregistruokite savo darbovietę</h2>'
         .'<p>Užregistruokite savo barą, restoraną ar kavinę: pavadinimą, miestą ir trumpą aprašymą apie komandą ir darbo sąlygas.</p>'
-        .'<p class="later"><strong>Nuo paleidimo dienos</strong> skelbsite darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto.</p>'
+        .'<p class="later"><strong>'.e(from_launch()).'</strong> skelbsite darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto.</p>'
         .'<p><a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti darbovietę</a></p></div>';
     $employerFirst = ($_GET['kaip'] ?? '') === 'vadovas';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
         .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=27"></head>'
         .'<body><main><section class="wrap soon"><a class="logo" href="/" aria-label="GANG.lt">'.knives().'GANG<span>.lt</span></a>'
-        .'<h1>Prisijunkite prie GANG</h1><p class="lead">GANG padės barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų. Platforma pradės veikti netrukus, o pasiruošti galite jau dabar.</p>'
+        .'<h1>Prisijunkite prie GANG</h1><p class="lead">GANG padės barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų. '.e(launch_when() !== '' ? str_replace('GANG startuoja', 'Startuojame', launch_headline()).'. Pasiruošti galite jau dabar.' : 'Platforma pradės veikti netrukus, o pasiruošti galite jau dabar.').'</p>'
         .'<div class="join'.($employerFirst ? ' employer-first' : '').'">'.$workerBox.$employerBox.'</div>'
         .'<p class="meta">Jau užsiregistravote? <a href="/prisijungti">Prisijunkite</a></p>'
         .'<p class="back"><a href="/">← Grįžti į pagrindinį puslapį</a></p>'.$team.'</section></main></body></html>';

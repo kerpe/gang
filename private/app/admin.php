@@ -166,10 +166,10 @@ function invite_waitlist(): int
         $text = "Laba diena,\n\n".$intro.($worker
             ? ($public
                 ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.'
-                : "susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti. Paleidimo dieną jūsų profilis jau bus matomas darbdaviams.\n\nNuo paleidimo dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.")
+                : "susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti. ".(launch_when() !== '' ? launch_headline().'. Starto dieną' : 'Paleidimo dieną')." jūsų profilis jau bus matomas darbdaviams.\n\nNuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.")
             : ($public
                 ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
-                : "užregistruoti savo barą, restoraną ar kavinę.\n\nNuo paleidimo dienos galėsite skelbti darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto."))
+                : "užregistruoti savo barą, restoraną ar kavinę.\n\n".(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos')." galėsite skelbti darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto."))
             ."\n\nRegistracija trunka kelias minutes:\n".url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))
             ."\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
         $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');

@@ -99,8 +99,8 @@ function profile_page(): never
     $phoneNote = $worker ? 'Numerį darbdavys matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
     $soon = prelaunch() && !profile_complete($u)
         ? '<p class="notice tip">'.($worker
-            ? 'GANG pradės veikti netrukus. Dabar susikurkite profilį, o nuo paleidimo dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite darbo pasiūlymus.'
-            : 'GANG pradės veikti netrukus. Dabar užpildykite savo ir darbovietės duomenis, o nuo paleidimo dienos galėsite skelbti darbuotojų poreikius.').'</p>'
+            ? launch_headline().'. Dabar susikurkite profilį, o nuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite darbo pasiūlymus.'
+            : launch_headline().'. Dabar užpildykite savo ir darbovietės duomenis, o nuo starto dienos galėsite skelbti darbuotojų poreikius.').'</p>'
         : '';
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
@@ -345,8 +345,8 @@ function prelaunch_worker_dashboard(array $u): string
         : '';
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Profilis paruoštas</p></div></div>'
-        .'<section class="panel ok launch"><h2>GANG pradės veikti netrukus</h2>'
-        .'<p>Jūsų profilis išsaugotas. Paleidimo dieną jį matys barai, restoranai ir kavinės jūsų miestuose, o mes jums pranešime el. paštu. Tada galėsite pažymėti laisvas dienas kalendoriuje ir priimti darbo pasiūlymus.</p></section>'
+        .'<section class="panel ok launch"><h2>'.e(launch_headline()).'</h2>'
+        .'<p>Jūsų profilis išsaugotas. Starto dieną jį matys barai, restoranai ir kavinės jūsų miestuose, o mes jums pranešime el. paštu. Tada galėsite pažymėti laisvas dienas kalendoriuje ir priimti darbo pasiūlymus.</p></section>'
         .$tipHtml
         .'<h2>Taip jus matys darbdaviai</h2>'
         .'<section class="profile-preview"><dl class="contract-info">'
@@ -371,9 +371,9 @@ function prelaunch_manager_dashboard(array $u): string
             .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></p></div>';
     }
     return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<section class="panel ok launch"><h2>GANG pradės veikti netrukus</h2>'
-        .'<p>Jūsų darbovietės duomenys išsaugoti. Paleidimo dieną pranešime jums el. paštu: nuo tada galėsite skelbti darbuotojų poreikius pavadavimui, sezonui ar nuolatiniam darbui, o tinkami darbuotojai juos gaus iš karto.</p></section>'
-        .'<h2>Ką galėsite daryti nuo paleidimo dienos</h2><ol class="steps compact">'
+        .'<section class="panel ok launch"><h2>'.e(launch_headline()).'</h2>'
+        .'<p>Jūsų darbovietės duomenys išsaugoti. Starto dieną pranešime jums el. paštu: nuo tada galėsite skelbti darbuotojų poreikius pavadavimui, sezonui ar nuolatiniam darbui, o tinkami darbuotojai juos gaus iš karto.</p></section>'
+        .'<h2>Ką galėsite daryti nuo '.e(launch_day() ?: 'starto dienos').'</h2><ol class="steps compact">'
         .'<li><strong>Paskelbti poreikį</strong>Pareigos, datos, darbo laikas ir atlygis.</li>'
         .'<li><strong>Gauti kandidatūras</strong>Matysite kandidatų patirtį ir įvertinimus.</li>'
         .'<li><strong>Patvirtinti darbuotoją</strong>Abi šalys gauna viena kitos kontaktus.</li></ol>'

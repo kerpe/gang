@@ -78,10 +78,10 @@ function login_page(): never
     };
     $lead = match ($kind) {
         'worker' => prelaunch()
-            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite profilį: pareigas, patirtį ir miestus. Laiką, kada galite dirbti, pažymėsite nuo GANG paleidimo dienos.'
+            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite profilį: pareigas, patirtį ir miestus. Laiką, kada galite dirbti, pažymėsite nuo GANG starto'.(launch_day() !== '' ? ' '.launch_day() : ' dienos').'.'
             : 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
         'manager' => prelaunch()
-            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę. Darbuotojų poreikius skelbti galėsite nuo GANG paleidimo dienos.'
+            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę. Darbuotojų poreikius skelbti galėsite nuo GANG starto'.(launch_day() !== '' ? ' '.launch_day() : ' dienos').'.'
             : 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų poreikius.',
         default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };

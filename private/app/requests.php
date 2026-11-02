@@ -40,7 +40,7 @@ function venue_form_page(?int $id = null): never
         }
     }
     $title = $venue ? 'Darbovietės duomenys' : 'Užregistruokite savo barą, restoraną ar kavinę';
-    $soon = prelaunch() && !$venue ? '<p class="notice tip">Darbuotojų poreikius skelbti galėsite nuo GANG paleidimo dienos. Užregistravę darbovietę dabar, tą dieną galėsite pradėti iš karto.</p>' : '';
+    $soon = prelaunch() && !$venue ? '<p class="notice tip">Darbuotojų poreikius skelbti galėsite nuo GANG starto'.e(launch_day() !== '' ? ' '.launch_day() : ' dienos').'. Užregistravę darbovietę dabar, tą dieną galėsite pradėti iš karto.</p>' : '';
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
