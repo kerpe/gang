@@ -203,8 +203,6 @@ function how_page(): never
         ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atlygį ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
         ['ivertinimai', 'Įvertinimai', '<ul>'
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
-            .'<li>Darbdavys vertina darbuotoją, o darbuotojas – darbdavį (nuo 1 iki 5 žvaigždučių ir komentaras).</li>'
-            ."<li>Įvertinimas tampa matomas, kai įvertina abi šalys arba praėjus $days dienoms. Taip užtikrinama, kad vienos šalies įvertinimas nedarytų įtakos kitos šalies vertinimui.</li>"
             .'<li>Įvertinimo autorius neskelbiamas: rodomas tik miestas ir data.</li>'
             .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>'],
     ], '/kaip-veikia');
