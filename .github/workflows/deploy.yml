@@ -12,6 +12,8 @@
 #   PREVIEW_PASSWORD  until launch the whole site asks for this password
 # Optional: RESEND_KEY (sends mail through Resend instead of PHP mail()).
 # Launch: set the repository variable SITE_PUBLIC to true (Variables tab) and deploy again.
+# Planned start shown before launch: variable LAUNCH_DATE ("2026-12-01" for a day, "2026-12" for the month only,
+# "-" for none); without it the LAUNCH_DATE constant in private/app/bootstrap.php is used.
 # Optional repository variables: FTP_PROTOCOL (default ftps), SITE_DIR (default domains/gang.lt).
 name: Deploy to Hostinger
 
@@ -53,6 +55,7 @@ jobs:
           RESEND_KEY: ${{ secrets.RESEND_KEY }}
           PREVIEW_PASSWORD: ${{ secrets.PREVIEW_PASSWORD }}
           SITE_PUBLIC: ${{ vars.SITE_PUBLIC }}
+          LAUNCH_DATE: ${{ vars.LAUNCH_DATE }}
           TWILIO_SID: ${{ secrets.TWILIO_SID }}
           TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
         run: |
@@ -67,6 +70,7 @@ jobs:
             "resend_key" => (string) getenv("RESEND_KEY"),
             "preview_password" => (string) getenv("PREVIEW_PASSWORD"),
             "public" => getenv("SITE_PUBLIC") === "true",
+            "launch_date" => (string) getenv("LAUNCH_DATE"),
             "sms_provider" => getenv("TWILIO_SID") ? "twilio" : "",
             "sms_sid" => (string) getenv("TWILIO_SID"),
             "sms_token" => (string) getenv("TWILIO_TOKEN"),

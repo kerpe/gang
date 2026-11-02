@@ -17,14 +17,15 @@ function cam_photo(string $n): string
 
 function home_page(): never
 {
-    // Before launch there are no real listings yet, and job pages lead to the waitlist.
+    // Before launch there are no real listings yet: the team tiles lead to worker sign-up.
     $urgent = prelaunch() ? [] : open_requests(['kind' => 'skubu'], 6);
     $latest = $urgent ?: (prelaunch() ? [] : open_requests([], 6));
-    $jobs = prelaunch() ? '/laukiantieji' : '/darbai';
-    $jobsLabel = prelaunch() ? 'Stoti į laukiančiųjų sąrašą →' : 'Peržiūrėti pasiūlymus →';
+    $jobs = prelaunch() ? '/prisijungti?kaip=darbuotojas' : '/darbai';
+    $jobsLabel = prelaunch() ? 'Susikurti profilį →' : 'Peržiūrėti pasiūlymus →';
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
+    $start = prelaunch() && launch_when() !== '' ? '<li><strong>'.e(str_replace('GANG startuoja', 'Startuojame', launch_headline())).'</strong> registracija jau vyksta</li>' : '';
     $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
 
     // Hero: every camera that has a photo, cross-faded by the script below.
@@ -66,7 +67,7 @@ function home_page(): never
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda barams, restoranams ir kavinėms greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
-    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof</ul>
+    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof$start</ul>
   </div>
   $tabs
 </section>

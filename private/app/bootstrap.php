@@ -233,6 +233,42 @@ function date_lt(?string $date): string
     return $months[(int) date('n', $t)].' '.date('j', $t).' d.';
 }
 
+// Planned launch: config launch_date (from the LAUNCH_DATE repository variable), else this default.
+// "YYYY-MM-DD" shows a day, "YYYY-MM" only the month, "-" no date at all.
+const LAUNCH_DATE = '2026-12';
+
+// "gruodžio 1 d.", "gruodį" or '' when no date is shown.
+function launch_when(): string
+{
+    $d = (string) (config()['launch_date'] ?? '') ?: LAUNCH_DATE;
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) {
+        return date_lt($d);
+    }
+    if (preg_match('/^\d{4}-(\d{2})$/', $d, $m)) {
+        return ['', 'sausį', 'vasarį', 'kovą', 'balandį', 'gegužę', 'birželį', 'liepą', 'rugpjūtį', 'rugsėjį', 'spalį', 'lapkritį', 'gruodį'][(int) $m[1]] ?? '';
+    }
+    return '';
+}
+
+// The exact start day ("gruodžio 1 d.") when one is set, else ''.
+function launch_day(): string
+{
+    return str_ends_with(launch_when(), 'd.') ? launch_when() : '';
+}
+
+// "GANG startuoja gruodžio 1 d.", "GANG startuoja jau gruodį" or "GANG pradės veikti netrukus".
+function launch_headline(): string
+{
+    $when = launch_when();
+    return $when === '' ? 'GANG pradės veikti netrukus' : 'GANG startuoja '.(launch_day() === '' ? 'jau ' : '').$when;
+}
+
+// Prefix for what opens at launch: "Nuo gruodžio 1 d." or "Nuo starto dienos".
+function from_launch(): string
+{
+    return launch_day() !== '' ? 'Nuo '.launch_day() : 'Nuo starto dienos';
+}
+
 function period(array $r): string
 {
     if (!empty($r['dates'])) {
