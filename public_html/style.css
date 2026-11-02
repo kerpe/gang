@@ -645,3 +645,15 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
   .job-facts > div:nth-child(even) { border-left: 1px solid var(--line); }
   .job-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
+
+/* Flash messages: toast at the bottom of the screen (above the phone tab bar) */
+.toast { position: fixed; z-index: 40; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom)); width: min(560px, calc(100% - 32px));
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 14px 14px 18px; border-radius: var(--radius);
+  background: #23270f; border: 1px solid rgba(216,255,54,.6); color: var(--ink); box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  animation: toast-in .3s ease-out; transition: opacity .4s, transform .4s; }
+.toast p { margin: 0; flex: 1; }
+.toast button { background: none; border: 0; color: var(--muted); font-size: 1.4rem; line-height: 1; padding: 0 4px; cursor: pointer; }
+.toast.out { opacity: 0; transform: translate(-50%, 12px); }
+body.has-tabbar .toast { bottom: calc(var(--tabbar-h, 0px) + 14px + env(safe-area-inset-bottom)); }
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
+@media (prefers-reduced-motion: reduce) { .toast { animation: none; transition: none; } }
