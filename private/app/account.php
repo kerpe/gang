@@ -93,7 +93,7 @@ function profile_page(): never
             $roleRows .= '<div class="role-xp"><label class="choice"><input type="checkbox" name="roles[]" value="'.$role.'"'.(in_array($role, $v['roles'], true) ? ' checked' : '').'> '.e($label).'</label>'
                 .'<select name="xp['.$role.']" aria-label="'.e($label).': patirtis">'.options(['' => 'Nurodykite patirtį'] + EXPERIENCE, $v['xp'][$role] ?? '').'</select></div>';
         }
-        $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite pareigas, kurias galite eiti, ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
+        $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
@@ -443,30 +443,16 @@ function manager_dashboard(array $u): string
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }
 
-// Two weeks at a glance; the full calendar (the same one employers use for requests) opens on demand.
+// The same calendar employers use for requests, always open: marked days, quick picks and save in one place.
 function availability_panel(array $u): string
 {
     $ranges = availability_ranges((int) $u['id']);
-    $marked = availability_days((int) $u['id']);
-    $wd = ['Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št', 'Sk'];
-    $strip = '';
-    for ($i = 0; $i < 14; $i++) {
-        $t = strtotime(today().' +'.$i.' days');
-        $d = date('Y-m-d', $t);
-        $strip .= '<span class="strip-day'.(isset($marked[$d]) ? ' on' : '').((int) date('N', $t) >= 6 ? ' weekend' : '').($i === 0 ? ' today' : '').'" title="'.e(date_lt($d)).'">'
-            .'<small>'.$wd[(int) date('N', $t) - 1].'</small>'.(int) date('j', $t).'</span>';
-    }
     $status = is_available((int) $u['id'])
         ? '<p class="status on">● Šiandien galite priimti darbo pasiūlymus</p>'
         : '<p class="status off">● Šiandien laisvos dienos nepažymėtos</p>';
-    $labels = array_map('range_lt', $ranges);
-    $summary = $ranges
-        ? '<p class="meta">Pažymėta: '.e(implode('; ', array_slice($labels, 0, 4))).(count($labels) > 4 ? ' ir dar '.(count($labels) - 4) : '').'</p>'
-        : '<p class="meta">Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>';
     $value = implode(',', array_map(fn ($r) => max($r['start_date'], today()).':'.$r['end_date'], $ranges));
     return '<section class="panel avail" id="laisvumas"><h2>Mano laisvos dienos</h2>'.$status
-        .'<div class="strip" aria-label="Artimiausios dvi savaitės">'.$strip.'</div>'.$summary
-        .'<details class="avail-edit"'.($ranges ? '' : ' open').'><summary class="btn small'.($ranges ? ' ghost' : '').'">Tvarkyti laisvas dienas</summary>'
+        .'<p class="meta">Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
         // First submit button handles Enter: save, not "today".
         .'<button class="offscreen" tabindex="-1" aria-hidden="true">Išsaugoti</button>'
@@ -474,12 +460,13 @@ function availability_panel(array $u): string
         .'<button class="btn small ghost" name="add" value="today">Šiandien</button>'
         .'<button class="btn small ghost" name="add" value="week">Artimiausios 7 dienos</button>'
         .'<button class="btn small ghost" name="add" value="month">Artimiausias mėnuo</button></div>'
-        .'<p class="hint">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Pažymėtą dieną ar laikotarpį pašalinsite spustelėję jį dar kartą arba ×.</p>'
+        .'<p class="hint">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius. Pažymėtą dieną ar laikotarpį pašalinsite spustelėję jį dar kartą arba ×.</p>'
         .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'" data-limit="60" data-empty="Laisvų dienų dar nepažymėjote."><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
         .'<input type="hidden" name="dates" value="'.e($value).'">'
         .'<div class="cal-actions"><button class="btn">Išsaugoti laisvas dienas</button>'
+        .'<span class="unsaved" hidden>Pakeitimai dar neišsaugoti</span>'
         .($ranges ? '<button class="btn small ghost" name="add" value="clear" onclick="return confirm(\'Pašalinti visas pažymėtas laisvas dienas?\')">Pašalinti visas</button>' : '').'</div>'
-        .'</form></details></section>';
+        .'</form></section>';
 }
 
 function review_link(array $c, bool $reviewed): string

@@ -46,7 +46,9 @@ function page(string $title, string $body, array $opt = []): never
     }
     $bodyClass = $tabbar ? ' class="has-tabbar"' : '';
     $flash = flash();
-    $flash = $flash !== '' ? '<div class="wrap"><div class="notice ok flash">'.e($flash).'</div></div>' : '';
+    // Shown as a toast at the bottom of the screen, where it is seen after a form is sent.
+    $flash = $flash !== '' ? '<div class="toast" role="status"><p>'.e($flash).'</p><button type="button" aria-label="Uždaryti" onclick="this.parentNode.remove()">×</button></div>'
+        .'<script>setTimeout(function () { var t = document.querySelector(".toast"); if (t) { t.classList.add("out"); setTimeout(function () { t.remove(); }, 400); } }, 9000);</script>' : '';
     $year = date('Y');
     $logoMark = knives();
     $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
@@ -64,7 +66,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=29">
+<link rel="stylesheet" href="/style.css?v=31">
 $head
 </head>
 <body$bodyClass>
@@ -77,7 +79,7 @@ $flash
 $body
 </main>
 <footer class="foot"><div class="wrap">
-  <p><strong>GANG.lt</strong> – patikimi darbuotojai barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
+  <p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
   <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>$jobsLink · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
 </div></footer>
 $tabbar
