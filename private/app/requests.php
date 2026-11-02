@@ -45,7 +45,7 @@ function venue_form_page(?int $id = null): never
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
         .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'
-        .'<label>Adresas <small>(darbuotojas matys tik po patvirtinimo)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
+        .'<label>Adresas <small>(matomas skelbimuose ir darbovietės puslapyje)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
         .'<label>Apie darbovietę <small>(bent '.VENUE_ABOUT_MIN.' simbolių)</small><textarea name="about" rows="5" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, darbas vakarais, apmokymai vietoje.">'.e($v['about']).'</textarea>'
         .'<span class="counter meta" aria-live="polite"></span>'.err($errors, 'about').'</label>'
         .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
@@ -214,7 +214,7 @@ function venue_page(int $id): never
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
-    page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').' · '.stars($avg, $n).'</p>'
+    page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(full_address($venue)).' · '.stars($avg, $n).'</p>'
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$jobsHtml.'<h2>Darbuotojų įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }
@@ -437,17 +437,27 @@ function request_page(int $id): never
     }
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
+    $place = full_address($r);
     [$avg, $n] = venue_rating((int) $r['venue_id']);
-    $facts = '<ul class="facts"><li><b>Kada</b>'.e(period($r)).'</li>'
-        .($r['hours'] !== '' ? '<li><b>Darbo laikas</b>'.e($r['hours']).'</li>' : '')
-        .($r['pay'] !== '' ? '<li><b>Atlygis</b>'.e($r['pay']).'</li>' : '')
-        .'<li><b>Tipas</b>'.e(KINDS[$r['kind']] ?? '').'</li>'
-        .'<li><b>Patirtis</b>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</li>'
-        .((int) $r['people'] > 1 ? '<li><b>Reikia</b>'.(int) $r['people'].' žm.</li>' : '').'</ul>';
+    // Dates as separate chips; pay split into the amount and its unit so the amount stands out.
+    $dates = !empty($r['dates']) ? array_map(fn ($p) => span_lt(...explode(':', $p)), explode(',', $r['dates'])) : [period($r)];
+    $chips = '<ul class="date-chips">'.implode('', array_map(fn ($d) => '<li>'.e($d).'</li>', $dates)).'</ul>';
+    $payBox = '';
+    if ($r['pay'] !== '') {
+        $payBox = preg_match('/^([\d,]+)\s*€/u', $r['pay'], $m)
+            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).' €</strong><span class="unit">už valandą</span></div>'
+            : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
+    }
+    $facts = '<dl class="job-facts">'
+        .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
+        .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
+        .'<div><dt>Reikia darbuotojų</dt><dd>'.(int) $r['people'].'</dd></div>'
+        .'<div><dt>Darbovietė</dt><dd>'.($u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a>' : e($r['venue_name'])).'</dd></div>'
+        .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div></dl>';
+    $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
-    $urgent = $r['kind'] === 'skubu' ? '<span class="tag urgent">Skubu</span> ' : '';
     $e = 'e';
     $ld = '';
     if ($isOpen) {
@@ -460,18 +470,25 @@ function request_page(int $id): never
             'validThrough' => ($r['end_date'] ?: ($r['kind'] === 'nuolat' ? date('Y-m-d', strtotime($r['created_at'].' +30 days')) : $r['start_date'])).'T23:59:00+02:00',
             'employmentType' => ['skubu' => 'PER_DIEM', 'trumpai' => 'TEMPORARY', 'sezonas' => 'TEMPORARY', 'nuolat' => 'FULL_TIME'][$r['kind']],
             'hiringOrganization' => ['@type' => 'Organization', 'name' => $r['venue_name']],
-            'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress', 'addressLocality' => $city, 'addressCountry' => 'LT']],
+            'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
     page("$role – {$r['venue_name']}, $city", <<<HTML
-<article class="wrap narrow job">
+<article class="wrap job">
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
-  <p>$urgent</p>
-  <h1>{$e($role)}</h1>
-  <p class="meta">$venueLink · {$e($city)}</p>
-  $facts
-  <div class="desc">$desc</div>
-  $action
+  <header class="job-head">
+    <p class="job-tags"><span class="tag{$e($r['kind'] === 'skubu' ? ' urgent' : '')}">{$e(KINDS[$r['kind']] ?? '')}</span></p>
+    <h1>{$e($role)}</h1>
+    <p class="meta">$venueLink · {$e($city)}</p>
+  </header>
+  <div class="job-grid">
+    <aside class="job-side">$payBox$facts</aside>
+    <div class="job-main">
+      $when
+      <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      $action
+    </div>
+  </div>
 </article>
 HTML, [
         'description' => mb_substr("$role, {$r['venue_name']}, $city: ".preg_replace('/\s+/', ' ', $r['description']), 0, 155),

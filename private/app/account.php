@@ -20,8 +20,11 @@ function profile_page(): never
         if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
             $errors['name'] = 'Įrašykite vardą ir pavardę.';
         }
-        if (!preg_match('/^\+?[0-9 ()-]{8,20}$/', $v['phone'])) {
-            $errors['phone'] = 'Įrašykite telefono numerį, pavyzdžiui, +370 600 00000.';
+        [$phone, $phoneError] = check_phone($v['phone']);
+        if ($phoneError !== '') {
+            $errors['phone'] = $phoneError;
+        } else {
+            $v['phone'] = $phone;
         }
         if ($worker && to_list($v['roles'], ROLES) === '') {
             $errors['roles'] = 'Pažymėkite bent vienas pareigas.';
@@ -106,10 +109,10 @@ function profile_page(): never
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
         .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" autocomplete="name" required>'.err($errors, 'name').'</label>'
-        .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" required>'.err($errors, 'phone').'</label>'
+        .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" required placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
-        .'<button class="btn">Išsaugoti</button></form></section>'.($worker ? photo_resize_script() : ''), ['noindex' => true]);
+        .'<button class="btn">Išsaugoti</button></form></section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
 }
 
 // Shrinks large phone photos in the browser before upload; the server still validates and re-encodes.
@@ -488,4 +491,92 @@ function review_link(array $c, bool $reviewed): string
         return '<span class="meta">Įvertinti galėsite pradėjus darbą</span>';
     }
     return '<a class="btn small" href="/vertinti/'.(int) $c['id'].'">Įvertinti</a>';
+}
+
+// Phone numbers: international format only. Country code => [country, min, max digits after the code].
+const PHONE_CODES = [
+    '370' => ['Lietuva', 8, 8], '371' => ['Latvija', 8, 8], '372' => ['Estija', 7, 8], '48' => ['Lenkija', 9, 9],
+    '49' => ['Vokietija', 7, 12], '44' => ['Jungtinė Karalystė', 10, 10], '353' => ['Airija', 7, 9], '33' => ['Prancūzija', 9, 9],
+    '34' => ['Ispanija', 9, 9], '39' => ['Italija', 6, 11], '31' => ['Nyderlandai', 9, 9], '32' => ['Belgija', 8, 9],
+    '45' => ['Danija', 8, 8], '46' => ['Švedija', 7, 9], '47' => ['Norvegija', 8, 8], '358' => ['Suomija', 6, 10],
+    '351' => ['Portugalija', 9, 9], '30' => ['Graikija', 10, 10], '43' => ['Austrija', 7, 13], '41' => ['Šveicarija', 9, 9],
+    '420' => ['Čekija', 9, 9], '421' => ['Slovakija', 9, 9], '36' => ['Vengrija', 8, 9], '40' => ['Rumunija', 9, 9],
+    '359' => ['Bulgarija', 8, 9], '385' => ['Kroatija', 8, 9], '386' => ['Slovėnija', 8, 8], '352' => ['Liuksemburgas', 6, 11],
+    '356' => ['Malta', 8, 8], '357' => ['Kipras', 8, 8], '354' => ['Islandija', 7, 7], '380' => ['Ukraina', 9, 9],
+    '375' => ['Baltarusija', 9, 9], '373' => ['Moldova', 8, 8], '7' => ['Rusija / Kazachstanas', 10, 10], '995' => ['Sakartvelas', 9, 9],
+    '374' => ['Armėnija', 8, 8], '994' => ['Azerbaidžanas', 9, 9], '998' => ['Uzbekistanas', 9, 9], '996' => ['Kirgizija', 9, 9],
+    '992' => ['Tadžikija', 9, 9], '993' => ['Turkmėnistanas', 8, 8], '381' => ['Serbija', 8, 9], '382' => ['Juodkalnija', 8, 8],
+    '383' => ['Kosovas', 8, 8], '387' => ['Bosnija ir Hercegovina', 8, 8], '389' => ['Šiaurės Makedonija', 8, 8], '355' => ['Albanija', 9, 9],
+    '90' => ['Turkija', 10, 10], '1' => ['JAV / Kanada', 10, 10], '52' => ['Meksika', 10, 10], '55' => ['Brazilija', 10, 11],
+    '61' => ['Australija', 9, 9], '64' => ['Naujoji Zelandija', 8, 10], '91' => ['Indija', 10, 10], '92' => ['Pakistanas', 10, 10],
+    '880' => ['Bangladešas', 10, 10], '86' => ['Kinija', 11, 11], '81' => ['Japonija', 9, 10], '82' => ['Pietų Korėja', 9, 10],
+    '84' => ['Vietnamas', 9, 10], '66' => ['Tailandas', 8, 9], '63' => ['Filipinai', 10, 10], '62' => ['Indonezija', 9, 12],
+    '972' => ['Izraelis', 8, 9], '971' => ['JAE', 8, 9], '20' => ['Egiptas', 9, 10], '27' => ['PAR', 9, 9], '234' => ['Nigerija', 8, 10],
+];
+const PHONE_FORMAT_ERROR = 'Netinkamai įvestas telefono numeris: įrašykite jį su šalies kodu, pavyzdžiui, +370 600 00000.';
+
+// Returns [normalized number, ''] or ['', error message].
+function check_phone(string $raw): array
+{
+    $p = trim($raw);
+    if (str_starts_with($p, '00')) {
+        $p = '+'.substr($p, 2);
+    }
+    if (!preg_match('/^\+[0-9 ()\-]+$/', $p)) {
+        return ['', PHONE_FORMAT_ERROR];
+    }
+    $digits = preg_replace('/\D/', '', $p);
+    foreach ([3, 2, 1] as $len) {
+        $code = substr($digits, 0, $len);
+        if (isset(PHONE_CODES[$code])) {
+            [$country, $min, $max] = PHONE_CODES[$code];
+            $n = strlen($digits) - $len;
+            if ($n < $min || $n > $max) {
+                $need = $min === $max ? $min : "$min–$max";
+                return ['', "Netinkamai įvestas telefono numeris: skaitmenų po šalies kodo +$code ($country) turi būti $need, o įvesta $n."];
+            }
+            return ['+'.$code.' '.substr($digits, $len), ''];
+        }
+    }
+    return ['', 'Netinkamai įvestas šalies kodas. Patikrinkite numerio pradžią, pavyzdžiui, +370 (Lietuva).'];
+}
+
+// Same check in the browser, so a mistake shows while typing.
+function phone_check_script(): string
+{
+    $codes = json_encode(PHONE_CODES, JSON_UNESCAPED_UNICODE);
+    $format = json_encode(PHONE_FORMAT_ERROR, JSON_UNESCAPED_UNICODE);
+    return <<<HTML
+<script>
+(function () {
+  var input = document.querySelector('input[name=phone]'), msg = document.getElementById('phone-live');
+  if (!input || !msg) return;
+  var codes = $codes, formatError = $format;
+  function problem(v, final) {
+    v = v.trim();
+    if (v === '') return final ? formatError : '';
+    if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    if (!/^\+[0-9 ()\-]*$/.test(v)) return formatError;
+    var d = v.replace(/\D/g, '');
+    if (d.length < 3 && !final) return '';
+    for (var len = 3; len >= 1; len--) {
+      var c = d.slice(0, len), r = codes[c];
+      if (!r) continue;
+      var n = d.length - len;
+      if (n > r[2] || (final && n < r[1])) return 'Netinkamai įvestas telefono numeris: skaitmenų po šalies kodo +' + c + ' (' + r[0] + ') turi būti ' + (r[1] === r[2] ? r[1] : r[1] + '–' + r[2]) + ', o įvesta ' + n + '.';
+      return '';
+    }
+    return 'Netinkamai įvestas šalies kodas. Patikrinkite numerio pradžią, pavyzdžiui, +370 (Lietuva).';
+  }
+  function show(final) { var p = problem(input.value, final); msg.textContent = p; msg.hidden = !p; return !p; }
+  input.addEventListener('input', function () {
+    var clean = input.value.replace(/[^0-9+ ()\-]/g, '');
+    if (clean !== input.value) input.value = clean;
+    show(false);
+  });
+  input.addEventListener('blur', function () { if (input.value.trim() !== '') show(true); });
+  input.form.addEventListener('submit', function (e) { if (!show(true)) { e.preventDefault(); input.focus(); } });
+})();
+</script>
+HTML;
 }

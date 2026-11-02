@@ -610,3 +610,38 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .shift-status.warn { border-color: rgba(255,101,74,.5); background: rgba(255,101,74,.08); color: var(--ink); }
 .shift-answer { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
 .shift-note { margin: 14px 0 0; font-size: .92rem; }
+
+/* Job page: header, pay + facts card, labelled sections */
+.job-head { margin-bottom: 26px; }
+.job-head h1 { margin: 6px 0 8px; }
+.job-tags { margin: 0; }
+.job-grid { display: grid; gap: 24px; }
+.job-side { display: grid; gap: 14px; align-content: start; }
+.pay-box { background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.45); border-radius: var(--radius); padding: 18px 20px; }
+.pay-box .label, .job-sec h2, .job-facts dt { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.pay-box strong { display: block; font-size: 2.4rem; line-height: 1.1; color: var(--lime); margin: 6px 0 2px; }
+.pay-box strong.text { font-size: 1.3rem; }
+.pay-box .unit { color: var(--muted); }
+.job-facts { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.job-facts > div { padding: 12px 18px; border-top: 1px solid var(--line); }
+.job-facts > div:first-child { border-top: 0; }
+.job-facts dd { margin: 3px 0 0; }
+.job-main { min-width: 0; }
+.job-sec { margin: 0 0 26px; }
+.job-sec h2 { margin: 0 0 10px; font-family: inherit; }
+.date-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.date-chips li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
+.job-hours { margin: 12px 0 0; }
+.job-main .panel { margin-top: 0; }
+@media (min-width: 900px) {
+  .job-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 36px; }
+  .job-side { grid-column: 2; grid-row: 1; position: sticky; top: 90px; }
+  .job-main { grid-column: 1; grid-row: 1; }
+}
+@media (max-width: 899px) {
+  .job-facts { display: grid; grid-template-columns: 1fr 1fr; }
+  .job-facts > div { border-top: 1px solid var(--line); }
+  .job-facts > div:nth-child(-n+2) { border-top: 0; }
+  .job-facts > div:nth-child(even) { border-left: 1px solid var(--line); }
+  .job-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
