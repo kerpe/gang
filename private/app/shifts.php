@@ -8,6 +8,13 @@ declare(strict_types=1);
 const SHIFT_REMIND_HOUR = 10;
 const SHIFT_ALERT_HOUR = 16;
 
+// Told to the worker before applying and again when accepted.
+function shift_notice(): string
+{
+    return 'Dieną prieš darbo pradžią '.SHIFT_REMIND_HOUR.' val. el. paštu gausite nuorodą atvykimui patvirtinti. Prašome patvirtinti iki '.SHIFT_ALERT_HOUR
+        .' val. Nepatvirtinus darbdavys susisieks su jumis ir prireikus ieškos pakaitinio darbuotojo.';
+}
+
 // The contract's work periods as [from, to] pairs; a permanent job has one, its first day.
 function contract_ranges(array $c): array
 {
@@ -121,9 +128,12 @@ function alert_manager(array $s, bool $declined): void
     $what = $declined ? "$who pranešė, kad rytoj (".date_lt($s['shift_date']).") negalės atvykti į pamainą" : "$who iki ".SHIFT_ALERT_HOUR.' val. nepatvirtino rytojaus pamainos';
     send_mail($s['manager_email'], ($declined ? 'Darbuotojas neatvyks rytoj: ' : 'Nepatvirtinta rytojaus pamaina: ').$who.' – '.$s['venue_name'],
         "Laba diena,\n\n$what ({$s['venue_name']}, $role).\n\n"
-        .($declined ? '' : "Rekomenduojame susisiekti su darbuotoju telefonu: {$s['worker_phone']}\n\n")
-        ."Jei reikalingas pakaitinis darbuotojas, skubų poreikį rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą:\n$link");
-    send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks' : ' nepatvirtino rytojaus pamainos').'. Pakaitinis darbuotojas: '.$link);
+        .($declined
+            ? "Darbuotojo telefonas: {$s['worker_phone']}\n\n"
+            : "Rekomenduojame pirmiausia paskambinti darbuotojui ir įsitikinti, kad rytoj atvyks: {$s['worker_phone']}\n"
+              ."Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.\n\n")
+        .($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas')." pakaitinis darbuotojas, skubų poreikį rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą:\n$link");
+    send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks. Pakaitinis darbuotojas: '.$link : ' nepatvirtino rytojaus pamainos. Paskambinkite: '.sms_phone($s['worker_phone']).'. Pakaitinis: '.$link));
 }
 
 // SMS text without Lithuanian letters fits one 160-character message.
@@ -189,11 +199,11 @@ function shift_status(array $c, string $side): string
             ? '<p class="shift-status warn">Pranešėte, kad '.$day.' neatvyksite</p>'
             : '<p class="shift-status wait">Patvirtinkite, ar atvyksite '.$day.' <a class="btn small" href="/pamaina/'.e($s['token']).'">Patvirtinti</a></p>';
     }
-    $replace = '<a class="btn small" href="'.e(replacement_url($s)).'">Rasti pakaitinį</a>';
+    $replace = tel_link($s['worker_phone'], 'Skambinti').'<a class="btn small ghost" href="'.e(replacement_url($s)).'">Rasti pakaitinį</a>';
     if ($s['declined_at']) {
-        return '<p class="shift-status warn">Darbuotojas '.$day.' neatvyks '.$replace.'</p>';
+        return '<p class="shift-status warn">Darbuotojas pranešė, kad '.$day.' neatvyks '.$replace.'</p>';
     }
     return $s['alerted_at']
-        ? '<p class="shift-status warn">Atvykimas '.$day.' nepatvirtintas '.$replace.'</p>'
+        ? '<p class="shift-status warn">Atvykimas '.$day.' nepatvirtintas. Paskambinkite darbuotojui '.$replace.'</p>'
         : '<p class="shift-status wait">Laukiama, kol darbuotojas patvirtins atvykimą (iki '.SHIFT_ALERT_HOUR.' val.)</p>';
 }

@@ -580,3 +580,4 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .shift-status.wait { color: var(--muted); font-weight: 400; }
 .shift-status.warn { border-color: rgba(255,101,74,.5); background: rgba(255,101,74,.08); color: var(--ink); }
 .shift-answer { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+.shift-note { margin: 14px 0 0; font-size: .92rem; }

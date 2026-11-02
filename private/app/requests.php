@@ -510,6 +510,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
+        .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
 }
@@ -520,6 +521,7 @@ function accepted_panel(array $r, array $u): string
         .' WHERE c.request_id = ? AND c.worker_id = ?', [$r['id'], $u['id']])->fetch();
     return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
         .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
+        .'<p class="shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>';
 }
 
@@ -670,6 +672,7 @@ function decide_response_action(int $responseId, bool $accept): never
         ."Kur: ".($r['address'] ?: CITIES[$r['city']])."\n"
         ."Kontaktas: {$u['name']}, {$u['phone']}\n\n"
         ."Rekomenduojame susisiekti su darbdaviu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.\n\n"
+        .'Atvykimo patvirtinimas. '.shift_notice()."\n\n"
         ."Baigę darbą galėsite įvertinti darbdavį savo paskyroje:\n".url('/mano'), $u['email']);
     $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
     if ($accepted >= (int) $r['people']) {
