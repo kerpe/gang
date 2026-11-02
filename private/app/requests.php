@@ -45,7 +45,7 @@ function venue_form_page(?int $id = null): never
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
         .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'
-        .'<label>Adresas <small>(darbuotojas matys tik po patvirtinimo)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
+        .'<label>Adresas <small>(matomas skelbimuose ir darbovietės puslapyje)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
         .'<label>Apie darbovietę <small>(bent '.VENUE_ABOUT_MIN.' simbolių)</small><textarea name="about" rows="5" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, darbas vakarais, apmokymai vietoje.">'.e($v['about']).'</textarea>'
         .'<span class="counter meta" aria-live="polite"></span>'.err($errors, 'about').'</label>'
         .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
@@ -214,7 +214,7 @@ function venue_page(int $id): never
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
-    page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').' · '.stars($avg, $n).'</p>'
+    page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(full_address($venue)).' · '.stars($avg, $n).'</p>'
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$jobsHtml.'<h2>Darbuotojų įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }
@@ -437,6 +437,7 @@ function request_page(int $id): never
     }
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
+    $place = full_address($r);
     [$avg, $n] = venue_rating((int) $r['venue_id']);
     $facts = '<ul class="facts"><li><b>Kada</b>'.e(period($r)).'</li>'
         .($r['hours'] !== '' ? '<li><b>Darbo laikas</b>'.e($r['hours']).'</li>' : '')
@@ -460,7 +461,7 @@ function request_page(int $id): never
             'validThrough' => ($r['end_date'] ?: ($r['kind'] === 'nuolat' ? date('Y-m-d', strtotime($r['created_at'].' +30 days')) : $r['start_date'])).'T23:59:00+02:00',
             'employmentType' => ['skubu' => 'PER_DIEM', 'trumpai' => 'TEMPORARY', 'sezonas' => 'TEMPORARY', 'nuolat' => 'FULL_TIME'][$r['kind']],
             'hiringOrganization' => ['@type' => 'Organization', 'name' => $r['venue_name']],
-            'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress', 'addressLocality' => $city, 'addressCountry' => 'LT']],
+            'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
     page("$role – {$r['venue_name']}, $city", <<<HTML
@@ -468,7 +469,7 @@ function request_page(int $id): never
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
   <p>$urgent</p>
   <h1>{$e($role)}</h1>
-  <p class="meta">$venueLink · {$e($city)}</p>
+  <p class="meta">$venueLink · {$e($place)}</p>
   $facts
   <div class="desc">$desc</div>
   $action
