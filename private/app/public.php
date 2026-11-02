@@ -225,7 +225,7 @@ function about_page(): never
         ['kas-mes', 'GANG', '<blockquote><p>HoReCa sektoriuje sukuosi nuo 2008 metų ir dirbti teko visose įmanomose pozicijose: virtuvėje, bare, salėje ir, žinoma, lauke prie klubo durų.</p>'
             .'<p>Puikiai žinau, kaip atrodo darbas, kai pamainoje trūksta bent vieno iš kolegų, ir ne kartą teko pačiam ieškoti pagalbos visais įmanomais kanalais.</p>'
             .'<p>GANG padės skubiai rasti patikimą komandos narį, o geri specialistai čia lengvai ras sau tinkamiausią darbą.</p>'
-            .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau žmonių, neturinčių nieko bendro su HoReCa, teiraujasi, ar galėtų porą dienų pabandyti pasidarbuoti bare ar pagelbėti virtuvėje. Pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, gyvenime neatsiradus tinkamai progai, taip ir lieka net neišbandytas. GANG’e tikrai rasime darbo ir žaliems.</p></blockquote>'
+            .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau žmonių, neturinčių nieko bendro su HoReCa, teiraujasi, ar galėtų porą dienų pabandyti pasidarbuoti bare ar pagelbėti virtuvėje. Pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, gyvenime neatsiradus tinkamai progai, taip ir lieka net neišbandytas – GANG tikrai rasime darbo ir žaliems.</p></blockquote>'
             .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
     ], '/apie');
 }
