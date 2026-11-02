@@ -100,7 +100,7 @@ function profile_page(): never
     $soon = prelaunch() && !profile_complete($u)
         ? '<p class="notice tip">'.($worker
             ? launch_headline().'. Dabar susikurkite profilį, o nuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite darbo pasiūlymus.'
-            : launch_headline().'. Dabar užpildykite savo ir darbovietės duomenis, o nuo starto dienos galėsite skelbti darbuotojų poreikius.').'</p>'
+            : launch_headline().'. Dabar užpildykite savo ir darbovietės duomenis, o nuo starto dienos galėsite skelbti darbuotojų paieškas.').'</p>'
         : '';
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
@@ -372,9 +372,9 @@ function prelaunch_manager_dashboard(array $u): string
     }
     return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<section class="panel ok launch"><h2>'.e(launch_headline()).'</h2>'
-        .'<p>Jūsų darbovietės duomenys išsaugoti. Starto dieną pranešime jums el. paštu: nuo tada galėsite skelbti darbuotojų poreikius pavadavimui, sezonui ar nuolatiniam darbui, o tinkami darbuotojai juos gaus iš karto.</p></section>'
+        .'<p>Jūsų darbovietės duomenys išsaugoti. Starto dieną pranešime jums el. paštu: nuo tada galėsite skelbti darbuotojų paieškas pavadavimui, sezonui ar nuolatiniam darbui, o tinkami darbuotojai jas gaus iš karto.</p></section>'
         .'<h2>Ką galėsite daryti nuo '.e(launch_day() ?: 'starto dienos').'</h2><ol class="steps compact">'
-        .'<li><strong>Paskelbti poreikį</strong>Pareigos, datos, darbo laikas ir atlygis.</li>'
+        .'<li><strong>Paskelbti paiešką</strong>Pareigos, datos, darbo laikas ir atlygis.</li>'
         .'<li><strong>Gauti kandidatūras</strong>Matysite kandidatų patirtį ir įvertinimus.</li>'
         .'<li><strong>Patvirtinti darbuotoją</strong>Abi šalys gauna viena kitos kontaktus.</li></ol>'
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
@@ -429,13 +429,13 @@ function manager_dashboard(array $u): string
         ? '<p class="meta">Žmonės, su kuriais jau dirbote per GANG. Pakviestas žmogus gaus asmeninį kvietimą, o darbas bus užfiksuotas kaip GANG kontraktas su abipusiais įvertinimais.</p><div class="venue-grid team-grid">'.$teamHtml.'</div>'
         : '<p class="meta">Čia matysite žmones, su kuriais dirbote per GANG. Kitą kartą juos galėsite pakviesti vienu paspaudimu.</p>');
     return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
-        .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti poreikį</a></p>' : '')
-        .'<h2>Aktyvūs poreikiai</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių poreikių nėra</h3>'
-            .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite poreikį. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
-            .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti poreikį</a></p></div></div>')
+        .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
+        .'<h2>Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
+            .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
+            .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>')
         .$team
         .($contractHtml ? '<h2>GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
-        .($earlierHtml ? '<h2>Ankstesni poreikiai</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
+        .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }

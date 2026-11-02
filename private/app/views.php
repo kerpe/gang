@@ -29,7 +29,7 @@ function page(string $title, string $body, array $opt = []): never
     if ($user && !prelaunch() && profile_complete($user)) {
         $tabs = $user['kind'] === 'worker'
             ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#laisvumas', 'Laisvos dienos', 'cal'], ['/profilis', 'Profilis', 'user']]
-            : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Naujas poreikis', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
+            : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
         $icons = [
             'home' => '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
             'list' => '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
