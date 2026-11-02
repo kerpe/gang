@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 function migrate(PDO $db): void
 {
@@ -97,6 +97,15 @@ function migrate(PDO $db): void
             request_id INT NOT NULL,
             worker_id INT NOT NULL,
             created_at DATETIME NOT NULL",
+        // Version 8: arrival confirmation the day before a work period starts (one row per contract and day).
+        'shift_checks' => "id $id,
+            contract_id INT NOT NULL,
+            shift_date DATE NOT NULL,
+            token CHAR(32) NOT NULL,
+            reminded_at DATETIME NOT NULL,
+            confirmed_at DATETIME NULL,
+            declined_at DATETIME NULL,
+            alerted_at DATETIME NULL",
         // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
         'waitlist' => "id $id,
             email VARCHAR(190) NOT NULL UNIQUE,
@@ -148,6 +157,8 @@ function migrate(PDO $db): void
         'contracts_worker' => 'contracts (worker_id)',
         'invites_request' => 'invites (request_id, worker_id)',
         'invites_worker' => 'invites (worker_id)',
+        'shift_checks_contract' => 'shift_checks (contract_id, shift_date)',
+        'shift_checks_token' => 'shift_checks (token)',
         'reviews_contract' => 'reviews (contract_id)',
         'requests_status' => 'requests (status)',
         'login_codes_email' => 'login_codes (email)',

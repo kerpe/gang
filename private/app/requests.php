@@ -244,6 +244,13 @@ function request_form_page(): never
     } elseif ($from && (int) $from['manager_id'] === (int) $u['id']) {
         $invite = array_map('intval', sql('SELECT worker_id FROM contracts WHERE request_id = ?', [$from['id']])->fetchAll(PDO::FETCH_COLUMN));
     }
+    // "Rasti pakaitinį": a worker will not come tomorrow. Urgent request for tomorrow, the rest of the team invited.
+    $replacing = $from && (int) $from['manager_id'] === (int) $u['id'] && ctype_digit($_GET['pakeisti'] ?? '') ? (int) $_GET['pakeisti'] : 0;
+    if ($replacing) {
+        $v['kind'] = 'skubu';
+        $v['dates'] = tomorrow().':'.tomorrow();
+        $invite = array_values(array_diff(array_keys($team), [$replacing]));
+    }
     $errors = [];
     if (is_post()) {
         check_csrf();
@@ -310,7 +317,8 @@ function request_form_page(): never
     foreach ($venues as $venue) {
         $venueData .= ' data-v'.(int) $venue['id'].'="'.e($venue['name'].' · '.(CITIES[$venue['city']] ?? '')).'"';
     }
-    $repeat = $from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnį poreikį. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '';
+    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnį poreikį, pažymėti jūsų komandos nariai gaus asmeninį kvietimą. Patikrinkite duomenis ir paskelbkite.</p>'
+        : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnį poreikį. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Naujas poreikis', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
         .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card"><div class="card-link"><h3 data-p="role">Pareigos</h3>'

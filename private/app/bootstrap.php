@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+// Dates, "today" and the 10:00 / 16:00 shift reminders follow Lithuanian time.
+date_default_timezone_set('Europe/Vilnius');
+
 const CITIES = ['vilnius' => 'Vilnius', 'kaunas' => 'Kaunas', 'klaipeda' => 'Klaipėda', 'palanga' => 'Palanga'];
 const ROLES = [
     'barmenas' => 'Barmenas',

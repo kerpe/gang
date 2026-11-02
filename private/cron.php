@@ -6,7 +6,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') {
     exit;
 }
-foreach (['bootstrap', 'data'] as $f) {
+foreach (['bootstrap', 'data', 'views', 'account', 'shifts'] as $f) {
     require __DIR__."/app/$f.php";
 }
 
@@ -25,5 +25,8 @@ foreach ($due as $c) {
     send_mail($c['manager_email'], 'Įvertinkite darbuotoją: '.first_name($c['worker_name']), "Laba diena,\n\nkviečiame įvertinti darbuotoją (".first_name($c['worker_name']).", ".mb_strtolower(ROLES[$c['role']] ?? '')."). Jūsų įvertinimas padės kitiems vadovams rasti patikimus darbuotojus:\n$link");
     sql('UPDATE contracts SET review_mail_at = ? WHERE id = ?', [now(), $c['id']]);
 }
+
+// Arrival confirmation for tomorrow's shifts (10:00 reminder, 16:00 warning to the employer).
+run_shift_checks();
 
 sql('DELETE FROM login_codes WHERE expires_at < ?', [date('Y-m-d H:i:s', strtotime('-1 day'))]);

@@ -238,7 +238,7 @@ function contract_card(array $c, string $side, bool $reviewed): string
     return '<article class="contract'.($over ? ' past' : '').'">'.$stepper
         .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
         .'<p class="meta">'.e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
-        .'<dl class="contract-info">'.$info.'</dl>'
+        .'<dl class="contract-info">'.$info.'</dl>'.shift_status($c, $side)
         .'<p class="contract-actions">'.$actions.'</p></article>';
 }
 
