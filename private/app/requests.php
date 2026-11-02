@@ -226,13 +226,15 @@ function request_form_page(): never
         redirect('/darboviete/nauja');
     }
     $venueOptions = array_column($venues, 'name', 'id');
-    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'hours' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
+    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => ''];
     // "Pakartoti": the form comes filled in from an earlier request; only the dates are picked again.
     $from = !is_post() && ctype_digit($_GET['pagal'] ?? '') ? find_request((int) $_GET['pagal']) : null;
     if ($from && (int) $from['manager_id'] === (int) $u['id']) {
         preg_match('/^\d+(?:,\d+)?/', (string) $from['pay'], $pay);
+        // Older requests kept the working hours in a separate field; they now go at the top of the description.
+        $description = ($from['hours'] !== '' ? 'Darbo laikas: '.$from['hours']."\n\n" : '').$from['description'];
         $v = ['venue_id' => (string) $from['venue_id'], 'role' => $from['role'], 'kind' => $from['kind'], 'people' => (string) $from['people'], 'dates' => '',
-            'hours' => $from['hours'], 'pay' => $pay[0] ?? '', 'min_experience' => (string) $from['min_experience'], 'description' => $from['description']];
+            'pay' => valid_pay($pay[0] ?? '') ? $pay[0] : '', 'min_experience' => (string) $from['min_experience'], 'description' => $description];
     }
     // "Mano komanda": people the manager already worked with can be invited personally.
     $team = array_column(team_members((int) $u['id']), null, 'id');
@@ -272,20 +274,17 @@ function request_form_page(): never
         if (!isset(EXPERIENCE_REQUIRED[(int) $v['min_experience']])) {
             $errors['min_experience'] = 'Nurodykite reikalaujamą darbo patirtį.';
         }
-        if (mb_strlen($v['hours']) < 3 || mb_strlen($v['hours']) > 120) {
-            $errors['hours'] = 'Nurodykite darbo laiką, pavyzdžiui, 10–22 val. arba 2/2 grafikas.';
-        }
         $rate = str_replace(',', '.', $v['pay']);
-        if (!is_numeric($rate) || (float) $rate < 1 || (float) $rate > 200) {
-            $errors['pay'] = 'Nurodykite valandinį atlygį į rankas eurais, pavyzdžiui, 10 arba 12,50.';
+        if (!valid_pay($v['pay'])) {
+            $errors['pay'] = PAY_ERROR;
         }
-        if (mb_strlen($v['description']) < 10 || mb_strlen($v['description']) > 3000) {
-            $errors['description'] = 'Trumpai aprašykite darbo pobūdį ir pareigas (bent 10 simbolių).';
+        if (mb_strlen($v['description']) < 20 || mb_strlen($v['description']) > 3000) {
+            $errors['description'] = 'Nurodykite darbo laiką ir trumpai aprašykite darbo pobūdį bei pareigas (bent 20 simbolių).';
         }
         if (!$errors) {
             $id = insert('requests', [
                 'venue_id' => (int) $v['venue_id'], 'role' => $v['role'], 'kind' => $v['kind'], 'people' => $people,
-                'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => $v['hours'], 'pay' => pay_label($rate),
+                'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => '', 'pay' => pay_label($rate),
                 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
             ]);
             $request = find_request($id);
@@ -325,9 +324,9 @@ function request_form_page(): never
         .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
         .'<div class="picker" data-min="'.today().'" data-max="'.date('Y-m-d', strtotime('+12 months')).'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
         .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
-        .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
-        .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
-        .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
+        .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?" aria-describedby="pay-live"><span aria-hidden="true">€/val.</span></span>'
+        .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span></label>'
+        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
         .team_invite_fieldset($team, $invite)
         .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script(), ['noindex' => true]);
 }
@@ -362,20 +361,49 @@ function request_preview_script(): string
     el('role').textContent = role && role.value ? role.options[role.selectedIndex].text : 'Pareigos';
     var people = +val('people');
     el('venue').textContent = (f.dataset['v' + val('venue_id')] || '') + (people > 1 ? ' · reikia darbuotojų: ' + people : '');
-    var dates = f.querySelector('input[name=dates]'), hours = val('hours').trim();
-    el('when').textContent = ((dates && dates.dataset.label) || 'Datos nepažymėtos') + (hours ? ' · ' + hours : '');
+    var dates = f.querySelector('input[name=dates]');
+    el('when').textContent = (dates && dates.dataset.label) || 'Datos nepažymėtos';
     var k = el('kind');
     k.textContent = kind ? kind.parentNode.querySelector('.choice-name').textContent : '';
     k.className = 'tag' + (kind && kind.value === 'skubu' ? ' urgent' : '');
-    var pay = val('pay').trim().replace('.', ',');
-    el('pay').hidden = !/^\d+(,\d{1,2})?$/.test(pay);
+    var pay = val('pay').trim().replace('.', ','), ok = payOk(pay);
+    el('pay').hidden = !ok;
     el('pay').textContent = pay + ' €/val. į rankas';
   }
+  // Pay: digits and one comma or dot only, at most 100 €/val.; a message shows straight away when the number is out of range.
+  var payIn = f.querySelector('input[name=pay]'), payMsg = document.getElementById('pay-live');
+  function payOk(p) { return /^\d{1,3}([.,]\d{1,2})?$/.test(p) && +p.replace(',', '.') > 0 && +p.replace(',', '.') <= 100; }
+  function payCheck(final) {
+    var p = payIn.value.trim();
+    payMsg.hidden = p === '' ? !final : payOk(p) || (!final && /^\d{1,3}[.,]?$/.test(p) && +p.replace(',', '') <= 100);
+  }
+  payIn.addEventListener('input', function () {
+    var clean = payIn.value.replace(/[^\d.,]/g, '').replace(/([.,].*)[.,]/g, '$1');
+    if (clean !== payIn.value) payIn.value = clean;
+    payCheck(false);
+  });
+  payIn.addEventListener('blur', function () { if (payIn.value.trim() !== '') payCheck(true); });
+  f.addEventListener('submit', function (e) {
+    payCheck(true);
+    if (!payMsg.hidden) { e.preventDefault(); payIn.focus(); }
+  });
   f.addEventListener('input', update); f.addEventListener('change', update); f.addEventListener('click', function () { setTimeout(update); });
   update();
 })();
 </script>
 HTML;
+}
+
+const PAY_ERROR = 'Nurodykite valandinį atlygį į rankas eurais – skaičių iki 100, pavyzdžiui, 10 arba 12,50.';
+
+// Hourly pay as typed: up to 100 €, a comma or a dot, at most two decimals.
+function valid_pay(string $pay): bool
+{
+    if (!preg_match('/^\d{1,3}([.,]\d{1,2})?$/', $pay)) {
+        return false;
+    }
+    $n = (float) str_replace(',', '.', $pay);
+    return $n > 0 && $n <= 100;
 }
 
 // Stored as display text, e.g. "12,50 €/val. į rankas".
