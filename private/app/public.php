@@ -212,7 +212,7 @@ function how_page(): never
 
 function about_page(): never
 {
-    split_page('Apie GANG', 'Apie GANG', 'Sukurta žmonių iš šios srities', '01', [
+    split_page('Apie GANG', 'Apie GANG', 'Get ready to meet the GANG', '01', [
         ['problema', 'Problema, kurią gerai pažįstame', '<p>GANG sukūrė žmonės, kurie patys dirba barų, restoranų ir kavinių versle ir kasdien susiduria su tais pačiais iššūkiais kaip ir jūs.</p><ul>'
             .'<li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>'
             .'<li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>'
