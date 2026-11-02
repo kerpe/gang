@@ -10,6 +10,65 @@ const CAMS = [
     '03' => ['Staliukai', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
 ];
 
+// Section stories behind the home camera tiles: slug, page heading, intro, roles and two quotes
+// (Lithuanian translation, original, author, role, source). Quotes are verified against the linked source.
+const TEAM_PAGES = [
+    '01' => [
+        'slug' => 'baras',
+        'about' => 'Apie barą',
+        'title' => 'Darbas bare',
+        'heading' => 'Už baro',
+        'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
+            .'<p>Geras baras remiasi ne vien receptais. Jis remiasi žmonėmis, kurie išmano savo amatą ir moka priimti svečią.</p>',
+        'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
+        'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'quotes' => [
+            ['Akių kontaktas. Kai žmogus įžengia į jūsų erdvę, turite vos porą minučių pažvelgti jam į akis ir nusišypsoti.',
+                'Eye contact. When people come into your space, you have a window of a couple of minutes to make eye contact and smile.',
+                'Dale DeGroff', 'barmenas, Rainbow Room (Niujorkas)', 'Tales of the Cocktail', 'https://talesofthecocktail.org/three-veteran-barkeeps-art-small-talk/'],
+            ['Jus įvertins ne pagal tai, kaip garsiai kalbate, o pagal jūsų gėrimo kokybę.',
+                'You’ll get recognized not by how loud you talk but by the quality of your drink.',
+                'Audrey Saunders', 'barmenė, Pegu Club (Niujorkas)', 'Tales of the Cocktail, 2016', 'https://talesofthecocktail.org/audrey-saunders-mentoring-hard-work/'],
+        ],
+    ],
+    '02' => [
+        'slug' => 'virtuve',
+        'about' => 'Apie virtuvę',
+        'title' => 'Darbas virtuvėje',
+        'heading' => 'Virtuvė',
+        'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
+            .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja.</p>',
+        'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
+        'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'quotes' => [
+            ['Mise en place – visų gerų virėjų religija.',
+                'Mise-en-place is the religion of all good line cooks.',
+                'Anthony Bourdain', 'šefas ir rašytojas', 'Kitchen Confidential, 2000', 'https://tastingtable.com/1612604/anthony-bourdain-mise-en-place-ritual'],
+            ['Komandinio darbo kiekvienas virėjas turi išmokti pirmiausia.',
+                'Teamwork is the first thing that every cook should learn.',
+                'Dominique Crenn', 'šefė, Atelier Crenn (San Franciskas)', 'The World’s 50 Best, 2018', 'https://www.the50.com/stories/News/dominique-crenn-put-yourself-out-there-work-hard-everything-is-possible.html'],
+        ],
+    ],
+    '03' => [
+        'slug' => 'sale',
+        'about' => 'Apie salę',
+        'title' => 'Darbas salėje',
+        'heading' => 'Salė',
+        'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias. Padavėjai, administratoriai ir salės vadovai kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
+            .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
+        'roles' => ['Padavėjai', 'Administratoriai', 'Salės vadovai', 'Renginiai'],
+        'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'quotes' => [
+            ['Aptarnavimas parodo, kaip gerai produktas buvo pateiktas. Svetingumas – kaip jaučiasi aptarnaujamas žmogus.',
+                'Service is really a way to describe how well the product was delivered. Hospitality describes how the recipient of that service feels when they’re getting the service.',
+                'Danny Meyer', 'restoranų įkūrėjas, Union Square Hospitality Group (Niujorkas)', 'NPR, 2006', 'https://www.npr.org/transcripts/6162737'],
+            ['Mūsų sritis – tai rūpinimasis kitais, tai žmogiškumas.',
+                'Our industry is about looking after others, about humanity.',
+                'Dominique Crenn', 'šefė, Atelier Crenn (San Franciskas)', 'The World’s 50 Best, 2018', 'https://www.the50.com/stories/News/dominique-crenn-calls-for-communication-creativity-to-replace-silence-fear.html'],
+        ],
+    ],
+];
+
 function cam_photo(string $n): string
 {
     return is_file(__DIR__.'/../../public_html/img/cam-'.$n.'.jpg') ? '/img/cam-'.$n : '';
@@ -51,7 +110,7 @@ function home_page(): never
         $src = cam_photo($n);
         // Photos carry their own burned-in camera label.
         $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span><span class="cam-label">CAM '.$n.'</span>';
-        $tiles .= '<a class="cam-tile" href="'.$jobs.'"><div class="cam-media">'.$media.'</div>'
+        $tiles .= '<a class="cam-tile" href="/'.TEAM_PAGES[$n]['slug'].'"><div class="cam-media">'.$media.'</div>'
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
@@ -192,6 +251,25 @@ function split_page(string $title, string $eyebrow, string $heading, string $cam
         .'<ol class="side-index">'.$index.'</ol></aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
 }
 
+function team_page(string $n): never
+{
+    $t = TEAM_PAGES[$n];
+    $label = CAMS[$n][0];
+    $chips = '<p class="chips">'.implode('', array_map(fn ($r) => '<span>'.e($r).'</span>', $t['roles'])).'</p>';
+    $quotes = '';
+    foreach ($t['quotes'] as [$lt, $orig, $who, $role, $src, $href]) {
+        $quotes .= '<figure class="quote"><blockquote><p>„'.e($lt).'“</p></blockquote>'
+            .'<p class="quote-orig" lang="en">'.e($orig).'</p>'
+            .'<figcaption><strong>'.e($who).'</strong>, '.e($role).' · <a href="'.e($href).'" target="_blank" rel="noopener">'.e($src).'</a></figcaption></figure>';
+    }
+    $join = '<p>'.e($t['join']).'</p><p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
+    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, [
+        ['apie', $t['about'], $t['intro'].$chips],
+        ['zodziai', 'Profesionalų žodžiai', $quotes],
+        ['gang', 'Darbas per GANG', $join],
+    ], '/'.$t['slug']);
+}
+
 function how_page(): never
 {
     $days = REVIEW_HIDE_DAYS;
@@ -255,7 +333,7 @@ function sitemap(): never
 {
     header('Content-Type: application/xml; charset=utf-8');
     $out = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/privatumas'];
+    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/sale', '/privatumas'];
     foreach (array_keys(CITIES) as $c) {
         $paths[] = '/darbai?miestas='.$c;
     }
