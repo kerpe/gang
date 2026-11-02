@@ -7,6 +7,9 @@ declare(strict_types=1);
 // Everything else (jobs, requests, availability, other people's profiles) sits behind one shared
 // preview password; visitors see the sign-up page instead.
 // 'public' => true in config opens it; without a preview_password nobody gets in.
+// PRELAUNCH_OPEN = false closes even the public pages and sign-up: every visitor without the
+// password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so).
+const PRELAUNCH_OPEN = false;
 const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/privatumas', '/favicon.svg', '/robots.txt'];
 const PRELAUNCH_SIGNUP_PAGES = ['/prisijungti', '/prisijungti/kodas', '/prisijungti/kas', '/profilis', '/mano'];
 
@@ -29,13 +32,13 @@ function preview_gate(string $path): void
         return;
     }
     prelaunch(true);
-    if (in_array($path, PRELAUNCH_PAGES, true) || $path === '/atsijungti') {
+    if (in_array($path, ['/favicon.svg', '/robots.txt'], true)) {
         return;
     }
-    if (in_array($path, PRELAUNCH_SIGNUP_PAGES, true)) {
+    if (PRELAUNCH_OPEN && (in_array($path, PRELAUNCH_PAGES, true) || in_array($path, PRELAUNCH_SIGNUP_PAGES, true) || $path === '/atsijungti')) {
         return;
     }
-    $user = current_user();
+    $user = PRELAUNCH_OPEN ? current_user() : null;
     if ($user !== null) {
         $own = $user['kind'] === 'worker'
             ? $path === '/nuotrauka/'.$user['id']
@@ -76,6 +79,15 @@ function preview_gate(string $path): void
         .'<p class="later"><strong>'.e(from_launch()).'</strong> skelbsite darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.</p>'
         .'<p><a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti darbovietę</a></p></div>';
     $employerFirst = ($_GET['kaip'] ?? '') === 'vadovas';
+    if (!PRELAUNCH_OPEN) {
+        echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
+            .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=28"></head>'
+            .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
+            .'<h1>Netrukus</h1><p class="lead">Kuriame platformą, padėsiančią barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų.</p>'
+            .(launch_when() !== '' ? '<p>'.e(str_replace('GANG startuoja', 'Startuojame', launch_headline())).'.</p>' : '')
+            .'<p class="meta">Susisiekti: <a href="mailto:hello@gang.lt">hello@gang.lt</a></p>'.$team.'</section></main></body></html>';
+        exit;
+    }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
         .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=28"></head>'
         .'<body><main><section class="wrap soon"><a class="logo" href="/" aria-label="GANG.lt">'.knives().'GANG<span>.lt</span></a>'
