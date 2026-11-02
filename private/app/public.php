@@ -87,7 +87,7 @@ function home_page(): never
     </div>
     <div class="aud venue">
       <p class="eyebrow">Darbdaviams</p>
-      <h2>Darbuotojas reikiamą dieną</h2>
+      <h2>Darbuotojų pasiūla</h2>
       <ul>
         <li><strong>Skubus pavadavimas</strong>Paskelbta paieška iš karto pasiekia laisvus darbuotojus jūsų mieste.</li>
         <li><strong>Matote, ką kviečiate</strong>Kandidato patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
