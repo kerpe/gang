@@ -431,6 +431,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .picker button.day.on span { font-weight: 700; }
 .picker button.day:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 .pick-status { margin: 14px 0 0; font-size: .92rem; }
+.unsaved { color: var(--orange); font-size: .9rem; font-weight: 600; }
 .linkish { background: none; border: 0; padding: 0; color: var(--lime); font: inherit; text-decoration: underline; cursor: pointer; }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 6px 6px 12px; border: 1px solid var(--lime); border-radius: 999px; font-size: .9rem; }
@@ -460,21 +461,10 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
   .tabbar a.accent svg { color: var(--lime); }
 }
 
-/* Worker availability: two-week strip, full calendar on demand */
+/* Worker availability: the same calendar as the request form */
 .avail h2 { margin-bottom: 6px; }
-.strip { display: grid; grid-template-columns: repeat(14, 1fr); gap: 4px; margin: 4px 0 12px; }
-@media (max-width: 560px) { .strip { grid-template-columns: repeat(7, 1fr); } }
-.strip-day { display: grid; justify-items: center; padding: 6px 0; border: 1px solid var(--line); border-radius: 8px; font-weight: 700; font-size: .9rem; background: var(--bg); }
-.strip-day small { font-size: .65rem; font-weight: 600; color: var(--muted); letter-spacing: .05em; }
-.strip-day.weekend small { color: var(--orange); }
-.strip-day.today { border-color: var(--ink); }
-.strip-day.on { background: var(--lime); border-color: var(--lime); color: #171717; }
-.strip-day.on small { color: #171717; }
-.avail-edit > summary { list-style: none; margin-top: 6px; }
-.avail-edit > summary::-webkit-details-marker { display: none; }
-.avail-edit[open] > summary { display: none; }
-.avail-edit form { margin-top: 14px; }
-.avail-edit .hint { color: var(--muted); font-size: .92rem; }
+.avail .hint { color: var(--muted); font-size: .92rem; }
+.avail form { margin-top: 14px; }
 
 /* GANG contracts */
 .contracts { display: grid; gap: 12px; }

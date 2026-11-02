@@ -100,6 +100,7 @@ document.querySelectorAll('.picker').forEach(function (box) {
   var min = box.dataset.min, max = box.dataset.max, limit = +box.dataset.limit || 12, empty = box.dataset.empty || 'Dienos dar nepažymėtos.';
   var hint = form.querySelector('.when-hint'), hintText = hint ? hint.textContent : '';
   var ranges = out.value ? out.value.split(',').map(function (p) { return p.split(':'); }) : [];
+  var narrow = window.matchMedia('(max-width: 560px)'), saved = out.value, unsaved = form.querySelector('.unsaved');
   var pending = null, hover = null, view = (ranges[0] ? ranges[0][0] : min).slice(0, 7);
   function iso(y, m, d) { return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0'); }
   function addMonth(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
@@ -146,7 +147,8 @@ document.querySelectorAll('.picker').forEach(function (box) {
     if (hint) hint.textContent = permanent() ? hint.dataset.nuolat : hintText;
     out.value = ranges.map(function (r) { return r[0] + ':' + r[1]; }).join(',');
     out.dataset.label = ranges.map(label).join(', ');
-    var first = view < min.slice(0, 7) ? min.slice(0, 7) : view, last = addMonth(max.slice(0, 7), -1);
+    // Phones show one month, wider screens two: the last page must still reach the last allowed month.
+    var first = view < min.slice(0, 7) ? min.slice(0, 7) : view, last = addMonth(max.slice(0, 7), narrow.matches ? 0 : -1);
     if (first > last) first = last; view = first;
     var status = pending
       ? '<p class="pick-status">Pažymėta ' + label(pending) + ' Spustelėkite paskutinę laikotarpio dieną arba <button type="button" class="linkish" data-single>palikite vieną dieną</button>.</p>'
@@ -158,7 +160,7 @@ document.querySelectorAll('.picker').forEach(function (box) {
       + '<button type="button" class="btn small ghost" data-nav="1"' + (view >= last ? ' disabled' : '') + ' aria-label="Kitas mėnuo">→</button></div>'
       + '<div class="pick-months">' + month(view) + month(addMonth(view, 1)) + '</div>' + status + chips;
   }
-  function changed() { out.dispatchEvent(new Event('change', {bubbles: true})); }
+  function changed() { if (unsaved) unsaved.hidden = out.value === saved; out.dispatchEvent(new Event('change', {bubbles: true})); }
   box.addEventListener('click', function (e) {
     var t = e.target.closest('button'); if (!t) return;
     if (t.dataset.d) { pick(t.dataset.d); changed(); }
@@ -166,7 +168,9 @@ document.querySelectorAll('.picker').forEach(function (box) {
     else if (t.dataset.rm) { ranges.splice(+t.dataset.rm, 1); pending = null; render(); changed(); }
     else if ('single' in t.dataset) { pending = null; render(); }
   });
-  box.addEventListener('mouseover', function (e) {
+  // Range preview follows a mouse only: on touch screens a tap must simply pick the day.
+  box.addEventListener('pointerover', function (e) {
+    if (e.pointerType !== 'mouse') return;
     var t = e.target.closest('button[data-d]'); if (!pending || !t || t.dataset.d === hover) return;
     hover = t.dataset.d;
     box.querySelectorAll('button[data-d]').forEach(function (b) { b.classList.toggle('preview', b.dataset.d > pending[0] && b.dataset.d <= hover); });
@@ -174,6 +178,7 @@ document.querySelectorAll('.picker').forEach(function (box) {
   form.querySelectorAll('input[name=kind]').forEach(function (k) {
     k.addEventListener('change', function () { if (permanent() && ranges.length) ranges = [[ranges[0][0], ranges[0][0]]]; pending = null; render(); });
   });
+  if (narrow.addEventListener) narrow.addEventListener('change', render);
   render();
 });
 </script>
