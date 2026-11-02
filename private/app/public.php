@@ -77,7 +77,7 @@ function home_page(): never
   <div class="audience">
     <div class="aud worker">
       <p class="eyebrow">Darbuotojams</p>
-      <h2>Dirbkite tada, kai jums patogu</h2>
+      <h2>Dirbkite, kai jums patogu</h2>
       <ul>
         <li><strong>Papildomos pajamos</strong>Kalendoriuje pažymite laisvas dienas, o tinkami pasiūlymai ateina el. paštu.</li>
         <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų profilį.</li>
