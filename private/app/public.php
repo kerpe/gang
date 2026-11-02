@@ -222,10 +222,10 @@ function about_page(): never
         ['sprendimas', 'Sprendimai', '<p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia paiešką, ir apie ją iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
             .'<p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>'
             .'<p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>'],
-        ['kas-mes', 'GANG', '<blockquote><p>„HoReCa sektoriuje dirbu nuo 2008 metų ir, ko gero, teko dirbti visose įmanomose pozicijose: virtuvėje, bare, salėje ar net lauke prie klubo durų – puikiai žinau, kaip atrodo pamaina, kai trūksta vieno iš kolegų.</p>'
-            .'<p>GANG pirmiausia kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.</p>'
-            .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau draugų teiraujasi, ar galėtų porą dienų pabandyti aptarnauti staliukus arba pagelbėti virtuvėje – pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, neatsiradus tinkamai progai, taip ir lieka neišbandytas.</p>'
-            .'<p>Nesimėtysiu čia Bourdaino ar Marco Pierre’o White’o citatomis, bet šis sektorius yra tiesiog cool.“</p></blockquote>'
+        ['kas-mes', 'GANG', '<blockquote><p>HoReCa sektoriuje sukuosi nuo 2008 metų ir dirbti teko visose įmanomose pozicijose: virtuvėje, bare, salėje ir, žinoma, lauke prie klubo durų.</p>'
+            .'<p>Puikiai žinau, kaip atrodo darbas, kai pamainoje trūksta bent vieno iš kolegų, ir ne kartą teko pačiam ieškoti pagalbos visais įmanomais kanalais.</p>'
+            .'<p>GANG padės skubiai rasti patikimą komandos narį, o geri specialistai čia lengvai ras sau tinkamiausią darbą.</p>'
+            .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau žmonių, neturinčių nieko bendro su HoReCa, teiraujasi, ar galėtų porą dienų pabandyti pasidarbuoti bare ar pagelbėti virtuvėje. Pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, gyvenime neatsiradus tinkamai progai, taip ir lieka net neišbandytas. GANG’e tikrai rasime darbo ir žaliems.</p></blockquote>'
             .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
     ], '/apie');
 }
