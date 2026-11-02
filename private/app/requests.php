@@ -245,6 +245,13 @@ function request_form_page(): never
     } elseif ($from && (int) $from['manager_id'] === (int) $u['id']) {
         $invite = array_map('intval', sql('SELECT worker_id FROM contracts WHERE request_id = ?', [$from['id']])->fetchAll(PDO::FETCH_COLUMN));
     }
+    // "Rasti pakaitinį": a worker will not come tomorrow. Urgent request for tomorrow, the rest of the team invited.
+    $replacing = $from && (int) $from['manager_id'] === (int) $u['id'] && ctype_digit($_GET['pakeisti'] ?? '') ? (int) $_GET['pakeisti'] : 0;
+    if ($replacing) {
+        $v['kind'] = 'skubu';
+        $v['dates'] = tomorrow().':'.tomorrow();
+        $invite = array_values(array_diff(array_keys($team), [$replacing]));
+    }
     $errors = [];
     if (is_post()) {
         check_csrf();
@@ -311,7 +318,8 @@ function request_form_page(): never
     foreach ($venues as $venue) {
         $venueData .= ' data-v'.(int) $venue['id'].'="'.e($venue['name'].' · '.(CITIES[$venue['city']] ?? '')).'"';
     }
-    $repeat = $from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnį poreikį. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '';
+    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnį poreikį, pažymėti jūsų komandos nariai gaus asmeninį kvietimą. Patikrinkite duomenis ir paskelbkite.</p>'
+        : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnį poreikį. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Naujas poreikis', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
         .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card"><div class="card-link"><h3 data-p="role">Pareigos</h3>'
@@ -503,6 +511,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
+        .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
 }
@@ -513,6 +522,7 @@ function accepted_panel(array $r, array $u): string
         .' WHERE c.request_id = ? AND c.worker_id = ?', [$r['id'], $u['id']])->fetch();
     return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
         .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
+        .'<p class="shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>';
 }
 
@@ -663,6 +673,7 @@ function decide_response_action(int $responseId, bool $accept): never
         ."Kur: ".($r['address'] ?: CITIES[$r['city']])."\n"
         ."Kontaktas: {$u['name']}, {$u['phone']}\n\n"
         ."Rekomenduojame susisiekti su darbdaviu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.\n\n"
+        .'Atvykimo patvirtinimas. '.shift_notice()."\n\n"
         ."Baigę darbą galėsite įvertinti darbdavį savo paskyroje:\n".url('/mano'), $u['email']);
     $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
     if ($accepted >= (int) $r['people']) {

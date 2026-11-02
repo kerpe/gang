@@ -56,6 +56,8 @@ jobs:
           PREVIEW_PASSWORD: ${{ secrets.PREVIEW_PASSWORD }}
           SITE_PUBLIC: ${{ vars.SITE_PUBLIC }}
           LAUNCH_DATE: ${{ vars.LAUNCH_DATE }}
+          TWILIO_SID: ${{ secrets.TWILIO_SID }}
+          TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
         run: |
           php -r '
           $c = [
@@ -69,6 +71,10 @@ jobs:
             "preview_password" => (string) getenv("PREVIEW_PASSWORD"),
             "public" => getenv("SITE_PUBLIC") === "true",
             "launch_date" => (string) getenv("LAUNCH_DATE"),
+            "sms_provider" => getenv("TWILIO_SID") ? "twilio" : "",
+            "sms_sid" => (string) getenv("TWILIO_SID"),
+            "sms_token" => (string) getenv("TWILIO_TOKEN"),
+            "sms_from" => "GANG",
           ];
           file_put_contents("private/config.php", "<?php\nreturn ".var_export($c, true).";\n");'
 

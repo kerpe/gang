@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -57,6 +57,7 @@ match (true) {
     $is('/darbas/(\d+)/uzdaryti') && $post => close_request_action((int) $m[1]),
     $is('/atsiliepimas/(\d+)/patvirtinti') && $post => decide_response_action((int) $m[1], true),
     $is('/atsiliepimas/(\d+)/atmesti') && $post => decide_response_action((int) $m[1], false),
+    $is('/pamaina/([0-9a-f]{32})') => shift_page($m[1]),
     $is('/vertinti/(\d+)') => review_page((int) $m[1]),
     $is('/kontraktas/(\d+)/kalendorius') => contract_ics((int) $m[1]),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),

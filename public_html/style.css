@@ -602,3 +602,11 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .steps.compact { grid-template-columns: repeat(3, 1fr); margin-bottom: 8px; }
 @media (max-width: 720px) { .steps.compact { grid-template-columns: 1fr; } }
 .venue-about { color: var(--muted); font-size: .92rem; margin: 6px 0 0; }
+
+/* Arrival confirmation the day before a shift */
+.shift-status { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 12px 0; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line-strong); font-weight: 600; font-size: .92rem; }
+.shift-status.ok { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.08); color: var(--lime); }
+.shift-status.wait { color: var(--muted); font-weight: 400; }
+.shift-status.warn { border-color: rgba(255,101,74,.5); background: rgba(255,101,74,.08); color: var(--ink); }
+.shift-answer { display: flex; flex-wrap: wrap; gap: 10px; margin: 20px 0; }
+.shift-note { margin: 14px 0 0; font-size: .92rem; }
