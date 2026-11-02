@@ -221,7 +221,7 @@ function about_page(): never
         ['sprendimas', 'Kaip ją sprendžiame', '<p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia poreikį, ir apie jį iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
             .'<p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>'
             .'<p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>'],
-        ['ikurejas', 'Apie įkūrėją', '<blockquote>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</blockquote>'
+        ['kas-mes', 'Kas mes', '<blockquote>„HoReCa sektoriuje dirbu nuo 2008 metų. Teko dirbti pagalbiniu virtuvės darbuotoju, o šiandien pats vadovauju savo verslui. Puikiai žinau, kaip atrodo pamaina be reikiamo žmogaus ir iš salės, ir iš virtuvės pusės. GANG kuriu tam, kad patikimą komandos narį būtų galima rasti greitai, o geri specialistai lengvai rastų jiems tinkamą darbą.“</blockquote>'
             .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
     ], '/apie');
 }
