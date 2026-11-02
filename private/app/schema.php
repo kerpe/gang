@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 function migrate(PDO $db): void
 {
@@ -31,7 +31,8 @@ function migrate(PDO $db): void
             notify TINYINT NOT NULL DEFAULT 1,
             blocked TINYINT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
-            last_login_at DATETIME NULL",
+            last_login_at DATETIME NULL,
+            launch_mail_at DATETIME NULL",
         'login_codes' => "id $id,
             email VARCHAR(190) NOT NULL,
             code_hash CHAR(64) NOT NULL,
@@ -97,7 +98,8 @@ function migrate(PDO $db): void
             request_id INT NOT NULL,
             worker_id INT NOT NULL,
             created_at DATETIME NOT NULL",
-        // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
+        // Pre-launch sign-ups. kind: manager (employers wait for launch) | worker (from before
+        // workers could build profiles; they are invited to sign up now).
         'waitlist' => "id $id,
             email VARCHAR(190) NOT NULL UNIQUE,
             kind VARCHAR(10) NOT NULL,
@@ -117,6 +119,8 @@ function migrate(PDO $db): void
         'requests ADD min_experience TINYINT NOT NULL DEFAULT 1',
         // Version 6: several date ranges in one request ("from:to,from:to"), empty for one range.
         "requests ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        // Version 8: workers who signed up before launch get one "GANG jau veikia" email; NULL = not sent yet.
+        'users ADD launch_mail_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {

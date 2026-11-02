@@ -17,7 +17,7 @@ function admin_page(): never
             'unblock' => sql('UPDATE users SET blocked = 0 WHERE id = ?', [$id]),
             'delete_review' => sql('DELETE FROM reviews WHERE id = ?', [$id]),
             'close_request' => sql("UPDATE requests SET status = 'cancelled' WHERE id = ?", [$id]),
-            'invite_waitlist' => flash(invite_waitlist().' kvietimų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
+            'invite_waitlist' => flash(invite_waitlist().' laiškų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
             default => null,
         };
         flash('Pakeitimas atliktas.');
@@ -119,38 +119,78 @@ function admin_reviews(): string
 
 function admin_waitlist(): string
 {
-    $rows = sql('SELECT * FROM waitlist ORDER BY created_at DESC LIMIT 2000')->fetchAll();
-    $count = fn (string $kind) => count(array_filter($rows, fn ($r) => $r['kind'] === $kind));
-    $pending = count(array_filter($rows, fn ($r) => !$r['invited_at']));
-    $invite = !empty(config()['public'])
-        ? ($pending ? post_button('/admin?tab=waitlist', 'Siųsti kvietimus ('.$pending.')', ['action' => 'invite_waitlist', 'id' => 0], 'btn small', 'Išsiųsti kvietimus visiems dar nepakviestiems laukiantiesiems?') : '<p class="meta">Visi laukiantieji pakviesti.</p>')
-        : '<p class="meta">Kvietimus galėsite išsiųsti, kai svetainė bus atverta visiems (SITE_PUBLIC = true).</p>';
-    $html = '<div class="tiles"><div class="tile"><span>Iš viso</span><strong>'.count($rows).'</strong></div><div class="tile"><span>Ieško darbo</span><strong>'.$count('worker').'</strong></div>'
-        .'<div class="tile"><span>Ieško darbuotojų</span><strong>'.$count('manager').'</strong></div><div class="tile"><span>Nepakviesti</span><strong>'.$pending.'</strong></div></div>'.$invite
-        .'<table class="data"><tr><th>Data</th><th>El. paštas</th><th>Ieško</th><th>Miestas</th><th>Pakviesta</th></tr>';
+    $rows = sql('SELECT w.*, u.id AS user_id FROM waitlist w LEFT JOIN users u ON u.email = w.email ORDER BY w.created_at DESC LIMIT 2000')->fetchAll();
+    $profiles = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0 AND roles <> '' AND name <> ''")->fetchColumn();
+    $public = !empty(config()['public']);
+    [$invites, $launchMails] = waitlist_pending();
+    $pending = $invites + ($public ? $launchMails : 0);
+    $label = $public ? 'Siųsti paleidimo laiškus ('.$pending.')' : 'Pakviesti užsiregistruoti ('.$pending.')';
+    $confirm = $public
+        ? 'Pranešti visiems užsiregistravusiems, kad GANG jau veikia?'
+        : 'Išsiųsti kvietimą užsiregistruoti visiems sąraše esantiems, kurie paskyros dar nesusikūrė ir kvietimo negavo?';
+    $invite = $pending ? post_button('/admin?tab=waitlist', $label, ['action' => 'invite_waitlist', 'id' => 0], 'btn small', $confirm) : '<p class="meta">Visi laiškai išsiųsti.</p>';
+    $note = $public
+        ? '<p class="meta">Paleidimo laiškai: darbuotojams – kvietimas žymėti laisvas dienas, darbdaviams – kvietimas paskelbti pirmą poreikį; dar neužsiregistravusiems iš sąrašo – kvietimas registruotis. Kiekvienas laiškas siunčiamas tik kartą.</p>'
+        : '<p class="meta">Iki paleidimo darbuotojai jau gali susikurti profilį, o darbdaviai – užregistruoti darbovietę. Senojo sąrašo nariams galite išsiųsti kvietimą užsiregistruoti. Kai svetainė bus atverta visiems (SITE_PUBLIC = true), čia galėsite išsiųsti paleidimo laiškus ('.$launchMails.').</p>';
+    $venues = (int) sql('SELECT COUNT(DISTINCT manager_id) FROM venues')->fetchColumn();
+    $html = '<div class="tiles"><div class="tile"><span>Darbuotojų profilių</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
+        .'<div class="tile"><span>Sąraše be paskyros</span><strong>'.count(array_filter($rows, fn ($r) => !$r['user_id'])).'</strong></div></div>'.$note.$invite
+        .'<table class="data"><tr><th>Data</th><th>El. paštas</th><th>Ieško</th><th>Miestas</th><th>Pakviesta</th><th>Paskyra</th></tr>';
     foreach ($rows as $r) {
         $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td>'.e($r['email']).'</td><td>'.($r['kind'] === 'worker' ? 'Darbo' : 'Darbuotojų').'</td>'
-            .'<td>'.e(CITIES[$r['city']] ?? '–').'</td><td>'.e($r['invited_at'] ? substr($r['invited_at'], 0, 10) : '–').'</td></tr>';
+            .'<td>'.e(CITIES[$r['city']] ?? '–').'</td><td>'.e($r['invited_at'] ? substr($r['invited_at'], 0, 10) : '–').'</td><td>'.($r['user_id'] ? 'Yra' : '–').'</td></tr>';
     }
     return '<div class="scroll">'.$html.'</table></div>';
 }
 
-// Launch day: one invitation per waiting address, each marked so a second click never repeats it.
+// [invitations to people on the old email-only list, launch emails to accounts made before launch] still to send.
+function waitlist_pending(): array
+{
+    return [
+        (int) sql('SELECT COUNT(*) FROM waitlist w WHERE w.invited_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.email = w.email)')->fetchColumn(),
+        (int) sql('SELECT COUNT(*) FROM users WHERE blocked = 0 AND launch_mail_at IS NULL')->fetchColumn(),
+    ];
+}
+
+// People on the old email-only list are invited to sign up (before launch: to prepare their profile or venue).
+// Launch day (public): everyone who signed up early hears that GANG is live.
+// Every email is marked as sent first, so a second click never repeats it.
 function invite_waitlist(): int
 {
-    if (empty(config()['public'])) {
-        return 0;
-    }
+    $public = !empty(config()['public']);
     $sent = 0;
-    foreach (sql('SELECT * FROM waitlist WHERE invited_at IS NULL ORDER BY id LIMIT 500')->fetchAll() as $r) {
-        $worker = $r['kind'] === 'worker';
-        $link = url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'));
-        $text = $worker
-            ? "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.\n\nRegistracija trunka kelias minutes:\n$link"
-            : "Laba diena,\n\nGANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.\n\nRegistracija trunka kelias minutes:\n$link";
-        $text .= "\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
+    foreach (sql('SELECT w.* FROM waitlist w WHERE w.invited_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.email = w.email) ORDER BY w.id LIMIT 500')->fetchAll() as $r) {
         sql('UPDATE waitlist SET invited_at = ? WHERE id = ?', [now(), $r['id']]);
-        if (send_mail($r['email'], 'GANG jau veikia: kvietimas registruotis', $text)) {
+        $worker = $r['kind'] === 'worker';
+        $intro = $public ? 'GANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų ' : 'dėkojame, kad užsiregistravote GANG laukiančiųjų sąraše. Kviečiame jus jau dabar ';
+        $text = "Laba diena,\n\n".$intro.($worker
+            ? ($public
+                ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.'
+                : "susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti. Paleidimo dieną jūsų profilis jau bus matomas darbdaviams.\n\nNuo paleidimo dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.")
+            : ($public
+                ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
+                : "užregistruoti savo barą, restoraną ar kavinę.\n\nNuo paleidimo dienos galėsite skelbti darbuotojų poreikius, o tinkami darbuotojai juos gaus iš karto."))
+            ."\n\nRegistracija trunka kelias minutes:\n".url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))
+            ."\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
+        $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
+        if (send_mail($r['email'], $subject, $text)) {
+            $sent++;
+        }
+    }
+    if (!$public) {
+        return $sent;
+    }
+    foreach (sql('SELECT * FROM users WHERE blocked = 0 AND launch_mail_at IS NULL ORDER BY id LIMIT 2000')->fetchAll() as $u) {
+        sql('UPDATE users SET launch_mail_at = ? WHERE id = ?', [now(), $u['id']]);
+        $ready = profile_complete($u) && ($u['kind'] === 'worker' || sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn());
+        if (!$ready) {
+            $text = "Laba diena,\n\nGANG jau veikia. Jūsų registracija dar neužbaigta. Užbaikite ją: tai trunka kelias minutes.\n\n".url('/profilis');
+        } elseif ($u['kind'] === 'worker') {
+            $text = "Laba diena,\n\nGANG jau veikia. Jūsų profilis dabar matomas barams, restoranams ir kavinėms jūsų miestuose.\n\nKalendoriuje pažymėkite dienas, kuriomis galite dirbti: darbdaviai, ieškantys žmogaus konkrečiai datai, matys, kad esate laisvi, o tinkamus pasiūlymus gausite el. paštu.\n\nPažymėti laisvas dienas:\n".url('/mano#laisvumas');
+        } else {
+            $text = "Laba diena,\n\nGANG jau veikia. Nuo šiandien galite skelbti darbuotojų poreikius: pavadavimui, sezonui ar nuolatiniam darbui. Paskelbtas poreikis iš karto pasiekia tinkamus darbuotojus jūsų mieste.\n\nPaskelbti pirmą poreikį:\n".url('/poreikis/naujas');
+        }
+        if (send_mail($u['email'], 'GANG jau veikia', $text."\n\nŠį laišką gavote, nes užsiregistravote GANG.")) {
             $sent++;
         }
     }

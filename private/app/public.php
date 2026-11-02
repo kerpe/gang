@@ -17,11 +17,11 @@ function cam_photo(string $n): string
 
 function home_page(): never
 {
-    // Before launch there are no real listings yet, and job pages lead to the waitlist.
+    // Before launch there are no real listings yet: the team tiles lead to worker sign-up.
     $urgent = prelaunch() ? [] : open_requests(['kind' => 'skubu'], 6);
     $latest = $urgent ?: (prelaunch() ? [] : open_requests([], 6));
-    $jobs = prelaunch() ? '/laukiantieji' : '/darbai';
-    $jobsLabel = prelaunch() ? 'Stoti į laukiančiųjų sąrašą →' : 'Peržiūrėti pasiūlymus →';
+    $jobs = prelaunch() ? '/prisijungti?kaip=darbuotojas' : '/darbai';
+    $jobsLabel = prelaunch() ? 'Susikurti profilį →' : 'Peržiūrėti pasiūlymus →';
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();

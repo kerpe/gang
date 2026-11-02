@@ -35,12 +35,13 @@ function venue_form_page(?int $id = null): never
                 redirect('/mano');
             }
             insert('venues', ['manager_id' => $u['id'], 'name' => $v['name'], 'city' => $v['city'], 'address' => $v['address'], 'about' => $v['about'], 'created_at' => now()]);
-            flash('Darbovietė užregistruota. Dabar galite skelbti darbuotojų poreikius.');
+            flash(prelaunch() ? 'Darbovietė užregistruota.' : 'Darbovietė užregistruota. Dabar galite skelbti darbuotojų poreikius.');
             redirect('/mano');
         }
     }
     $title = $venue ? 'Darbovietės duomenys' : 'Užregistruokite savo barą, restoraną ar kavinę';
-    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'
+    $soon = prelaunch() && !$venue ? '<p class="notice tip">Darbuotojų poreikius skelbti galėsite nuo GANG paleidimo dienos. Užregistravę darbovietę dabar, tą dieną galėsite pradėti iš karto.</p>' : '';
+    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
         .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'

@@ -24,7 +24,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 
 ## Preview lock
 
-Until launch every page asks for one shared password (`preview_password`, from the `PREVIEW_PASSWORD` secret) and is sent with `noindex`. Without a password nobody gets past the "Greitai" page. To launch, set the repository variable `SITE_PUBLIC` to `true` and deploy again.
+Until launch the public pages (home, Kaip veikia, Apie, privacy) and sign-up are open: workers create their profile, employers register their venues, and both see a "GANG pradės veikti netrukus" account page. Jobs, requests, availability and other people's profiles need the shared preview password (`preview_password`, from the `PREVIEW_PASSWORD` secret); everyone else gets the `/registracija` page. To launch, set the repository variable `SITE_PUBLIC` to `true`, deploy again, and press "Siųsti paleidimo laiškus" in admin → Laukiantieji (one email per early account and per person left on the old email-only list).
 
 ## Deploy
 
