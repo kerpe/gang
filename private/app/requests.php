@@ -234,9 +234,18 @@ function request_form_page(): never
         $v = ['venue_id' => (string) $from['venue_id'], 'role' => $from['role'], 'kind' => $from['kind'], 'people' => (string) $from['people'], 'dates' => '',
             'hours' => $from['hours'], 'pay' => $pay[0] ?? '', 'min_experience' => (string) $from['min_experience'], 'description' => $from['description']];
     }
+    // "Mano komanda": people the manager already worked with can be invited personally.
+    $team = array_column(team_members((int) $u['id']), null, 'id');
+    $invite = [];
+    if (ctype_digit($_GET['kviesti'] ?? '')) {
+        $invite = [(int) $_GET['kviesti']];
+    } elseif ($from && (int) $from['manager_id'] === (int) $u['id']) {
+        $invite = array_map('intval', sql('SELECT worker_id FROM contracts WHERE request_id = ?', [$from['id']])->fetchAll(PDO::FETCH_COLUMN));
+    }
     $errors = [];
     if (is_post()) {
         check_csrf();
+        $invite = array_map('intval', array_filter((array) ($_POST['invite'] ?? []), 'is_string'));
         foreach ($v as $k => $_) {
             $v[$k] = input($k);
         }
@@ -279,8 +288,16 @@ function request_form_page(): never
                 'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => $v['hours'], 'pay' => pay_label($rate),
                 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
             ]);
-            $sent = notify_workers(find_request($id));
-            flash($sent ? "Poreikis paskelbtas. Pranešimą gavo tinkamų darbuotojų: $sent. Atsiliepimus matysite šiame puslapyje ir gausite el. paštu." : 'Poreikis paskelbtas. Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai.');
+            $request = find_request($id);
+            $invited = [];
+            foreach (array_unique($invite) as $wid) {
+                if (isset($team[$wid]) && invite_worker($request, $team[$wid])) {
+                    $invited[] = $wid;
+                }
+            }
+            $sent = notify_workers($request, $invited);
+            $teamNote = $invited ? ' Asmeninį kvietimą gavo jūsų komandos narių: '.count($invited).'.' : '';
+            flash(($sent ? "Poreikis paskelbtas. Pranešimą gavo tinkamų darbuotojų: $sent.$teamNote Atsiliepimus matysite šiame puslapyje ir gausite el. paštu." : ($teamNote ? 'Poreikis paskelbtas.'.$teamNote.' Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.' : 'Poreikis paskelbtas. Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai.')));
             redirect('/darbas/'.$id);
         }
     }
@@ -311,7 +328,24 @@ function request_form_page(): never
         .'<div class="row"><label>Darbo laikas <input name="hours" value="'.e($v['hours']).'" maxlength="120" required placeholder="Pavyzdžiui: 10–22 val. arba 2/2 grafikas">'.err($errors, 'hours').'</label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label></div>'
         .'<label>Darbo aprašymas <textarea name="description" rows="5" maxlength="3000" required placeholder="Pavyzdžiui: dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
+        .team_invite_fieldset($team, $invite)
         .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script(), ['noindex' => true]);
+}
+
+// Team members to invite personally along with the new request; nothing when the team is empty.
+function team_invite_fieldset(array $team, array $checked): string
+{
+    if (!$team) {
+        return '';
+    }
+    $items = '';
+    foreach ($team as $w) {
+        $items .= '<label class="choice team-choice"><input type="checkbox" name="invite[]" value="'.(int) $w['id'].'"'.(in_array((int) $w['id'], $checked, true) ? ' checked' : '').'>'
+            .avatar($w, 'small').'<span><span class="choice-name">'.e(first_name($w['name'])).'</span><small>'.e(labels($w['roles'], ROLES)).' · kartu dirbta: '.(int) $w['jobs'].'</small></span></label>';
+    }
+    return '<fieldset class="team-invite"><legend>Pakviesti savo komandą</legend>'
+        .'<p class="hint">Pažymėti žmonės, su kuriais jau dirbote per GANG, gaus asmeninį kvietimą el. paštu ir matys jį savo paskyroje. Skelbimas taip pat bus išsiųstas kitiems tinkamiems darbuotojams.</p>'
+        .'<div class="choices">'.$items.'</div></fieldset>';
 }
 
 // Keeps the preview card next to the request form in step with the fields.
@@ -434,7 +468,10 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
         ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
         : '';
-    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$below
+    $invited = sql('SELECT 1 FROM invites WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetchColumn()
+        ? '<p class="notice ok invite-note">Darbdavys jus pakvietė asmeniškai, nes anksčiau jau dirbote kartu per GANG.</p>'
+        : '';
+    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
@@ -475,13 +512,51 @@ function owner_panel(array $r, bool $isOpen): string
             .($s['note'] ? '<p class="note">„'.e($s['note']).'“</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
+    $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';
     [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience']);
     $reach = '<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvus', 'filled' => 'Užpildytas', 'cancelled' => 'Atšauktas', 'expired' => 'Pasibaigęs'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti poreikį', [], 'btn small ghost', 'Ar tikrai norite uždaryti šį poreikį? Darbuotojai jo nebematys.') : '';
     return '<div class="panel owner"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvus' : $status).'</span></div>'.$reach
-        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>')
+        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
         .'<p class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti poreikį</a></p></div>';
+}
+
+// On an open request: the manager's team, each with a one-click personal invitation.
+function team_panel(array $r, array $responded): string
+{
+    $team = array_filter(team_members((int) $r['manager_id']), fn ($w) => !in_array((int) $w['id'], $responded, true));
+    if (!$team) {
+        return '';
+    }
+    $invited = invited_ids((int) $r['id']);
+    $rows = '';
+    foreach ($team as $w) {
+        $free = is_available((int) $w['id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? '<span class="badge on">Laisvas šiomis dienomis</span>' : '';
+        $action = in_array((int) $w['id'], $invited, true)
+            ? '<span class="meta done">Pakviesta</span>'
+            : post_button('/darbas/'.(int) $r['id'].'/kviesti/'.(int) $w['id'], 'Pakviesti', [], 'btn small');
+        $rows .= '<div class="responder">'.avatar($w).'<div class="who"><strong><a href="/darbuotojas/'.(int) $w['id'].'">'.e(first_name($w['name'])).'</a></strong>'
+            .'<p class="badges"><span class="badge">Kartu dirbta: '.(int) $w['jobs'].'</span>'.$free.'</p></div><div class="actions">'.$action.'</div></div>';
+    }
+    return '<h3 class="team-head">Mano komanda</h3><p class="meta">Žmonės, su kuriais jau dirbote per GANG. Pakviestas žmogus gaus asmeninį kvietimą el. paštu.</p>'.$rows;
+}
+
+function invite_action(int $requestId, int $workerId): never
+{
+    $u = require_user('manager');
+    check_csrf();
+    $r = find_request($requestId);
+    if (!$r || (int) $r['manager_id'] !== (int) $u['id']) {
+        not_found();
+    }
+    $team = array_column(team_members((int) $u['id']), null, 'id');
+    [$where, $params] = open_where();
+    $open = (bool) sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$requestId], $params))->fetchColumn();
+    if ($open && isset($team[$workerId]) && invite_worker($r, $team[$workerId])) {
+        flash(first_name($team[$workerId]['name']).' gavo asmeninį kvietimą.');
+    }
+    redirect('/darbas/'.$requestId);
 }
 
 function respond_action(int $id): never

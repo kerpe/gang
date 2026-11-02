@@ -53,6 +53,7 @@ match (true) {
     $is('/darbas/(\d+)') => request_page((int) $m[1]),
     $is('/darbas/(\d+)/atsiliepti') && $post => respond_action((int) $m[1]),
     $is('/darbas/(\d+)/atsaukti') && $post => withdraw_action((int) $m[1]),
+    $is('/darbas/(\d+)/kviesti/(\d+)') && $post => invite_action((int) $m[1], (int) $m[2]),
     $is('/darbas/(\d+)/uzdaryti') && $post => close_request_action((int) $m[1]),
     $is('/atsiliepimas/(\d+)/patvirtinti') && $post => decide_response_action((int) $m[1], true),
     $is('/atsiliepimas/(\d+)/atmesti') && $post => decide_response_action((int) $m[1], false),

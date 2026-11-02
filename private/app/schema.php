@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 function migrate(PDO $db): void
 {
@@ -92,6 +92,11 @@ function migrate(PDO $db): void
             user_id INT NOT NULL,
             role VARCHAR(30) NOT NULL,
             experience TINYINT NOT NULL DEFAULT 0",
+        // Version 7: a manager's personal invitation to a worker they already worked with ("Mano komanda").
+        'invites' => "id $id,
+            request_id INT NOT NULL,
+            worker_id INT NOT NULL,
+            created_at DATETIME NOT NULL",
         // Pre-launch sign-ups from the "Netrukus" page. kind: worker | manager.
         'waitlist' => "id $id,
             email VARCHAR(190) NOT NULL UNIQUE,
@@ -141,6 +146,8 @@ function migrate(PDO $db): void
         'availability_user' => 'availability (user_id)',
         'responses_request' => 'responses (request_id)',
         'contracts_worker' => 'contracts (worker_id)',
+        'invites_request' => 'invites (request_id, worker_id)',
+        'invites_worker' => 'invites (worker_id)',
         'reviews_contract' => 'reviews (contract_id)',
         'requests_status' => 'requests (status)',
         'login_codes_email' => 'login_codes (email)',
