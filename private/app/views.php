@@ -77,7 +77,7 @@ $flash
 $body
 </main>
 <footer class="foot"><div class="wrap">
-  <p><strong>GANG.lt</strong> – patikimi darbuotojai barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
+  <p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
   <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>$jobsLink · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
 </div></footer>
 $tabbar
