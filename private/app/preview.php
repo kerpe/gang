@@ -10,7 +10,7 @@ declare(strict_types=1);
 // PRELAUNCH_OPEN = false closes even the public pages and sign-up: every visitor without the
 // password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so).
 const PRELAUNCH_OPEN = false;
-const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/sale', '/privatumas', '/favicon.svg', '/robots.txt'];
+const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/sale', '/privatumas', '/favicon.svg', '/robots.txt'];
 const PRELAUNCH_SIGNUP_PAGES = ['/prisijungti', '/prisijungti/kodas', '/prisijungti/kas', '/profilis', '/mano'];
 
 // True for visitors who see the pre-launch site: sign-up and profiles work, the job board does not.

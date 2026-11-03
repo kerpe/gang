@@ -7,7 +7,7 @@ declare(strict_types=1);
 const CAMS = [
     '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
     '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
-    '03' => ['Staliukai', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
+    '03' => ['Aptarnavimas', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
 ];
 
 // Section stories behind the home camera tiles: slug, page heading, intro and roles
@@ -34,11 +34,12 @@ const TEAM_PAGES = [
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '03' => [
-        'slug' => 'sale',
-        'about' => 'Apie salę',
-        'title' => 'Darbas salėje',
-        'heading' => 'Salė',
-        'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias. Padavėjai, administratoriai ir salės vadovai kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
+        'slug' => 'aptarnavimas',
+        'about' => 'Apie aptarnavimą',
+        'title' => 'Darbas aptarnavime',
+        'heading' => 'Aptarnavimas',
+        'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias, o visa komanda kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
+            .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
         'roles' => ['Padavėjai', 'Administratoriai', 'Salės vadovai', 'Renginiai'],
         'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
@@ -306,7 +307,7 @@ function sitemap(): never
 {
     header('Content-Type: application/xml; charset=utf-8');
     $out = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/sale', '/privatumas'];
+    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/privatumas'];
     foreach (array_keys(CITIES) as $c) {
         $paths[] = '/darbai?miestas='.$c;
     }
