@@ -29,7 +29,7 @@ const TEAM_PAGES = [
         'heading' => 'Virtuvė',
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
             .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja.</p>'
-            .'<p>Pirmas dalykas, kurį privalo išmokti kiekvienas geras šefas, – komandinis darbas.</p>',
+            .'<p>Kiekvienas geras šefas pirmiausia privalo išmokti komandinio darbo.</p>',
         'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
@@ -230,7 +230,7 @@ function split_page(string $title, string $eyebrow, string $heading, string $cam
     $index = $index !== '' ? '<ol class="side-index">'.$index.'</ol>' : '';
     $photo = cam_photo($cam);
     $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
-    page($title, '<div class="wrap split"><aside class="side"><p class="eyebrow">'.e($eyebrow).'</p><h1>'.e($heading).'</h1>'.$photo
+    page($title, '<div class="wrap split"><aside class="side">'.($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '').'<h1>'.e($heading).'</h1>'.$photo
         .$index.'</aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
 }
 
@@ -240,7 +240,7 @@ function team_page(string $n): never
     $label = CAMS[$n][0];
     $chips = '<p class="chips">'.implode('', array_map(fn ($r) => '<span>'.e($r).'</span>', $t['roles'])).'</p>';
     $join = '<p>'.e($t['join']).'</p><p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
-    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, [
+    split_page($t['title'], '', $t['heading'], $n, [
         ['apie', $t['about'], $t['intro'].$chips],
         ['gang', 'Darbas per GANG', $join],
     ], '/'.$t['slug'], false);
