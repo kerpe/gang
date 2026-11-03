@@ -10,8 +10,7 @@ const CAMS = [
     '03' => ['Staliukai', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
 ];
 
-// Section stories behind the home camera tiles: slug, page heading, intro, roles and quotes (may be empty)
-// (Lithuanian translation, original, author, role, source). Quotes are verified against the linked source.
+// Section stories behind the home camera tiles: slug, page heading, intro and roles
 const TEAM_PAGES = [
     '01' => [
         'slug' => 'baras',
@@ -22,11 +21,6 @@ const TEAM_PAGES = [
             .'<p>Geras baras remiasi ne vien receptais, bet ir žmonėmis, kurie išmano savo amatą ir moka priimti svečią. Vis dėlto barmeno darbą svečias galiausiai įvertins pagal gėrimo kokybę.</p>',
         'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
-        'quotes' => [
-            ['Akių kontaktas. Kai žmogus įžengia į jūsų erdvę, turite vos porą minučių pažvelgti jam į akis ir nusišypsoti.',
-                'Eye contact. When people come into your space, you have a window of a couple of minutes to make eye contact and smile.',
-                'Dale DeGroff', 'barmenas, Rainbow Room (Niujorkas)', 'Tales of the Cocktail', 'https://talesofthecocktail.org/three-veteran-barkeeps-art-small-talk/'],
-        ],
     ],
     '02' => [
         'slug' => 'virtuve',
@@ -38,7 +32,6 @@ const TEAM_PAGES = [
             .'<p>Pirmas dalykas, kurį privalo išmokti kiekvienas geras šefas, – komandinis darbas.</p>',
         'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
-        'quotes' => [],
     ],
     '03' => [
         'slug' => 'sale',
@@ -49,14 +42,6 @@ const TEAM_PAGES = [
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
         'roles' => ['Padavėjai', 'Administratoriai', 'Salės vadovai', 'Renginiai'],
         'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
-        'quotes' => [
-            ['Aptarnavimas parodo, kaip gerai produktas buvo pateiktas. Svetingumas – kaip jaučiasi aptarnaujamas žmogus.',
-                'Service is really a way to describe how well the product was delivered. Hospitality describes how the recipient of that service feels when they’re getting the service.',
-                'Danny Meyer', 'restoranų įkūrėjas, Union Square Hospitality Group (Niujorkas)', 'NPR, 2006', 'https://www.npr.org/transcripts/6162737'],
-            ['Mūsų sritis – tai rūpinimasis kitais, tai žmogiškumas.',
-                'Our industry is about looking after others, about humanity.',
-                'Dominique Crenn', 'šefė, Atelier Crenn (San Franciskas)', 'The World’s 50 Best, 2018', 'https://www.the50.com/stories/News/dominique-crenn-calls-for-communication-creativity-to-replace-silence-fear.html'],
-        ],
     ],
 ];
 
@@ -253,19 +238,11 @@ function team_page(string $n): never
     $t = TEAM_PAGES[$n];
     $label = CAMS[$n][0];
     $chips = '<p class="chips">'.implode('', array_map(fn ($r) => '<span>'.e($r).'</span>', $t['roles'])).'</p>';
-    $quotes = '';
-    foreach ($t['quotes'] as [$lt, $orig, $who, $role, $src, $href]) {
-        $quotes .= '<figure class="quote"><blockquote><p>„'.e($lt).'“</p></blockquote>'
-            .'<p class="quote-orig" lang="en">'.e($orig).'</p>'
-            .'<figcaption><strong>'.e($who).'</strong>, '.e($role).' · <a href="'.e($href).'" target="_blank" rel="noopener">'.e($src).'</a></figcaption></figure>';
-    }
     $join = '<p>'.e($t['join']).'</p><p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
-    $sections = [['apie', $t['about'], $t['intro'].$chips]];
-    if ($quotes !== '') {
-        $sections[] = ['zodziai', 'Profesionalų žodžiai', $quotes];
-    }
-    $sections[] = ['gang', 'Darbas per GANG', $join];
-    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, $sections, '/'.$t['slug'], false);
+    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, [
+        ['apie', $t['about'], $t['intro'].$chips],
+        ['gang', 'Darbas per GANG', $join],
+    ], '/'.$t['slug'], false);
 }
 
 function how_page(): never

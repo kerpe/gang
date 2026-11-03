@@ -81,14 +81,14 @@ function preview_gate(string $path): void
     $employerFirst = ($_GET['kaip'] ?? '') === 'vadovas';
     if (!PRELAUNCH_OPEN) {
         echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-            .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=33"></head>'
+            .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=34"></head>'
             .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
             .'<h1>Netrukus</h1>'
             .'<p class="meta">Susisiekti: <a href="mailto:hello@gang.lt">hello@gang.lt</a></p>'.$team.'</section></main></body></html>';
         exit;
     }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=33"></head>'
+        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=34"></head>'
         .'<body><main><section class="wrap soon"><a class="logo" href="/" aria-label="GANG.lt">'.knives().'GANG<span>.lt</span></a>'
         .'<h1>Prisijunkite prie GANG</h1><p class="lead">GANG padės barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų. '.e(launch_when() !== '' ? str_replace('GANG startuoja', 'Startuojame', launch_headline()).'. Pasiruošti galite jau dabar.' : 'Platforma pradės veikti netrukus, o pasiruošti galite jau dabar.').'</p>'
         .'<div class="join'.($employerFirst ? ' employer-first' : '').'">'.$workerBox.$employerBox.'</div>'
