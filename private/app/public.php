@@ -10,7 +10,7 @@ const CAMS = [
     '03' => ['Staliukai', 'Padavėjai, administratoriai, salės vadovai, papildomos rankos renginiams.'],
 ];
 
-// Section stories behind the home camera tiles: slug, page heading, intro, roles and two quotes
+// Section stories behind the home camera tiles: slug, page heading, intro, roles and quotes (may be empty)
 // (Lithuanian translation, original, author, role, source). Quotes are verified against the linked source.
 const TEAM_PAGES = [
     '01' => [
@@ -37,17 +37,11 @@ const TEAM_PAGES = [
         'title' => 'Darbas virtuvėje',
         'heading' => 'Virtuvė',
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
-            .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja.</p>',
+            .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja.</p>'
+            .'<p>Pirmas dalykas, kurį privalo išmokti kiekvienas geras šefas, – komandinis darbas.</p>',
         'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
-        'quotes' => [
-            ['Mise en place – visų gerų virėjų religija.',
-                'Mise-en-place is the religion of all good line cooks.',
-                'Anthony Bourdain', 'šefas ir rašytojas', 'Kitchen Confidential, 2000', 'https://tastingtable.com/1612604/anthony-bourdain-mise-en-place-ritual'],
-            ['Komandinio darbo kiekvienas virėjas turi išmokti pirmiausia.',
-                'Teamwork is the first thing that every cook should learn.',
-                'Dominique Crenn', 'šefė, Atelier Crenn (San Franciskas)', 'The World’s 50 Best, 2018', 'https://www.the50.com/stories/News/dominique-crenn-put-yourself-out-there-work-hard-everything-is-possible.html'],
-        ],
+        'quotes' => [],
     ],
     '03' => [
         'slug' => 'sale',
@@ -269,11 +263,12 @@ function team_page(string $n): never
             .'<figcaption><strong>'.e($who).'</strong>, '.e($role).' · <a href="'.e($href).'" target="_blank" rel="noopener">'.e($src).'</a></figcaption></figure>';
     }
     $join = '<p>'.e($t['join']).'</p><p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
-    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, [
-        ['apie', $t['about'], $t['intro'].$chips],
-        ['zodziai', 'Profesionalų žodžiai', $quotes],
-        ['gang', 'Darbas per GANG', $join],
-    ], '/'.$t['slug'], false);
+    $sections = [['apie', $t['about'], $t['intro'].$chips]];
+    if ($quotes !== '') {
+        $sections[] = ['zodziai', 'Profesionalų žodžiai', $quotes];
+    }
+    $sections[] = ['gang', 'Darbas per GANG', $join];
+    split_page($t['title'], 'CAM '.$n.' · '.$label, $t['heading'], $n, $sections, '/'.$t['slug'], false);
 }
 
 function how_page(): never
