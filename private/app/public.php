@@ -18,7 +18,7 @@ const TEAM_PAGES = [
         'title' => 'Darbas bare',
         'heading' => 'Baras',
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
-            .'<p>Geras baras remiasi ne vien receptais, bet ir žmonėmis, kurie išmano savo amatą ir moka priimti svečią. Vis dėlto barmeno darbą svečias galiausiai įvertins pagal gėrimo kokybę.</p>',
+            .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią. O barmeno meistriškumą svečias galiausiai pajus taurėje.</p>',
         'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
