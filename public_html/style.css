@@ -152,6 +152,7 @@ select:focus, input:focus, textarea:focus { border-color: var(--lime); outline: 
 input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+@media (max-width: 719px) { .home-cards .card:nth-child(n+4) { display: none; } }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); transition: border-color .15s, background .15s; }
 .card:hover { border-color: var(--line-strong); background: var(--surface-2); }
 .card-link { display: block; padding: 18px 18px 12px; color: inherit; text-decoration: none; }
