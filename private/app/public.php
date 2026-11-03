@@ -54,12 +54,14 @@ function cam_photo(string $n): string
 function home_page(): never
 {
     // Before launch there are no real listings yet: the team tiles lead to worker sign-up.
-    $urgent = prelaunch() ? [] : open_requests(['kind' => 'skubu'], 6);
-    $latest = $urgent ?: (prelaunch() ? [] : open_requests([], 6));
-    $jobs = prelaunch() ? '/prisijungti?kaip=darbuotojas' : '/darbai';
-    $jobsLabel = prelaunch() ? 'Susikurti profilį →' : 'Peržiūrėti pasiūlymus →';
+    // Urgent listings come first (open_requests orders them so), the rest fills full rows of three.
+    $latest = prelaunch() ? [] : open_requests([], 6);
+    if (count($latest) >= 3) {
+        $latest = array_slice($latest, 0, count($latest) >= 6 ? 6 : 3);
+    }
+    $urgent = $latest && !array_filter($latest, fn ($r) => $r['kind'] !== 'skubu');
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
-    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi darbo pasiūlymai →</a></div><div class="cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
+    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
     $start = prelaunch() && launch_when() !== '' ? '<li><strong>'.e(str_replace('GANG startuoja', 'Startuojame', launch_headline())).'</strong> registracija jau vyksta</li>' : '';
     $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
@@ -145,12 +147,12 @@ function home_page(): never
 $list
 
 <section class="wrap home-block">
-  <div class="section-head"><h2>Visa komanda vienoje vietoje</h2><a href="$jobs">$jobsLabel</a></div>
+  <div class="section-head"><h2>Visa komanda vienoje vietoje</h2></div>
   <div class="cam-tiles">$tiles</div>
 </section>
 
 <section class="wrap home-block">
-  <div class="section-head"><h2>Kaip veikia</h2><a href="/kaip-veikia">Daugiau →</a></div>
+  <div class="section-head"><h2>Kaip veikia</h2></div>
   <ol class="steps">
     <li><strong>Darbdavys paskelbia paiešką</strong>Pavyzdžiui, „virėjas rytoj, 10–22 val.“ arba „padavėjai vasaros sezonui“.</li>
     <li><strong>Tinkami darbuotojai gauna pranešimą</strong>ir pateikia kandidatūrą vienu paspaudimu.</li>
