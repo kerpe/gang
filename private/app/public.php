@@ -26,9 +26,6 @@ const TEAM_PAGES = [
             ['Akių kontaktas. Kai žmogus įžengia į jūsų erdvę, turite vos porą minučių pažvelgti jam į akis ir nusišypsoti.',
                 'Eye contact. When people come into your space, you have a window of a couple of minutes to make eye contact and smile.',
                 'Dale DeGroff', 'barmenas, Rainbow Room (Niujorkas)', 'Tales of the Cocktail', 'https://talesofthecocktail.org/three-veteran-barkeeps-art-small-talk/'],
-            ['Jus įvertins ne pagal tai, kaip garsiai kalbate, o pagal jūsų gėrimo kokybę.',
-                'You’ll get recognized not by how loud you talk but by the quality of your drink.',
-                'Audrey Saunders', 'barmenė, Pegu Club (Niujorkas)', 'Tales of the Cocktail, 2016', 'https://talesofthecocktail.org/audrey-saunders-mentoring-hard-work/'],
         ],
     ],
     '02' => [
