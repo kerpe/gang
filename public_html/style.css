@@ -340,6 +340,8 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .side-index a:hover { color: var(--lime); }
 .sec { border-top: 1px solid var(--line); padding: 32px 0 36px; display: grid; grid-template-columns: 96px 1fr; gap: 20px; scroll-margin-top: 90px; }
 .sec:first-child { border-top: 0; padding-top: 4px; }
+.sec.plain { grid-template-columns: 1fr; }
+.sec.plain > div > p:first-child { margin-top: 0; }
 .sec .num { font-family: var(--display); font-size: 4rem; line-height: .9; color: transparent; -webkit-text-stroke: 1.5px var(--lime); }
 .sec h2 { margin: 6px 0 12px; font-size: 1.45rem; }
 .sec p, .sec li { color: #d9d5cc; }

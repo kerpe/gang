@@ -17,9 +17,9 @@ const TEAM_PAGES = [
         'slug' => 'baras',
         'about' => 'Apie barą',
         'title' => 'Darbas bare',
-        'heading' => 'Už baro',
+        'heading' => 'Baras',
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
-            .'<p>Geras baras remiasi ne vien receptais. Jis remiasi žmonėmis, kurie išmano savo amatą ir moka priimti svečią.</p>',
+            .'<p>Geras baras remiasi ne vien receptais, bet ir žmonėmis, kurie išmano savo amatą ir moka priimti svečią. Vis dėlto barmeno darbą svečias galiausiai įvertins pagal gėrimo kokybę.</p>',
         'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
         'quotes' => [
@@ -237,18 +237,24 @@ HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
 
 // Two-column text page: sticky heading, CCTV photo and section index on the left,
 // numbered sections on the right. $sections is [[id, heading, html], ...].
-function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical): never
+// With $numbered = false the sections carry no numbers, headings or side index (Baras, Virtuvė, Salė).
+function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical, bool $numbered = true): never
 {
     $index = $body = '';
     foreach ($sections as $i => [$id, $h, $html]) {
         $n = sprintf('%02d', $i + 1);
+        if (!$numbered) {
+            $body .= '<section class="sec plain" id="'.$id.'"><div>'.$html.'</div></section>';
+            continue;
+        }
         $index .= '<li><a href="#'.$id.'">'.$n.' · '.e($h).'</a></li>';
         $body .= '<section class="sec" id="'.$id.'"><span class="num" aria-hidden="true">'.$n.'</span><div><h2>'.e($h).'</h2>'.$html.'</div></section>';
     }
+    $index = $index !== '' ? '<ol class="side-index">'.$index.'</ol>' : '';
     $photo = cam_photo($cam);
     $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
     page($title, '<div class="wrap split"><aside class="side"><p class="eyebrow">'.e($eyebrow).'</p><h1>'.e($heading).'</h1>'.$photo
-        .'<ol class="side-index">'.$index.'</ol></aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
+        .$index.'</aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
 }
 
 function team_page(string $n): never
@@ -267,7 +273,7 @@ function team_page(string $n): never
         ['apie', $t['about'], $t['intro'].$chips],
         ['zodziai', 'Profesionalų žodžiai', $quotes],
         ['gang', 'Darbas per GANG', $join],
-    ], '/'.$t['slug']);
+    ], '/'.$t['slug'], false);
 }
 
 function how_page(): never
