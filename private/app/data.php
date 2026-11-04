@@ -140,8 +140,8 @@ function save_availability(int $userId, array $days): void
 
 function availability_last_day(): string
 {
-    // Last day of the sixth calendar month shown, counting the current one.
-    return date('Y-m-t', strtotime(date('Y-m-01').' +'.(AVAILABILITY_MONTHS - 1).' months'));
+    // Same limit as job dates: PLANNING_MONTHS ahead of today.
+    return date('Y-m-d', strtotime('+'.PLANNING_MONTHS.' months'));
 }
 
 function range_lt(array $r): string

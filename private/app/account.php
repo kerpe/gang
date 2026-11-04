@@ -576,7 +576,7 @@ function availability_panel(array $u): string
         : '<p class="status off">● Šiandien laisvos dienos nepažymėtos</p>';
     $value = implode(',', array_map(fn ($r) => max($r['start_date'], today()).':'.$r['end_date'], $ranges));
     return '<section class="panel avail" id="laisvumas"><h2>Mano laisvos dienos</h2>'.$status
-        .'<p class="meta">Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
+        .'<p class="meta">Pažymėkite dienas per artimiausius 12 mėnesių, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
         // First submit button handles Enter: save, not "today".
         .'<button class="offscreen" tabindex="-1" aria-hidden="true">Išsaugoti</button>'
