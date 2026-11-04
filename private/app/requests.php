@@ -55,7 +55,7 @@ function venue_form_page(?int $id = null): never
 // Returns [] when anything is invalid, in the past or more than a year ahead.
 function parse_ranges(string $raw): array
 {
-    $max = date('Y-m-d', strtotime('+12 months'));
+    $max = availability_last_day();
     $ranges = [];
     foreach (array_filter(explode(',', $raw)) as $part) {
         if (!preg_match('/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/', $part, $m)
@@ -336,7 +336,7 @@ function request_form_page(): never
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'
         .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
-        .'<div class="picker" data-min="'.today().'" data-max="'.date('Y-m-d', strtotime('+12 months')).'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
+        .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
         .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
         .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?" aria-describedby="pay-live"><span aria-hidden="true">€/val.</span></span>'
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span></label>'

@@ -47,7 +47,8 @@ const EXPERIENCE_REQUIRED = [
     3 => 'Ne mažiau kaip 1 metai',
 ];
 const REVIEW_HIDE_DAYS = 7;
-const AVAILABILITY_MONTHS = 6;
+// How far ahead job dates and worker availability can be planned.
+const PLANNING_MONTHS = 12;
 const VENUE_ABOUT_MIN = 80;
 
 function private_root(): string
