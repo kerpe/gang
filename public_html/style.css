@@ -198,7 +198,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .card-head > div { min-width: 0; }
 .card-head h3 { font: 400 1.6rem/1 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 0 0 4px; }
 .card-head .meta { margin: 0; overflow: hidden; text-overflow: ellipsis; }
-.avatar.venue-logo.card-logo { width: 44px; height: 44px; border-radius: 10px; font-size: 1rem; }
+.job-card .avatar.venue-logo.card-logo { width: 44px; height: 44px; border-radius: 10px; font-size: 1rem; }
 .card-pay { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; }
 .card-pay strong { font: 400 2.6rem/1 var(--display); color: var(--lime); letter-spacing: .01em; }
 .card-pay span { color: var(--muted); font-size: .85rem; }
