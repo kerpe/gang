@@ -54,6 +54,7 @@ match (true) {
     $path === '/admin' => admin_page(),
     $is('/darboviete/(\d+)') => venue_page((int) $m[1]),
     $is('/darboviete/(\d+)/redaguoti') => venue_form_page((int) $m[1]),
+    $is('/darboviete/(\d+)/logotipas') => venue_logo_page((int) $m[1]),
     $is('/darbas/(\d+)') => request_page((int) $m[1]),
     $is('/darbas/(\d+)/atsiliepti') && $post => respond_action((int) $m[1]),
     $is('/darbas/(\d+)/atsaukti') && $post => withdraw_action((int) $m[1]),

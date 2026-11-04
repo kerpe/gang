@@ -31,8 +31,9 @@ function avatar(array $u, string $class = ''): string
 }
 
 // Validates an upload, crops it to a square and re-encodes it as JPEG (which also drops EXIF and location data).
+// With $fit (logos) the whole image is kept and centred on white instead of being cropped.
 // Returns the new file name, or an error message prefixed with "!".
-function store_photo(array $file): string
+function store_photo(array $file, bool $fit = false): string
 {
     if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE || $file['size'] > PHOTO_MAX_MB * 1024 * 1024) {
         return '!Nuotrauka per didelė. Įkelkite iki '.PHOTO_MAX_MB.' MB dydžio failą.';
@@ -59,14 +60,21 @@ function store_photo(array $file): string
     }
     $w = imagesx($src);
     $h = imagesy($src);
-    if (min($w, $h) < 200) {
+    if (($fit ? max($w, $h) : min($w, $h)) < 200) {
         return '!Nuotrauka per maža. Įkelkite bent 200 × 200 taškų nuotrauką.';
     }
-    $side = min($w, $h);
     $out = imagecreatetruecolor(PHOTO_SIZE, PHOTO_SIZE);
     imagefill($out, 0, 0, imagecolorallocate($out, 255, 255, 255));
-    // Portraits are cropped a little above centre so the face stays in frame.
-    imagecopyresampled($out, $src, 0, 0, intdiv($w - $side, 2), $h > $w ? intdiv($h - $side, 4) : 0, PHOTO_SIZE, PHOTO_SIZE, $side, $side);
+    if ($fit) {
+        $k = PHOTO_SIZE / max($w, $h);
+        $dw = (int) round($w * $k);
+        $dh = (int) round($h * $k);
+        imagecopyresampled($out, $src, intdiv(PHOTO_SIZE - $dw, 2), intdiv(PHOTO_SIZE - $dh, 2), 0, 0, $dw, $dh, $w, $h);
+    } else {
+        $side = min($w, $h);
+        // Portraits are cropped a little above centre so the face stays in frame.
+        imagecopyresampled($out, $src, 0, 0, intdiv($w - $side, 2), $h > $w ? intdiv($h - $side, 4) : 0, PHOTO_SIZE, PHOTO_SIZE, $side, $side);
+    }
     @mkdir(photo_dir(), 0700, true);
     $name = bin2hex(random_bytes(12)).'.jpg';
     if (!imagejpeg($out, photo_dir().'/'.$name, 85)) {
@@ -95,6 +103,41 @@ function photo_page(int $id): never
     header('Content-Type: image/jpeg');
     header('Content-Length: '.filesize($file));
     header('Cache-Control: private, max-age=2592000');
+    header('X-Content-Type-Options: nosniff');
+    readfile($file);
+    exit;
+}
+
+// Venue logos are not personal data: anyone may load them (job pages are public).
+function venue_logo_url(array $v): string
+{
+    return !empty($v['logo']) ? '/darboviete/'.(int) $v['id'].'/logotipas?v='.substr($v['logo'], 0, 8) : '';
+}
+
+// The venue's logo, or its initials in the same rounded square.
+function venue_logo(array $v, string $class = ''): string
+{
+    if (!empty($v['logo'])) {
+        return '<img class="avatar venue-logo '.$class.'" src="'.e(venue_logo_url($v)).'" alt="'.e($v['name']).'" width="96" height="96" loading="lazy">';
+    }
+    $initials = '';
+    foreach (array_slice(preg_split('/\s+/', preg_replace('/[^\p{L}\p{N}\s]/u', '', (string) $v['name'])) ?: [], 0, 2) as $part) {
+        $initials .= mb_strtoupper(mb_substr($part, 0, 1));
+    }
+    return '<span class="avatar venue-logo none '.$class.'" aria-hidden="true">'.e($initials ?: 'G').'</span>';
+}
+
+function venue_logo_page(int $id): never
+{
+    $logo = (string) sql('SELECT logo FROM venues WHERE id = ?', [$id])->fetchColumn();
+    $file = preg_match('/^[0-9a-f]{24}\.jpg$/', $logo) ? photo_dir().'/'.$logo : '';
+    if ($file === '' || !is_file($file)) {
+        http_response_code(404);
+        exit;
+    }
+    header('Content-Type: image/jpeg');
+    header('Content-Length: '.filesize($file));
+    header('Cache-Control: public, max-age=2592000');
     header('X-Content-Type-Options: nosniff');
     readfile($file);
     exit;
