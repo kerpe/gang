@@ -10,7 +10,7 @@ function open_where(string $alias = 'r'): array
     return [$sql, [today(), date('Y-m-d H:i:s', strtotime('-'.(int) config()['request_days'].' days'))]];
 }
 
-const REQUEST_SELECT = 'SELECT r.*, v.name AS venue_name, v.city, v.address, v.manager_id FROM requests r JOIN venues v ON v.id = r.venue_id';
+const REQUEST_SELECT = 'SELECT r.*, v.name AS venue_name, v.city, v.address, v.manager_id, v.logo AS venue_logo, v.website AS venue_website FROM requests r JOIN venues v ON v.id = r.venue_id';
 
 function find_request(int $id): ?array
 {

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 function migrate(PDO $db): void
 {
@@ -46,7 +46,17 @@ function migrate(PDO $db): void
             city VARCHAR(20) NOT NULL,
             address VARCHAR(190) NOT NULL DEFAULT '',
             about TEXT NULL,
-            created_at DATETIME NOT NULL",
+            created_at DATETIME NOT NULL,
+            type VARCHAR(30) NOT NULL DEFAULT '',
+            concept VARCHAR(120) NOT NULL DEFAULT '',
+            hours VARCHAR(190) NOT NULL DEFAULT '',
+            team_size VARCHAR(10) NOT NULL DEFAULT '',
+            perks VARCHAR(255) NOT NULL DEFAULT '',
+            website VARCHAR(255) NOT NULL DEFAULT '',
+            instagram VARCHAR(255) NOT NULL DEFAULT '',
+            facebook VARCHAR(255) NOT NULL DEFAULT '',
+            tiktok VARCHAR(255) NOT NULL DEFAULT '',
+            logo VARCHAR(64) NULL",
         // status: open | filled | cancelled | expired
         'requests' => "id $id,
             venue_id INT NOT NULL,
@@ -133,6 +143,17 @@ function migrate(PDO $db): void
         'users ADD launch_mail_at DATETIME NULL',
         // Version 10: job durations a worker is interested in (KINDS keys); empty = all of them.
         "users ADD durations VARCHAR(100) NOT NULL DEFAULT ''",
+        // Version 11: venue profile – type, concept, opening hours, team size, staff perks, links and logo.
+        "venues ADD type VARCHAR(30) NOT NULL DEFAULT ''",
+        "venues ADD concept VARCHAR(120) NOT NULL DEFAULT ''",
+        "venues ADD hours VARCHAR(190) NOT NULL DEFAULT ''",
+        "venues ADD team_size VARCHAR(10) NOT NULL DEFAULT ''",
+        "venues ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD website VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD instagram VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD facebook VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD tiktok VARCHAR(255) NOT NULL DEFAULT ''",
+        'venues ADD logo VARCHAR(64) NULL',
     ];
     foreach ($columns as $column) {
         try {

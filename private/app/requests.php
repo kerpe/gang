@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+const VENUE_FIELDS = ['name', 'type', 'concept', 'city', 'address', 'hours', 'about', 'team_size', 'website', 'instagram', 'facebook', 'tiktok'];
+
 function venue_form_page(?int $id = null): never
 {
     $u = require_user('manager');
@@ -9,13 +11,25 @@ function venue_form_page(?int $id = null): never
     if ($id && !$venue) {
         not_found();
     }
-    $v = $venue ?: ['name' => '', 'city' => '', 'address' => '', 'about' => ''];
+    $v = array_fill_keys(VENUE_FIELDS, '') + ['perks' => [], 'logo' => null, 'id' => 0];
+    if ($venue) {
+        $v = array_merge($v, array_intersect_key($venue, $v), ['perks' => from_list($venue['perks'])]);
+    }
     $errors = [];
     if (is_post()) {
         check_csrf();
-        $v = ['name' => input('name'), 'city' => input('city'), 'address' => input('address'), 'about' => input('about')];
+        foreach (VENUE_FIELDS as $field) {
+            $v[$field] = input($field);
+        }
+        $v['perks'] = (array) ($_POST['perks'] ?? []);
         if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
             $errors['name'] = 'Įrašykite darbovietės pavadinimą.';
+        }
+        if (!isset(VENUE_TYPES[$v['type']])) {
+            $errors['type'] = 'Pasirinkite darbovietės tipą.';
+        }
+        if (mb_strlen($v['concept']) > 120) {
+            $errors['concept'] = 'Koncepcija gali būti ne ilgesnė nei 120 simbolių.';
         }
         if (!isset(CITIES[$v['city']])) {
             $errors['city'] = 'Pasirinkite miestą.';
@@ -23,32 +37,155 @@ function venue_form_page(?int $id = null): never
         if (mb_strlen($v['address']) > 190) {
             $errors['address'] = 'Adresas gali būti ne ilgesnis nei 190 simbolių.';
         }
+        if (mb_strlen($v['hours']) > 190) {
+            $errors['hours'] = 'Darbo laikas gali būti ne ilgesnis nei 190 simbolių.';
+        }
         if (mb_strlen($v['about']) < VENUE_ABOUT_MIN) {
             $errors['about'] = 'Aprašymas padeda darbuotojams apsispręsti. Parašykite bent '.VENUE_ABOUT_MIN.' simbolių: kokia tai vieta, kokia komanda ir kokios darbo sąlygos.';
         } elseif (mb_strlen($v['about']) > 2000) {
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
+        if ($v['team_size'] !== '' && !isset(TEAM_SIZES[$v['team_size']])) {
+            $v['team_size'] = '';
+        }
+        foreach (array_keys(VENUE_LINKS) as $link) {
+            if ($v[$link] === '') {
+                continue;
+            }
+            $url = venue_link($link, $v[$link]);
+            if ($url === '') {
+                $errors[$link] = [
+                    'website' => 'Įrašykite svetainės adresą, pavyzdžiui, www.jusu-baras.lt.',
+                    'instagram' => 'Įrašykite Instagram paskyros vardą arba nuorodą, pavyzdžiui, @jusu_baras.',
+                    'facebook' => 'Įrašykite Facebook puslapio nuorodą, pavyzdžiui, facebook.com/jusubaras.',
+                    'tiktok' => 'Įrašykite TikTok paskyros vardą arba nuorodą, pavyzdžiui, @jusu_baras.',
+                ][$link];
+            } else {
+                $v[$link] = $url;
+            }
+        }
+        $logo = $venue['logo'] ?? null;
+        if (!empty($_FILES['logo']['name'])) {
+            $stored = store_photo($_FILES['logo'], true);
+            if ($stored[0] === '!') {
+                $errors['logo'] = substr($stored, 1);
+            } else {
+                $logo = $stored;
+            }
+        } elseif (!empty($_POST['remove_logo'])) {
+            $logo = null;
+        }
+        if ($errors && $logo !== ($venue['logo'] ?? null)) {
+            delete_photo($logo);
+            $logo = $venue['logo'] ?? null;
+        }
         if (!$errors) {
+            $row = array_intersect_key($v, array_flip(VENUE_FIELDS)) + ['perks' => to_list($v['perks'], VENUE_PERKS), 'logo' => $logo];
             if ($venue) {
-                sql('UPDATE venues SET name = ?, city = ?, address = ?, about = ? WHERE id = ?', [$v['name'], $v['city'], $v['address'], $v['about'], $venue['id']]);
+                sql('UPDATE venues SET '.implode(', ', array_map(fn ($k) => "$k = ?", array_keys($row))).' WHERE id = ?', [...array_values($row), $venue['id']]);
+                if ($logo !== $venue['logo']) {
+                    delete_photo($venue['logo']);
+                }
                 flash('Darbovietės duomenys išsaugoti.');
                 redirect('/mano');
             }
-            insert('venues', ['manager_id' => $u['id'], 'name' => $v['name'], 'city' => $v['city'], 'address' => $v['address'], 'about' => $v['about'], 'created_at' => now()]);
+            insert('venues', ['manager_id' => $u['id']] + $row + ['created_at' => now()]);
             flash(prelaunch() ? 'Darbovietė užregistruota.' : 'Darbovietė užregistruota. Dabar galite skelbti darbuotojų paieškas.');
             redirect('/mano');
         }
+        $v['logo'] = $logo;
     }
     $title = $venue ? 'Darbovietės duomenys' : 'Užregistruokite savo barą, restoraną ar kavinę';
     $soon = prelaunch() && !$venue ? '<p class="notice tip">Darbuotojų paieškas skelbti galėsite nuo GANG starto'.e(launch_day() !== '' ? ' '.launch_day() : ' dienos').'. Užregistravę darbovietę dabar, tą dieną galėsite pradėti iš karto.</p>' : '';
-    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
-        .'<form method="post" class="form" novalidate>'.csrf_field()
-        .'<label>Pavadinimas <input name="name" value="'.e($v['name']).'" maxlength="120" placeholder="Pavyzdžiui: baras „Gintaras“" required>'.err($errors, 'name').'</label>'
-        .'<div class="row"><label>Miestas <select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>'.err($errors, 'city').'</label>'
-        .'<label>Adresas <small>(matomas skelbimuose ir darbovietės puslapyje)</small><input name="address" value="'.e($v['address']).'" maxlength="190" autocomplete="street-address">'.err($errors, 'address').'</label></div>'
-        .'<label>Apie darbovietę <small>(bent '.VENUE_ABOUT_MIN.' simbolių)</small><textarea name="about" rows="5" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, darbas vakarais, apmokymai vietoje.">'.e($v['about']).'</textarea>'
-        .'<span class="counter meta" aria-live="polite"></span>'.err($errors, 'about').'</label>'
-        .'<button class="btn">Išsaugoti</button></form></section>'.counter_script(), ['noindex' => true]);
+    $field = fn (string $label, string $control, string $name, string $hint = '', string $class = '') => '<label class="field'.($class ? " $class" : '').'"><span class="field-label">'.$label.'</span>'.$control
+        .($hint !== '' ? '<span class="field-hint">'.$hint.'</span>' : '').err($errors, $name).'</label>';
+    $text = fn (string $name, int $max, string $placeholder = '', string $extra = '') => '<input name="'.$name.'" value="'.e($v[$name]).'" maxlength="'.$max.'"'.($placeholder !== '' ? ' placeholder="'.e($placeholder).'"' : '').$extra.'>';
+    $optional = ' <small>neprivaloma</small>';
+    $section = fn (string $heading, string $hint, string $body) => '<fieldset class="form-sec"><div class="form-sec-head"><legend>'.$heading.'</legend><p>'.$hint.'</p></div><div class="form-sec-body">'.$body.'</div></fieldset>';
+    $remove = !empty($v['logo']) ? '<label class="check"><input type="checkbox" name="remove_logo"> Pašalinti logotipą</label>' : '';
+    $logoField = '<div class="photo-row logo-row">'.venue_logo(['id' => $v['id'] ?: ($venue['id'] ?? 0), 'name' => $v['name'] ?: 'GANG', 'logo' => $v['logo']], 'large')
+        .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" data-crop="logo">'
+        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Rodomas darbo skelbimuose ir darbovietės puslapyje.</p>'.$remove.err($errors, 'logo').'</div></div>';
+    $perks = '<div class="choices perk-choices">';
+    foreach (VENUE_PERKS as $key => $label) {
+        $perks .= '<label class="choice"><input type="checkbox" name="perks[]" value="'.$key.'"'.(in_array($key, $v['perks'], true) ? ' checked' : '').'> '.e($label).'</label>';
+    }
+    $perks .= '</div>';
+    $body = $section('Pagrindinė informacija', 'Pavadinimas, tipas ir logotipas padeda darbuotojams iš karto atpažinti jūsų darbovietę.',
+            $field('Pavadinimas', $text('name', 120, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
+            .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
+            .$field('Koncepcija ar virtuvė'.$optional, $text('concept', 120, 'Pavyzdžiui: itališka virtuvė'), 'concept').'</div>'
+            .$logoField)
+        .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje. Telefono numerį darbuotojas mato tik po jūsų patvirtinimo.',
+            '<div class="row">'.$field('Miestas', '<select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>', 'city')
+            .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
+            .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
+        .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
+            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta" aria-live="polite"></span>', 'about'))
+        .$section('Komanda ir sąlygos', 'Pažymėkite, ką siūlote darbuotojams. Tai viena svarbiausių priežasčių, kodėl žmonės renkasi darbovietę.',
+            '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>'
+            .'<div class="field"><span class="field-label">Darbuotojams siūlome'.$optional.'</span>'.$perks.'</div>')
+        .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
+            '<div class="row">'.$field('Svetainė'.$optional, $text('website', 255, 'www.jusu-baras.lt', ' inputmode="url" autocomplete="url"'), 'website')
+            .$field('Instagram'.$optional, $text('instagram', 255, '@jusu_baras'), 'instagram').'</div>'
+            .'<div class="row">'.$field('Facebook'.$optional, $text('facebook', 255, 'facebook.com/jusubaras', ' inputmode="url"'), 'facebook')
+            .$field('TikTok'.$optional, $text('tiktok', 255, '@jusu_baras'), 'tiktok').'</div>');
+    $cancel = '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
+    page($title, '<section class="wrap venue-edit"><h1>'.$title.'</h1>'.$soon
+        .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
+        .$body
+        .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
+        .counter_script().photo_resize_script(), ['noindex' => true]);
+}
+
+// Turns what the manager typed (a URL, a domain, "@handle" or a bare handle) into a full https link.
+// Returns '' when it cannot be a valid link of that kind.
+function venue_link(string $kind, string $raw): string
+{
+    $raw = trim($raw);
+    $hosts = ['instagram' => 'instagram.com', 'facebook' => 'facebook.com', 'tiktok' => 'tiktok.com'];
+    if ($kind !== 'website' && preg_match('/^@?([A-Za-z0-9._-]{2,60})$/', $raw, $m) && !str_contains($m[1], '.com')) {
+        return 'https://www.'.$hosts[$kind].'/'.($kind === 'tiktok' ? '@' : '').$m[1];
+    }
+    $url = preg_match('#^https?://#i', $raw) ? $raw : 'https://'.$raw;
+    $parts = parse_url($url);
+    $host = strtolower($parts['host'] ?? '');
+    if (!filter_var($url, FILTER_VALIDATE_URL) || !str_contains($host, '.') || mb_strlen($url) > 255) {
+        return '';
+    }
+    if ($kind !== 'website') {
+        $allowed = $kind === 'facebook' ? ['facebook.com', 'fb.com'] : [$hosts[$kind]];
+        $ok = false;
+        foreach ($allowed as $a) {
+            $ok = $ok || $host === $a || str_ends_with($host, '.'.$a);
+        }
+        if (!$ok || trim($parts['path'] ?? '', '/') === '') {
+            return '';
+        }
+    }
+    return $url;
+}
+
+// Short readable form of a venue link: the domain for a website, the account name otherwise.
+function venue_link_label(string $kind, string $url): string
+{
+    if ($kind === 'website') {
+        return preg_replace('/^www\./', '', strtolower((string) parse_url($url, PHP_URL_HOST)));
+    }
+    $path = trim((string) parse_url($url, PHP_URL_PATH), '/');
+    $first = explode('/', $path)[0];
+    return $kind === 'facebook' ? ($first === 'profile.php' ? 'Facebook' : $first) : '@'.ltrim($first, '@');
+}
+
+function venue_links_html(array $venue): string
+{
+    $out = '';
+    foreach (VENUE_LINKS as $kind => $label) {
+        if (!empty($venue[$kind])) {
+            $out .= '<li><a href="'.e($venue[$kind]).'" target="_blank" rel="noopener nofollow ugc"><span class="link-kind">'.$label.'</span>'.e(venue_link_label($kind, $venue[$kind])).'</a></li>';
+        }
+    }
+    return $out !== '' ? '<ul class="venue-links">'.$out.'</ul>' : '';
 }
 
 // Parses "2026-11-07:2026-11-08,2026-11-14:2026-11-15" into sorted, merged [start, end] pairs.
@@ -219,8 +356,22 @@ function venue_page(int $id): never
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
-    page($venue['name'], '<section class="wrap narrow"><h1>'.e($venue['name']).'</h1><p class="meta">'.e(full_address($venue)).' · '.stars($avg, $n).'</p>'
-        .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
+    $type = trim(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $venue['concept']])));
+    $facts = array_filter([
+        'Adresas' => full_address($venue),
+        'Darbo laikas' => $venue['hours'],
+        'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
+    ]);
+    $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>';
+    $perks = array_values(array_intersect_key(VENUE_PERKS, array_flip(from_list($venue['perks']))));
+    $perksHtml = $perks ? '<h2>Darbuotojams siūlome</h2><ul class="perk-list">'.implode('', array_map(fn ($p) => '<li>'.e($p).'</li>', $perks)).'</ul>' : '';
+    $edit = (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
+    page($venue['name'], '<section class="wrap narrow venue-page"><header class="venue-head">'.venue_logo($venue, 'large')
+        .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').' · '.stars($avg, $n).'</p>'
+        .venue_links_html($venue).'</div></header>'.$edit
+        .$factsHtml
+        .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
+        .$perksHtml
         .$jobsHtml.'<h2>Darbuotojų įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }
 
@@ -461,6 +612,7 @@ function request_page(int $id): never
         .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div></dl>';
     $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
+    $venueLogo = $r['venue_logo'] ? venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo']], 'small') : '';
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
     $e = 'e';
@@ -474,7 +626,9 @@ function request_page(int $id): never
             'datePosted' => substr($r['created_at'], 0, 10),
             'validThrough' => ($r['end_date'] ?: ($r['kind'] === 'nuolat' ? date('Y-m-d', strtotime($r['created_at'].' +30 days')) : $r['start_date'])).'T23:59:00+02:00',
             'employmentType' => ['skubu' => 'PER_DIEM', 'trumpai' => 'TEMPORARY', 'sezonas' => 'TEMPORARY', 'nuolat' => 'FULL_TIME'][$r['kind']],
-            'hiringOrganization' => ['@type' => 'Organization', 'name' => $r['venue_name']],
+            'hiringOrganization' => ['@type' => 'Organization', 'name' => $r['venue_name']]
+                + ($r['venue_website'] ? ['sameAs' => $r['venue_website']] : [])
+                + ($r['venue_logo'] ? ['logo' => rtrim(config()['public_url'], '/').venue_logo_url(['id' => $r['venue_id'], 'logo' => $r['venue_logo']])] : []),
             'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
@@ -484,7 +638,7 @@ function request_page(int $id): never
   <header class="job-head">
     <p class="job-tags"><span class="tag{$e($r['kind'] === 'skubu' ? ' urgent' : '')}">{$e(KINDS[$r['kind']] ?? '')}</span></p>
     <h1>{$e($role)}</h1>
-    <p class="meta">$venueLink · {$e($city)}</p>
+    <p class="meta job-venue">$venueLogo<span>$venueLink · {$e($city)}</span></p>
   </header>
   <div class="job-grid">
     <aside class="job-side">$payBox$facts</aside>

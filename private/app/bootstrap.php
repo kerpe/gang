@@ -50,6 +50,41 @@ const REVIEW_HIDE_DAYS = 7;
 // How far ahead job dates and worker availability can be planned.
 const PLANNING_MONTHS = 12;
 const VENUE_ABOUT_MIN = 80;
+// Venue profile (darbovietės duomenys). Keys are stored in venues.type / team_size / perks.
+const VENUE_TYPES = [
+    'restoranas' => 'Restoranas',
+    'baras' => 'Baras',
+    'kokteiliu-baras' => 'Kokteilių baras',
+    'vyno-baras' => 'Vyno baras',
+    'alaus-baras' => 'Alaus baras',
+    'kavine' => 'Kavinė',
+    'bistro' => 'Bistro',
+    'klubas' => 'Naktinis klubas',
+    'viesbutis' => 'Viešbučio restoranas ar baras',
+    'kateringas' => 'Kateringas ir renginiai',
+    'kita' => 'Kita',
+];
+const TEAM_SIZES = [
+    '1-5' => 'Iki 5 žmonių',
+    '6-15' => '6–15 žmonių',
+    '16-30' => '16–30 žmonių',
+    '31-60' => '31–60 žmonių',
+    '60+' => 'Daugiau nei 60 žmonių',
+];
+// What a venue offers its staff; shown on the venue page under "Darbuotojams siūlome".
+const VENUE_PERKS = [
+    'maitinimas' => 'Personalo maitinimas',
+    'arbatpinigiai' => 'Arbatpinigiai',
+    'mokymai' => 'Apmokymai vietoje',
+    'apranga' => 'Darbo apranga',
+    'grafikas' => 'Lankstus darbo grafikas',
+    'transportas' => 'Parvežimas po vėlyvos pamainos',
+    'apgyvendinimas' => 'Apgyvendinimas sezono metu',
+    'nuolaida' => 'Nuolaida personalui',
+    'sutartis' => 'Oficialus įdarbinimas',
+];
+// Order and labels of the venue's links on its page.
+const VENUE_LINKS = ['website' => 'Svetainė', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'tiktok' => 'TikTok'];
 
 function private_root(): string
 {

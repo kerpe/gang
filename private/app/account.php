@@ -134,11 +134,13 @@ function photo_resize_script(): string
 <script>
 document.querySelectorAll('input[data-crop]').forEach(function (input) {
   var row = input.closest('.photo-row'), form = input.form, OUT = 600, MIN = 200;
+  // data-crop="logo": a rounded square, and the whole logo may be shrunk to fit on white.
+  var logo = input.dataset.crop === 'logo';
   var canCrop = !!(window.DataTransfer && HTMLCanvasElement.prototype.toBlob);
   var box, img, zoom, help, st = null, pointers = {}, pinch = 0;
   function build() {
     box = document.createElement('div');
-    box.className = 'photo-crop';
+    box.className = 'photo-crop' + (logo ? ' venue-logo' : '');
     img = document.createElement('img');
     img.alt = '';
     img.draggable = false;
@@ -154,7 +156,7 @@ document.querySelectorAll('input[data-crop]').forEach(function (input) {
       wrap.appendChild(lab);
       help = document.createElement('p');
       help.className = 'meta photo-help';
-      help.textContent = 'Patempkite nuotrauką ir pasirinkite, kuri jos dalis bus matoma apskritime.';
+      help.textContent = logo ? 'Sumažinkite arba priartinkite logotipą ir patempkite jį į vietą.' : 'Patempkite nuotrauką ir pasirinkite, kuri jos dalis bus matoma apskritime.';
       input.insertAdjacentElement('afterend', help);
       zoom.addEventListener('input', function () { setZoom(+zoom.value); });
       box.addEventListener('pointerdown', down);
@@ -172,15 +174,16 @@ document.querySelectorAll('input[data-crop]').forEach(function (input) {
   function size() { return box.clientWidth; }
   function render() {
     var s = st.base * st.z, v = size();
-    st.x = Math.min(0, Math.max(v - st.w * s, st.x));
-    st.y = Math.min(0, Math.max(v - st.h * s, st.y));
+    var ow = v - st.w * s, oh = v - st.h * s;
+    st.x = Math.min(Math.max(0, ow), Math.max(Math.min(0, ow), st.x));
+    st.y = Math.min(Math.max(0, oh), Math.max(Math.min(0, oh), st.y));
     img.style.width = st.w * s + 'px';
     img.style.height = st.h * s + 'px';
     img.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px)';
     if (zoom) zoom.value = st.z;
   }
   function setZoom(z, cx, cy) {
-    z = Math.min(st.max, Math.max(1, z));
+    z = Math.min(st.max, Math.max(st.min, z));
     var v = size(), old = st.base * st.z, s = st.base * z;
     cx = cx === undefined ? v / 2 : cx; cy = cy === undefined ? v / 2 : cy;
     st.x = cx - (cx - st.x) * s / old;
@@ -218,16 +221,17 @@ document.querySelectorAll('input[data-crop]').forEach(function (input) {
     st = null;
     if (!file || !/^image\//.test(file.type)) return;
     if (!box) build();
-    var remove = row.querySelector('input[name=remove_photo]');
+    var remove = row.querySelector('input[name^=remove_]');
     if (remove) remove.checked = false;
     var url = URL.createObjectURL(file), probe = new Image();
     probe.onload = function () {
       var w = probe.naturalWidth, h = probe.naturalHeight, v = size(), side = Math.min(w, h);
-      st = {w: w, h: h, z: 1, base: v / side, max: Math.max(1, Math.min(4, side / MIN))};
+      st = {w: w, h: h, z: 1, base: v / side, min: logo ? side / Math.max(w, h) : 1, max: Math.max(1, Math.min(4, side / MIN))};
       // Same starting point as the server crop: centred, portraits a little above centre.
       st.x = (v - w * st.base) / 2;
       st.y = h > w ? -(h - side) / 4 * st.base : (v - h * st.base) / 2;
-      if (zoom) { zoom.max = st.max; zoom.disabled = st.max === 1; }
+      if (logo) { st.z = st.min; st.x = (v - w * st.base * st.z) / 2; st.y = (v - h * st.base * st.z) / 2; }
+      if (zoom) { zoom.min = st.min; zoom.max = st.max; zoom.disabled = st.max === st.min; }
       img.src = url;
       render();
     };
@@ -491,7 +495,7 @@ function prelaunch_manager_dashboard(array $u): string
     }
     $venueHtml = '';
     foreach ($venues as $v) {
-        $venueHtml .= '<div class="venue-card"><strong class="venue-name">'.e($v['name']).'</strong>'
+        $venueHtml .= '<div class="venue-card"><div class="venue-card-head">'.venue_logo($v, 'small').'<strong class="venue-name">'.e($v['name']).'</strong></div>'
             .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'
             .'<p class="venue-about">'.e(mb_strimwidth((string) $v['about'], 0, 180, '…')).'</p>'
             .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></p></div>';
@@ -516,7 +520,7 @@ function manager_dashboard(array $u): string
     $venueHtml = '';
     foreach ($venues as $v) {
         [$avg, $n] = venue_rating((int) $v['id']);
-        $venueHtml .= '<div class="venue-card"><a class="venue-name" href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a>'
+        $venueHtml .= '<div class="venue-card"><div class="venue-card-head">'.venue_logo($v, 'small').'<a class="venue-name" href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a></div>'
             .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'.stars($avg, $n)
             .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'">Peržiūrėti</a></p></div>';
     }
