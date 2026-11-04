@@ -659,3 +659,18 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 body.has-tabbar .toast { bottom: calc(var(--tabbar-h, 0px) + 14px + env(safe-area-inset-bottom)); }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 12px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @media (prefers-reduced-motion: reduce) { .toast { animation: none; transition: none; } }
+.admin-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.admin-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.admin-filter input[type=search] { flex: 1 1 260px; }
+.admin-facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0 0 20px; }
+.admin-facts dt { color: var(--muted); }
+.admin-facts dd { margin: 0; }
+.admin-message { max-width: 640px; }
+table.data td.actions { white-space: nowrap; }
+table.data td.actions form + form { margin-left: 6px; }
+.btn.danger { background: transparent; color: var(--err); border: 1px solid var(--err); }
+@media (max-width: 600px) { .admin-facts { grid-template-columns: 1fr; gap: 2px; } .admin-facts dd { margin-bottom: 10px; } }
+.admin-filter select, .admin-filter button { width: auto; flex: 0 0 auto; }
+.admin-filter input[type=search] { width: auto; }
+.admin-message button { justify-self: start; }
+.admin-message + h3 { margin-top: 32px; }

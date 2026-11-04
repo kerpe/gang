@@ -2,42 +2,211 @@
 
 declare(strict_types=1);
 
-// Admin is whoever logs in with config admin_email.
+// gang.lt/admin is reached only by typing the address: no link points to it, robots.txt does not
+// name it, and it is never indexed. It has its own login (ADMIN_USER below + the same password as
+// "GANG komandos prieiga", config preview_password) and works even while the site is locked.
+const ADMIN_USER = 'gangster';
+
+function admin_token(): string
+{
+    $password = (string) (config()['preview_password'] ?? '');
+    return $password === '' ? '' : hash_hmac('sha256', 'admin', $password);
+}
+
+// True when this browser signed in at /admin. Changing the password signs everyone out.
+function admin_signed_in(): bool
+{
+    static $on = null;
+    if ($on === null) {
+        $token = admin_token();
+        $on = false;
+        if ($token !== '' && isset($_COOKIE[session_name()])) {
+            start_session();
+            $on = hash_equals($token, (string) ($_SESSION['admin'] ?? ''));
+        }
+    }
+    return $on;
+}
+
+function admin_login_page(): never
+{
+    header('X-Robots-Tag: noindex, nofollow');
+    header('Cache-Control: no-store');
+    $error = '';
+    if (is_post()) {
+        start_session();
+        check_csrf();
+        usleep(800000);
+        $password = (string) (config()['preview_password'] ?? '');
+        $userOk = hash_equals(ADMIN_USER, mb_strtolower(trim((string) ($_POST['user'] ?? ''))));
+        $passOk = $password !== '' && hash_equals($password, (string) ($_POST['password'] ?? ''));
+        if ($userOk && $passOk) {
+            session_regenerate_id(true);
+            $_SESSION['admin'] = admin_token();
+            redirect('/admin');
+        }
+        http_response_code(401);
+        $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
+    }
+    echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=37"></head>'
+        .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
+        .'<h1>Administravimas</h1>'
+        .'<form method="post" action="/admin" class="form">'.csrf_field()
+        .'<label>Vartotojas <input name="user" autocomplete="username" autocapitalize="none" required></label>'
+        .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
+        .$error.'<button class="btn">Prisijungti</button></form></section></main></body></html>';
+    exit;
+}
+
 function admin_page(): never
 {
-    $u = require_user();
-    if (!is_admin($u)) {
-        not_found();
+    if (!admin_signed_in()) {
+        admin_login_page();
     }
+    header('X-Robots-Tag: noindex, nofollow');
+    header('Cache-Control: no-store');
     if (is_post()) {
         check_csrf();
+        if (input('action') === 'logout') {
+            unset($_SESSION['admin']);
+            session_regenerate_id(true);
+            redirect('/admin');
+        }
         $id = (int) input('id');
+        $back = '/admin?'.http_build_query(array_intersect_key($_GET, ['tab' => 1, 'q' => 1, 'kind' => 1, 'status' => 1]));
         match (input('action')) {
-            'block' => sql('UPDATE users SET blocked = 1 WHERE id = ? AND id <> ?', [$id, $u['id']]),
+            'block' => sql('UPDATE users SET blocked = 1 WHERE id = ?', [$id]),
             'unblock' => sql('UPDATE users SET blocked = 0 WHERE id = ?', [$id]),
+            'delete_user' => flash(admin_delete_user($id) ? 'Narys ir visi jo duomenys ištrinti.' : 'Narys nerastas.') ?: redirect($back),
+            'delete_request' => flash(admin_delete_requests([$id]) ? 'Paieška ištrinta.' : 'Paieška nerasta.') ?: redirect($back),
+            'delete_venue' => flash(admin_delete_venue($id) ? 'Darbovietė ir jos paieškos ištrintos.' : 'Darbovietė nerasta.') ?: redirect($back),
+            'message' => admin_send_message($id),
             'delete_review' => sql('DELETE FROM reviews WHERE id = ?', [$id]),
             'close_request' => sql("UPDATE requests SET status = 'cancelled' WHERE id = ?", [$id]),
             'invite_waitlist' => flash(invite_waitlist().' laiškų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
             default => null,
         };
         flash('Pakeitimas atliktas.');
-        redirect('/admin'.(isset($_GET['tab']) ? '?tab='.urlencode((string) $_GET['tab']) : ''));
+        redirect($back);
     }
-    $tab = $_GET['tab'] ?? 'stats';
-    $tabs = ['stats' => 'Rodikliai', 'requests' => 'Paieškos', 'users' => 'Nariai', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji'];
+    $tab = (string) ($_GET['tab'] ?? 'stats');
+    $tabs = ['stats' => 'Rodikliai', 'users' => 'Nariai', 'venues' => 'Darbovietės', 'requests' => 'Paieškos', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji', 'settings' => 'Nustatymai'];
     $nav = '<nav class="tabs">';
     foreach ($tabs as $k => $label) {
-        $nav .= '<a href="/admin?tab='.$k.'"'.($tab === $k ? ' class="active"' : '').'>'.$label.'</a>';
+        $nav .= '<a href="/admin?tab='.$k.'"'.($tab === $k || ($tab === 'user' && $k === 'users') ? ' class="active"' : '').'>'.$label.'</a>';
     }
     $nav .= '</nav>';
     $body = match ($tab) {
         'requests' => admin_requests(),
         'users' => admin_users(),
+        'user' => admin_user((int) ($_GET['id'] ?? 0)),
+        'venues' => admin_venues(),
         'reviews' => admin_reviews(),
         'waitlist' => admin_waitlist(),
+        'settings' => admin_settings(),
         default => admin_stats(),
     };
-    page('Administravimas', '<section class="wrap"><h1>Administravimas</h1>'.$nav.$body.'</section>', ['noindex' => true]);
+    $logout = post_button('/admin', 'Atsijungti', ['action' => 'logout'], 'btn small ghost');
+    page('Administravimas', '<section class="wrap"><div class="admin-head"><h1>Administravimas</h1>'.$logout.'</div>'.$nav.$body.'</section>', ['noindex' => true]);
+}
+
+// Search box above a list: free text plus an optional select (kind or status).
+function admin_filter(string $tab, string $placeholder, string $selectName = '', array $choices = []): string
+{
+    $select = $selectName === '' ? '' : '<select name="'.$selectName.'"><option value="">Visi</option>'.options($choices, (string) ($_GET[$selectName] ?? '')).'</select>';
+    return '<form method="get" action="/admin" class="admin-filter"><input type="hidden" name="tab" value="'.$tab.'">'
+        .'<input type="search" name="q" value="'.e((string) ($_GET['q'] ?? '')).'" placeholder="'.e($placeholder).'">'.$select
+        .'<button class="btn small">Rodyti</button></form>';
+}
+
+function admin_like(): string
+{
+    return '%'.trim((string) ($_GET['q'] ?? '')).'%';
+}
+
+// Everything a member left behind: profile, availability, responses, contracts with their reviews
+// and arrival checks; for an employer also their venues and every request posted there.
+function admin_delete_user(int $id): bool
+{
+    $u = sql('SELECT * FROM users WHERE id = ?', [$id])->fetch();
+    if (!$u) {
+        return false;
+    }
+    db()->beginTransaction();
+    foreach (sql('SELECT id FROM venues WHERE manager_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN) as $venueId) {
+        admin_delete_venue((int) $venueId, false);
+    }
+    admin_delete_contracts(sql('SELECT id FROM contracts WHERE worker_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN));
+    foreach (['availability' => 'user_id', 'worker_roles' => 'user_id', 'responses' => 'worker_id', 'invites' => 'worker_id'] as $table => $col) {
+        sql("DELETE FROM $table WHERE $col = ?", [$id]);
+    }
+    sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
+    sql('DELETE FROM waitlist WHERE email = ?', [$u['email']]);
+    sql('DELETE FROM users WHERE id = ?', [$id]);
+    db()->commit();
+    delete_photo($u['photo']);
+    return true;
+}
+
+function admin_delete_venue(int $id, bool $own = true): bool
+{
+    if (!sql('SELECT 1 FROM venues WHERE id = ?', [$id])->fetchColumn()) {
+        return false;
+    }
+    $own && db()->beginTransaction();
+    admin_delete_requests(sql('SELECT id FROM requests WHERE venue_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN), false);
+    admin_delete_contracts(sql('SELECT id FROM contracts WHERE venue_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN));
+    sql('DELETE FROM venues WHERE id = ?', [$id]);
+    $own && db()->commit();
+    return true;
+}
+
+function admin_delete_requests(array $ids, bool $own = true): bool
+{
+    $ids = array_map('intval', $ids);
+    if (!$ids) {
+        return false;
+    }
+    $in = implode(',', $ids);
+    if (!sql("SELECT COUNT(*) FROM requests WHERE id IN ($in)")->fetchColumn()) {
+        return false;
+    }
+    $own && db()->beginTransaction();
+    admin_delete_contracts(sql("SELECT id FROM contracts WHERE request_id IN ($in)")->fetchAll(PDO::FETCH_COLUMN));
+    sql("DELETE FROM responses WHERE request_id IN ($in)");
+    sql("DELETE FROM invites WHERE request_id IN ($in)");
+    sql("DELETE FROM requests WHERE id IN ($in)");
+    $own && db()->commit();
+    return true;
+}
+
+function admin_delete_contracts(array $ids): void
+{
+    $ids = array_map('intval', $ids);
+    if ($ids) {
+        $in = implode(',', $ids);
+        sql("DELETE FROM reviews WHERE contract_id IN ($in)");
+        sql("DELETE FROM shift_checks WHERE contract_id IN ($in)");
+        sql("DELETE FROM contracts WHERE id IN ($in)");
+    }
+}
+
+// A personal email from the GANG team; replies go to hello@gang.lt.
+function admin_send_message(int $id): never
+{
+    $u = sql('SELECT * FROM users WHERE id = ?', [$id])->fetch();
+    $subject = trim(input('subject'));
+    $text = trim(input('text'));
+    if (!$u || $subject === '' || $text === '') {
+        flash('Įrašykite laiško temą ir tekstą.');
+        redirect('/admin?tab=user&id='.$id);
+    }
+    $greeting = $u['name'] !== '' ? 'Laba diena, '.$u['name'].",\n\n" : "Laba diena,\n\n";
+    $from = (string) config()['mail_from'];
+    $reply = preg_match('/<([^>]+)>/', $from, $m) ? $m[1] : $from;
+    flash(send_mail($u['email'], $subject, $greeting.$text, $reply) ? 'Laiškas išsiųstas: '.$u['email'].'.' : 'Laiško išsiųsti nepavyko.');
+    redirect('/admin?tab=user&id='.$id);
 }
 
 function admin_stats(): string
@@ -77,32 +246,143 @@ function admin_stats(): string
     return $html.$table.'</table>';
 }
 
+const REQUEST_STATUSES = ['open' => 'Atvira', 'filled' => 'Užpildyta', 'cancelled' => 'Uždaryta', 'expired' => 'Pasibaigusi'];
+
 function admin_requests(): string
 {
-    $rows = sql('SELECT r.*, v.name AS venue_name, v.city, (SELECT COUNT(*) FROM responses s WHERE s.request_id = r.id) AS responses, (SELECT COUNT(*) FROM contracts c WHERE c.request_id = r.id) AS contracts
-        FROM requests r JOIN venues v ON v.id = r.venue_id ORDER BY r.created_at DESC LIMIT 200')->fetchAll();
-    $html = '<table class="data"><tr><th>Sukurta</th><th>Darbovietė</th><th>Pareigos</th><th>Tipas</th><th>Kada</th><th>Laiškų</th><th>Atsil.</th><th>Kontr.</th><th>Būsena</th><th></th></tr>';
-    foreach ($rows as $r) {
-        $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td>'.e($r['venue_name']).', '.e(CITIES[$r['city']] ?? '').'</td><td><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? '').'</a></td>'
-            .'<td>'.e($r['kind']).'</td><td>'.e(period($r)).'</td><td>'.(int) $r['notified'].'</td><td>'.(int) $r['responses'].'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['status']).'</td>'
-            .'<td>'.($r['status'] === 'open' ? post_button('/admin?tab=requests', 'Uždaryti', ['action' => 'close_request', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką?') : '').'</td></tr>';
+    $where = ['(v.name LIKE ? OR r.description LIKE ?)'];
+    $params = [admin_like(), admin_like()];
+    if (isset(REQUEST_STATUSES[$_GET['status'] ?? ''])) {
+        $where[] = 'r.status = ?';
+        $params[] = $_GET['status'];
     }
-    return '<div class="scroll">'.$html.'</table></div>';
+    $rows = sql('SELECT r.*, v.name AS venue_name, v.city, v.manager_id, (SELECT COUNT(*) FROM responses s WHERE s.request_id = r.id) AS responses, (SELECT COUNT(*) FROM contracts c WHERE c.request_id = r.id) AS contracts
+        FROM requests r JOIN venues v ON v.id = r.venue_id WHERE '.implode(' AND ', $where).' ORDER BY r.created_at DESC LIMIT 500', $params)->fetchAll();
+    $back = '/admin?'.http_build_query(array_intersect_key($_GET, ['tab' => 1, 'q' => 1, 'status' => 1]));
+    $html = admin_filter('requests', 'Darbovietė arba aprašymo žodis', 'status', REQUEST_STATUSES).'<p class="meta">Rasta: '.count($rows).'</p>'
+        .'<div class="scroll"><table class="data"><tr><th>Sukurta</th><th>Darbovietė</th><th>Pareigos</th><th>Trukmė</th><th>Kada</th><th>Atlygis</th><th>Laiškų</th><th>Atsil.</th><th>Kontr.</th><th>Būsena</th><th></th></tr>';
+    foreach ($rows as $r) {
+        $close = $r['status'] === 'open' ? post_button($back, 'Uždaryti', ['action' => 'close_request', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką?') : '';
+        $delete = post_button($back, 'Ištrinti', ['action' => 'delete_request', 'id' => $r['id']], 'btn small ghost', 'Ištrinti šią paiešką su visomis kandidatūromis, kontraktais ir įvertinimais? To atšaukti negalima.');
+        $html .= '<tr><td>'.e(substr($r['created_at'], 0, 16)).'</td><td><a href="/admin?tab=user&amp;id='.(int) $r['manager_id'].'">'.e($r['venue_name']).'</a>, '.e(CITIES[$r['city']] ?? '').'</td><td><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? $r['role']).'</a></td>'
+            .'<td>'.e(KINDS[$r['kind']] ?? $r['kind']).'</td><td>'.e(period($r)).'</td><td>'.e($r['pay']).'</td><td>'.(int) $r['notified'].'</td><td>'.(int) $r['responses'].'</td><td>'.(int) $r['contracts'].'</td><td>'.e(REQUEST_STATUSES[$r['status']] ?? $r['status']).'</td>'
+            .'<td class="actions">'.$close.$delete.'</td></tr>';
+    }
+    return $html.($rows ? '' : '<tr><td colspan="11">Paieškų nėra.</td></tr>').'</table></div>';
 }
 
 function admin_users(): string
 {
-    $rows = sql('SELECT u.*, (SELECT COUNT(*) FROM contracts c WHERE c.worker_id = u.id) AS contracts FROM users u ORDER BY u.created_at DESC LIMIT 500')->fetchAll();
-    $html = '<table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos</th><th>Kontr.</th><th></th></tr>';
-    foreach ($rows as $r) {
-        $btn = $r['blocked']
-            ? post_button('/admin?tab=users', 'Atblokuoti', ['action' => 'unblock', 'id' => $r['id']], 'btn small ghost')
-            : post_button('/admin?tab=users', 'Blokuoti', ['action' => 'block', 'id' => $r['id']], 'btn small ghost', 'Ar tikrai norite užblokuoti šį narį?');
-        $name = $r['kind'] === 'worker' ? '<a href="/darbuotojas/'.(int) $r['id'].'">'.e($r['name']).'</a>' : e($r['name']);
-        $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td><td>'.$name.'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
-            .'<td>'.e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small></td><td>'.(int) $r['contracts'].'</td><td>'.$btn.'</td></tr>';
+    $where = ['(u.name LIKE ? OR u.email LIKE ? OR u.phone LIKE ? OR EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id AND v.name LIKE ?))'];
+    $params = array_fill(0, 4, admin_like());
+    $kinds = ['worker' => 'Darbuotojai', 'manager' => 'Darbdaviai'];
+    if (isset($kinds[$_GET['kind'] ?? ''])) {
+        $where[] = 'u.kind = ?';
+        $params[] = $_GET['kind'];
     }
-    return '<div class="scroll">'.$html.'</table></div>';
+    $rows = sql('SELECT u.*, (SELECT COUNT(*) FROM contracts c WHERE c.worker_id = u.id OR c.venue_id IN (SELECT id FROM venues WHERE manager_id = u.id)) AS contracts,
+        (SELECT GROUP_CONCAT(v.name) FROM venues v WHERE v.manager_id = u.id) AS venues
+        FROM users u WHERE '.implode(' AND ', $where).' ORDER BY u.created_at DESC LIMIT 1000', $params)->fetchAll();
+    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta">Rasta: '.count($rows).'. Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
+        .'<div class="scroll"><table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos / darbovietės</th><th>Kontr.</th><th>Paskutinį kartą</th></tr>';
+    foreach ($rows as $r) {
+        $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
+        $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
+            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+            .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
+    }
+    return $html.($rows ? '' : '<tr><td colspan="8">Narių nerasta.</td></tr>').'</table></div>';
+}
+
+// One member: every detail, their venues and requests, a message form and delete.
+function admin_user(int $id): string
+{
+    $u = sql('SELECT * FROM users WHERE id = ?', [$id])->fetch();
+    if (!$u) {
+        return '<p>Narys nerastas. <a href="/admin?tab=users">Visi nariai</a></p>';
+    }
+    $worker = $u['kind'] === 'worker';
+    $back = '/admin?tab=user&id='.$id;
+    $facts = [
+        'Tipas' => $worker ? 'Darbuotojas' : 'Darbdavys',
+        'El. paštas' => e($u['email']),
+        'Telefonas' => e($u['phone'] ?: '–'),
+        'Registruotas' => e(substr($u['created_at'], 0, 16)),
+        'Paskutinį kartą prisijungė' => e($u['last_login_at'] ? substr($u['last_login_at'], 0, 16) : '–'),
+        'Pranešimai el. paštu' => $u['notify'] ? 'Taip' : 'Ne',
+        'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
+    ];
+    if ($worker) {
+        $facts += [
+            'Miestai' => e(labels($u['cities'], CITIES) ?: '–'),
+            'Pareigos' => e(labels($u['roles'], ROLES) ?: '–'),
+            'Domina darbas' => e($u['durations'] !== '' ? labels($u['durations'], KINDS) : 'Visi'),
+            'Kontraktų' => (string) sql('SELECT COUNT(*) FROM contracts WHERE worker_id = ?', [$id])->fetchColumn(),
+            'Kandidatūrų' => (string) sql('SELECT COUNT(*) FROM responses WHERE worker_id = ?', [$id])->fetchColumn(),
+            'Profilis' => '<a href="/darbuotojas/'.$id.'">Atidaryti viešą profilį</a>',
+        ];
+    }
+    $html = '<p><a href="/admin?tab=users">← Visi nariai</a></p><h2>'.e($u['name'] !== '' ? $u['name'] : '(be vardo)').'</h2><dl class="admin-facts">';
+    foreach ($facts as $k => $v) {
+        $html .= '<dt>'.$k.'</dt><dd>'.$v.'</dd>';
+    }
+    $html .= '</dl>'.($u['about'] ? '<p>'.nl2br(e($u['about'])).'</p>' : '');
+    if (!$worker) {
+        $venues = sql('SELECT v.*, (SELECT COUNT(*) FROM requests r WHERE r.venue_id = v.id) AS requests FROM venues v WHERE v.manager_id = ? ORDER BY v.id', [$id])->fetchAll();
+        $html .= '<h3>Darbovietės</h3>'.($venues ? '' : '<p class="meta">Darbovietės dar neužregistruotos.</p>');
+        foreach ($venues as $v) {
+            $html .= '<p><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a>, '.e(CITIES[$v['city']] ?? '').($v['address'] ? ', '.e($v['address']) : '').' · paieškų: '.(int) $v['requests'].'</p>';
+        }
+    }
+    $html .= '<h3>Parašyti laišką</h3><form method="post" action="'.e($back).'" class="form admin-message">'.csrf_field()
+        .'<input type="hidden" name="action" value="message"><input type="hidden" name="id" value="'.$id.'">'
+        .'<label>Tema <input name="subject" maxlength="150" required></label>'
+        .'<label>Tekstas <textarea name="text" rows="7" required></textarea></label>'
+        .'<p class="meta">Laiškas prasidės „Laba diena'.($u['name'] !== '' ? ', '.e($u['name']) : '').',“ ir baigsis GANG komandos parašu. Atsakymai ateis į hello@gang.lt.</p>'
+        .'<button class="btn small">Siųsti laišką</button></form>';
+    $block = $u['blocked']
+        ? post_button($back, 'Atblokuoti', ['action' => 'unblock', 'id' => $id], 'btn small ghost')
+        : post_button($back, 'Blokuoti', ['action' => 'block', 'id' => $id], 'btn small ghost', 'Užblokuotas narys negalės prisijungti. Tęsti?');
+    $delete = post_button('/admin?tab=users', 'Ištrinti narį', ['action' => 'delete_user', 'id' => $id], 'btn small danger',
+        'Ištrinti '.($u['name'] ?: $u['email']).' ir visus jo duomenis'.($worker ? '' : ', darbovietes ir paieškas').'? To atšaukti negalima.');
+    return $html.'<h3>Paskyra</h3><div class="account-actions">'.$block.$delete.'</div>';
+}
+
+function admin_venues(): string
+{
+    $rows = sql('SELECT v.*, u.name AS manager_name, u.email, (SELECT COUNT(*) FROM requests r WHERE r.venue_id = v.id) AS requests, (SELECT COUNT(*) FROM contracts c WHERE c.venue_id = v.id) AS contracts
+        FROM venues v JOIN users u ON u.id = v.manager_id WHERE v.name LIKE ? OR v.address LIKE ? OR u.name LIKE ? OR u.email LIKE ? ORDER BY v.created_at DESC LIMIT 1000', array_fill(0, 4, admin_like()))->fetchAll();
+    $back = '/admin?'.http_build_query(array_intersect_key($_GET, ['tab' => 1, 'q' => 1]));
+    $html = admin_filter('venues', 'Pavadinimas, adresas ar darbdavys').'<p class="meta">Rasta: '.count($rows).'</p>'
+        .'<div class="scroll"><table class="data"><tr><th>Užregistruota</th><th>Pavadinimas</th><th>Miestas, adresas</th><th>Darbdavys</th><th>Paieškų</th><th>Kontr.</th><th></th></tr>';
+    foreach ($rows as $v) {
+        $html .= '<tr><td>'.e(substr($v['created_at'], 0, 10)).'</td><td><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a></td><td>'.e(CITIES[$v['city']] ?? '').($v['address'] ? ', '.e($v['address']) : '').'</td>'
+            .'<td><a href="/admin?tab=user&amp;id='.(int) $v['manager_id'].'">'.e($v['manager_name'] ?: $v['email']).'</a></td><td>'.(int) $v['requests'].'</td><td>'.(int) $v['contracts'].'</td>'
+            .'<td>'.post_button($back, 'Ištrinti', ['action' => 'delete_venue', 'id' => $v['id']], 'btn small ghost', 'Ištrinti šią darbovietę su visomis jos paieškomis? To atšaukti negalima.').'</td></tr>';
+    }
+    return $html.($rows ? '' : '<tr><td colspan="7">Darboviečių nėra.</td></tr>').'</table></div>';
+}
+
+// What is switched on right now. These live in GitHub settings; Claude changes them on request.
+function admin_settings(): string
+{
+    $c = config();
+    $yes = fn (bool $on, string $onText, string $offText) => '<strong>'.($on ? $onText : $offText).'</strong>';
+    $mail = !empty($c['resend_key']) ? 'Resend' : 'Hostinger (PHP mail)';
+    $rows = [
+        'Svetainė' => $yes(!empty($c['public']), 'Atverta visiems', 'Užrakinta').' <small>– lankytojai be komandos slaptažodžio mato „Netrukus“.</small>',
+        'Registracija iki starto' => $yes(PRELAUNCH_OPEN, 'Atidaryta', 'Uždaryta'),
+        'Starto data' => '<strong>'.e(launch_when() !== '' ? launch_when() : 'Nenustatyta').'</strong> <small>– viešai: „'.e(launch_headline()).'“</small>',
+        'Laiškų siuntėjas' => '<strong>'.e((string) $c['mail_from']).'</strong> <small>per '.$mail.'</small>',
+        'SMS pranešimai' => $yes(($c['sms_provider'] ?? '') === 'twilio', 'Įjungti (Twilio)', 'Išjungti').' <small>– kol kas siunčiami tik el. laiškai.</small>',
+        'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ GANG komandos prieigos slaptažodis</small>',
+    ];
+    $html = '<dl class="admin-facts">';
+    foreach ($rows as $k => $v) {
+        $html .= '<dt>'.$k.'</dt><dd>'.$v.'</dd>';
+    }
+    $test = (int) sql('SELECT COUNT(*) FROM users')->fetchColumn();
+    return $html.'</dl><p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Prieš paleidimą ištrinkite bandomuosius narius skiltyje „Nariai“ (dabar narių: '.$test.'), kad paleidimo laiškai nenukeliautų netikriems adresams.</p>';
 }
 
 function admin_reviews(): string
