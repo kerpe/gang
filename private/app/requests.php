@@ -556,7 +556,6 @@ function owner_panel(array $r, bool $isOpen): string
     $list = '';
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
-        $done = completed_count((int) $s['worker_id']);
         $badges = [];
         if (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
             $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
@@ -564,7 +563,7 @@ function owner_panel(array $r, bool $isOpen): string
         if (isset(EXPERIENCE[(int) $s['experience']])) {
             $badges[] = '<span class="badge">Patirtis: '.e(mb_strtolower(EXPERIENCE[(int) $s['experience']])).'</span>';
         }
-        $badges[] = $done ? '<span class="badge">Darbų per GANG: '.$done.'</span>' : '<span class="badge">Naujas GANG narys</span>';
+        $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
@@ -734,7 +733,7 @@ function worker_profile_page(int $id): never
     $ranges = availability_ranges($id);
     $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
+        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'.$free
         .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);

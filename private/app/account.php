@@ -437,7 +437,7 @@ function worker_dashboard(array $u): string
     }
     // Until the first days are marked, the calendar comes first; after that, work and offers do.
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · Darbų per GANG: '.count($contracts).'</p></div></div>'
+        .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($hasDays ? '' : $availability)
         .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
