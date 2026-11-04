@@ -634,12 +634,16 @@ function respond_action(int $id): never
         insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'created_at' => now()]);
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
         [$avg, $n] = worker_rating((int) $u['id']);
-        $rating = $n ? number_format($avg, 1, ',', '')." iš 5 ($n įvert.)" : 'įvertinimų dar nėra';
-        send_mail($manager['email'], 'Nauja kandidatūra: '.(ROLES[$r['role']] ?? '').' – '.first_name($u['name']),
-            "Laba diena,\n\n"
-            .first_name($u['name'])." atsiliepė į jūsų paiešką „".(ROLES[$r['role']] ?? '')."“ (".period($r).").\n"
-            ."Įvertinimas: $rating\n".($note !== '' ? "\nŽinutė: $note\n" : '')
-            ."\nKandidatūrą galite peržiūrėti ir patvirtinti čia:\n".url('/darbas/'.$id));
+        $rating = $n ? number_format($avg, 1, ',', '')." iš 5 ($n įvert.)" : 'Įvertinimų dar nėra';
+        $role = ROLES[$r['role']] ?? '';
+        send_mail($manager['email'], 'Nauja kandidatūra: '.$role.' – '.first_name($u['name']), [
+            'kicker' => 'Nauja kandidatūra',
+            'title' => $role,
+            'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką. Peržiūrėkite kandidato profilį ir, jei kandidatūra tinka, patvirtinkite ją.',
+            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r), 'Įvertinimas' => $rating],
+            'note' => ['label' => 'Kandidato žinutė', 'text' => $note],
+            'cta' => ['Peržiūrėti kandidatūrą', url('/darbas/'.$id)],
+        ]);
     }
     flash('Kandidatūra pateikta. Darbdavys gaus pranešimą el. paštu.');
     redirect('/darbas/'.$id);
@@ -684,19 +688,27 @@ function decide_response_action(int $responseId, bool $accept): never
     $role = ROLES[$r['role']] ?? '';
     if (!$accept) {
         sql("UPDATE responses SET status = 'declined' WHERE id = ?", [$responseId]);
-        send_mail($worker['email'], 'Dėl jūsų kandidatūros: '.$role.' – '.$r['venue_name'], "Laba diena,\n\ndėkojame, kad atsiliepėte į {$r['venue_name']} darbo pasiūlymą. Šį kartą darbdavys pasirinko kitą kandidatą.\n\nKviečiame peržiūrėti kitus aktualius darbo pasiūlymus:\n".url('/darbai'));
+        send_mail($worker['email'], 'Dėl jūsų kandidatūros: '.$role.' – '.$r['venue_name'], declined_mail($r, 'Šį kartą darbdavys pasirinko kitą kandidatą.'));
         redirect('/darbas/'.$r['id']);
     }
     sql("UPDATE responses SET status = 'accepted' WHERE id = ?", [$responseId]);
     insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()]);
-    send_mail($worker['email'], 'Patvirtinta: '.$role.' – '.$r['venue_name'],
-        "Laba diena,\n\n{$r['venue_name']} patvirtino jūsų kandidatūrą.\n\n"
-        ."Kada: ".period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
-        ."Kur: ".($r['address'] ?: CITIES[$r['city']])."\n"
-        ."Kontaktas: {$u['name']}, {$u['phone']}\n\n"
-        ."Rekomenduojame susisiekti su darbdaviu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.\n\n"
-        .'Atvykimo patvirtinimas. '.shift_notice()."\n\n"
-        ."Baigę darbą galėsite įvertinti darbdavį savo paskyroje:\n".url('/mano'), $u['email']);
+    send_mail($worker['email'], 'Patvirtinta: '.$role.' – '.$r['venue_name'], [
+        'kicker' => 'Kandidatūra patvirtinta',
+        'title' => $role,
+        'lead' => "**{$r['venue_name']}** patvirtino jūsų kandidatūrą. Sveikiname!",
+        'facts' => [
+            'Kada' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
+            'Kur' => $r['address'] ?: CITIES[$r['city']],
+            'Kontaktas' => "{$u['name']}, {$u['phone']}",
+        ],
+        'body' => [
+            'Rekomenduojame susisiekti su darbdaviu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
+            '**Atvykimo patvirtinimas.** '.shift_notice(),
+        ],
+        'cta' => ['Mano GANG', url('/mano')],
+        'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
+    ], $u['email']);
     $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
     if ($accepted >= (int) $r['people']) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);
@@ -714,8 +726,19 @@ function decline_waiting(array $r): void
     $waiting = sql("SELECT w.email, w.name FROM responses s JOIN users w ON w.id = s.worker_id WHERE s.request_id = ? AND s.status = 'sent'", [$r['id']])->fetchAll();
     sql("UPDATE responses SET status = 'declined' WHERE request_id = ? AND status = 'sent'", [$r['id']]);
     foreach ($waiting as $w) {
-        send_mail($w['email'], 'Dėl jūsų kandidatūros: '.(ROLES[$r['role']] ?? '').' – '.$r['venue_name'], "Laba diena,\n\ndėkojame, kad atsiliepėte į {$r['venue_name']} darbo pasiūlymą. Informuojame, kad visos vietos jau užpildytos.\n\nKviečiame peržiūrėti kitus aktualius darbo pasiūlymus:\n".url('/darbai'));
+        send_mail($w['email'], 'Dėl jūsų kandidatūros: '.(ROLES[$r['role']] ?? '').' – '.$r['venue_name'], declined_mail($r, 'Informuojame, kad visos vietos jau užpildytos.'));
     }
+}
+
+function declined_mail(array $r, string $why): array
+{
+    return [
+        'kicker' => 'Dėl jūsų kandidatūros',
+        'title' => ROLES[$r['role']] ?? '',
+        'lead' => "dėkojame, kad atsiliepėte į **{$r['venue_name']}** darbo pasiūlymą. $why",
+        'body' => 'Kviečiame peržiūrėti kitus aktualius darbo pasiūlymus.',
+        'cta' => ['Darbo pasiūlymai', url('/darbai')],
+    ];
 }
 
 function worker_profile_page(int $id): never
