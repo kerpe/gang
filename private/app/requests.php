@@ -55,7 +55,7 @@ function venue_form_page(?int $id = null): never
 // Returns [] when anything is invalid, in the past or more than a year ahead.
 function parse_ranges(string $raw): array
 {
-    $max = date('Y-m-d', strtotime('+12 months'));
+    $max = availability_last_day();
     $ranges = [];
     foreach (array_filter(explode(',', $raw)) as $part) {
         if (!preg_match('/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/', $part, $m)
@@ -336,7 +336,7 @@ function request_form_page(): never
         .'<fieldset><legend>Reikalaujama darbo patirtis</legend><p class="hint">Apie skelbimą el. paštu informuosime tik reikalavimą atitinkančius darbuotojus.</p>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>'
         .'<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'
         .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius, pavyzdžiui, kelis savaitgalius.</p>'
-        .'<div class="picker" data-min="'.today().'" data-max="'.date('Y-m-d', strtotime('+12 months')).'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
+        .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
         .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
         .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?" aria-describedby="pay-live"><span aria-hidden="true">€/val.</span></span>'
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span></label>'
@@ -556,7 +556,6 @@ function owner_panel(array $r, bool $isOpen): string
     $list = '';
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
-        $done = completed_count((int) $s['worker_id']);
         $badges = [];
         if (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
             $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
@@ -564,7 +563,7 @@ function owner_panel(array $r, bool $isOpen): string
         if (isset(EXPERIENCE[(int) $s['experience']])) {
             $badges[] = '<span class="badge">Patirtis: '.e(mb_strtolower(EXPERIENCE[(int) $s['experience']])).'</span>';
         }
-        $badges[] = $done ? '<span class="badge">Darbų per GANG: '.$done.'</span>' : '<span class="badge">Naujas GANG narys</span>';
+        $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
@@ -757,7 +756,7 @@ function worker_profile_page(int $id): never
     $ranges = availability_ranges($id);
     $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
+        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'.$free
         .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);

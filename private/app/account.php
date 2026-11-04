@@ -436,7 +436,7 @@ function worker_dashboard(array $u): string
     }
     // Until the first days are marked, the calendar comes first; after that, work and offers do.
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · Darbų per GANG: '.count($contracts).'</p></div></div>'
+        .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($hasDays ? '' : $availability)
         .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
@@ -575,7 +575,7 @@ function availability_panel(array $u): string
         : '<p class="status off">● Šiandien laisvos dienos nepažymėtos</p>';
     $value = implode(',', array_map(fn ($r) => max($r['start_date'], today()).':'.$r['end_date'], $ranges));
     return '<section class="panel avail" id="laisvumas"><h2>Mano laisvos dienos</h2>'.$status
-        .'<p class="meta">Pažymėkite dienas per šį ir penkis ateinančius mėnesius, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
+        .'<p class="meta">Pažymėkite dienas per artimiausius 12 mėnesių, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
         .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
         // First submit button handles Enter: save, not "today".
         .'<button class="offscreen" tabindex="-1" aria-hidden="true">Išsaugoti</button>'

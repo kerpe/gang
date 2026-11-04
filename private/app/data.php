@@ -88,9 +88,19 @@ function venue_reviews(int $venueId): array
         WHERE c.venue_id = ? AND rv.author = \'worker\' AND '.visible_review_sql().' ORDER BY rv.created_at DESC LIMIT 50', [$venueId, review_cutoff()])->fetchAll();
 }
 
+// Jobs actually worked through GANG: a confirmed contract counts only once its last
+// work day has passed (a permanent job, once its first day has passed).
 function completed_count(int $workerId): int
 {
-    return (int) sql('SELECT COUNT(*) FROM contracts WHERE worker_id = ?', [$workerId])->fetchColumn();
+    return (int) sql("SELECT COUNT(*) FROM contracts c JOIN requests r ON r.id = c.request_id
+        WHERE c.worker_id = ? AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$workerId, today()])->fetchColumn();
+}
+
+// Track record shown next to a worker: the number of completed jobs, or a newcomer note.
+function gang_jobs_text(int $workerId): string
+{
+    $done = completed_count($workerId);
+    return $done ? 'Darbų per GANG: '.$done : 'GANG naujokas';
 }
 
 // Open to offers on at least one day between $from and $to (default: today).
@@ -140,8 +150,8 @@ function save_availability(int $userId, array $days): void
 
 function availability_last_day(): string
 {
-    // Last day of the sixth calendar month shown, counting the current one.
-    return date('Y-m-t', strtotime(date('Y-m-01').' +'.(AVAILABILITY_MONTHS - 1).' months'));
+    // Same limit as job dates: PLANNING_MONTHS ahead of today.
+    return date('Y-m-d', strtotime('+'.PLANNING_MONTHS.' months'));
 }
 
 function range_lt(array $r): string
