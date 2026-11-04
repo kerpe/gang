@@ -522,10 +522,43 @@ function check_phone(string $raw): array
                 $need = $min === $max ? $min : "$min–$max";
                 return ['', "Netinkamai įvestas telefono numeris: skaitmenų po šalies kodo +$code ($country) turi būti $need, o įvesta $n."];
             }
-            return ['+'.$code.' '.substr($digits, $len), ''];
+            return [format_phone($code, substr($digits, $len)), ''];
         }
     }
     return ['', 'Netinkamai įvestas šalies kodas. Patikrinkite numerio pradžią, pavyzdžiui, +370 (Lietuva).'];
+}
+
+// Digit groups after the country code, so a number reads like +370 605 16846.
+const PHONE_GROUPS = ['370' => [3, 5], '371' => [4, 4], '48' => [3, 3, 3], '44' => [4, 6], '1' => [3, 3, 4], '353' => [2, 3, 4], '49' => [3, 4, 5], '7' => [3, 3, 2, 2]];
+
+function phone_groups(string $code, int $n): array
+{
+    if (isset(PHONE_GROUPS[$code])) {
+        return PHONE_GROUPS[$code];
+    }
+    if ($n <= 6) {
+        return [3, 3];
+    }
+    if ($n <= 8) {
+        return [$n - 4, 4];
+    }
+    return $n % 3 === 1 ? array_merge(array_fill(0, intdiv($n, 3) - 1, 3), [4]) : array_fill(0, intdiv($n + 2, 3), 3);
+}
+
+// "+370 605 16846"; digits beyond the pattern stay in the last group.
+function format_phone(string $code, string $national): string
+{
+    $parts = [];
+    $groups = phone_groups($code, strlen($national));
+    foreach ($groups as $i => $size) {
+        if ($national === '') {
+            break;
+        }
+        $take = $i === count($groups) - 1 ? strlen($national) : $size;
+        $parts[] = substr($national, 0, $take);
+        $national = substr($national, $take);
+    }
+    return '+'.$code.($parts ? ' '.implode(' ', $parts) : '');
 }
 
 // Same check in the browser, so a mistake shows while typing.
@@ -533,6 +566,7 @@ function phone_check_script(): string
 {
     $codes = json_encode(PHONE_CODES, JSON_UNESCAPED_UNICODE);
     $format = json_encode(PHONE_FORMAT_ERROR, JSON_UNESCAPED_UNICODE);
+    $groups = json_encode(PHONE_GROUPS);
     return <<<HTML
 <script>
 (function () {
@@ -555,14 +589,67 @@ function phone_check_script(): string
     }
     return 'Netinkamai įvestas šalies kodas. Patikrinkite numerio pradžią, pavyzdžiui, +370 (Lietuva).';
   }
+  var groupsFor = $groups;
+  function groups(c, n) {
+    if (groupsFor[c]) return groupsFor[c];
+    if (n <= 6) return [3, 3];
+    if (n <= 8) return [n - 4, 4];
+    var g = [], k = Math.floor((n + 2) / 3);
+    if (n % 3 === 1) k = Math.floor(n / 3);
+    for (var i = 0; i < k; i++) g.push(i === k - 1 && n % 3 === 1 ? 4 : 3);
+    return g;
+  }
+  // Spaces are added while typing: +37060516846 shows as +370 605 16846.
+  function pretty(v) {
+    if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    if (!/^\+[0-9 ]*$/.test(v)) return null;
+    var d = v.replace(/\D/g, '');
+    for (var len = 3; len >= 1; len--) {
+      var c = d.slice(0, len);
+      if (!codes[c]) continue;
+      var rest = d.slice(len), g = groups(c, rest.length), out = '+' + c;
+      for (var i = 0; i < g.length && rest !== ''; i++) {
+        var take = i === g.length - 1 ? rest.length : g[i];
+        out += ' ' + rest.slice(0, take);
+        rest = rest.slice(take);
+      }
+      return out;
+    }
+    return null;
+  }
+  function reformat() {
+    var v = input.value, pos = input.selectionStart == null ? v.length : input.selectionStart;
+    var f = pretty(v);
+    if (f === null || f === v) return;
+    var before = v.slice(0, pos).replace(/\D/g, '').length, at = 0, seen = 0;
+    if (before === 0) at = pos > 0 ? 1 : 0;
+    else for (; at < f.length && seen < before; at++) if (/\d/.test(f[at])) seen++;
+    input.value = f;
+    if (document.activeElement === input) input.setSelectionRange(at, at);
+  }
   function show(final) { var p = problem(input.value, final); msg.textContent = p; msg.hidden = !p; return !p; }
+  // Backspace or Delete next to an inserted space removes the digit beside it.
+  input.addEventListener('beforeinput', function (e) {
+    var s = input.selectionStart, v = input.value;
+    if (s == null || s !== input.selectionEnd) return;
+    var cut = e.inputType === 'deleteContentBackward' && v[s - 1] === ' ' && s > 1 ? s - 2
+      : e.inputType === 'deleteContentForward' && v[s] === ' ' ? s + 1 : -1;
+    if (cut < 0) return;
+    e.preventDefault();
+    input.value = v.slice(0, cut) + v.slice(cut + 1);
+    input.setSelectionRange(Math.min(cut, s), Math.min(cut, s));
+    reformat();
+    show(false);
+  });
   input.addEventListener('input', function () {
     var clean = input.value.replace(/[^0-9+ ()\-]/g, '');
     if (clean !== input.value) input.value = clean;
+    reformat();
     show(false);
   });
   input.addEventListener('blur', function () { if (input.value.trim() !== '') show(true); });
   input.form.addEventListener('submit', function (e) { if (!show(true)) { e.preventDefault(); input.focus(); } });
+  reformat();
 })();
 </script>
 HTML;
