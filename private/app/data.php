@@ -47,6 +47,9 @@ function open_requests(array $filters = [], int $limit = 200): array
         $where .= " AND v.city IN ($in)";
         array_push($params, ...$filters['cities']);
     }
+    // Team first: until public_at only the invited team sees the request.
+    $where .= ' AND (r.public_at IS NULL OR r.public_at <= ?)';
+    $params[] = now();
     $order = "CASE WHEN r.kind = 'skubu' THEN 0 ELSE 1 END, r.created_at DESC";
     return sql(REQUEST_SELECT." WHERE $where ORDER BY $order LIMIT $limit", $params)->fetchAll();
 }
@@ -89,18 +92,43 @@ function venue_reviews(int $venueId): array
 }
 
 // Jobs actually worked through GANG: a confirmed contract counts only once its last
-// work day has passed (a permanent job, once its first day has passed).
+// work day has passed (a permanent job, once its first day has passed), and only if it was
+// neither cancelled nor marked as a no-show.
 function completed_count(int $workerId): int
 {
     return (int) sql("SELECT COUNT(*) FROM contracts c JOIN requests r ON r.id = c.request_id
-        WHERE c.worker_id = ? AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$workerId, today()])->fetchColumn();
+        WHERE c.worker_id = ? AND c.cancelled_at IS NULL AND c.no_show_at IS NULL
+        AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$workerId, today()])->fetchColumn();
 }
 
-// Track record shown next to a worker: the number of completed jobs, or a newcomer note.
+// Share of jobs a worker kept: completed jobs against late cancellations and no-shows.
+// null while there is nothing to measure yet.
+function worker_reliability(int $workerId): ?int
+{
+    $done = completed_count($workerId);
+    $missed = (int) sql("SELECT COUNT(*) FROM contracts WHERE worker_id = ? AND ((cancelled_by = 'worker' AND late = 1) OR no_show_at IS NOT NULL)", [$workerId])->fetchColumn();
+    return $done + $missed ? (int) round(100 * $done / ($done + $missed)) : null;
+}
+
+// The same for an employer: contracts kept against ones the employer cancelled at the last moment.
+function venue_reliability(int $venueId): ?int
+{
+    $done = (int) sql("SELECT COUNT(*) FROM contracts c JOIN requests r ON r.id = c.request_id
+        WHERE c.venue_id = ? AND (c.cancelled_at IS NULL OR c.cancelled_by = 'worker')
+        AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$venueId, today()])->fetchColumn();
+    $missed = (int) sql("SELECT COUNT(*) FROM contracts WHERE venue_id = ? AND cancelled_by = 'manager' AND late = 1", [$venueId])->fetchColumn();
+    return $done + $missed ? (int) round(100 * $done / ($done + $missed)) : null;
+}
+
+// Track record shown next to a worker: completed jobs and reliability, or a newcomer note.
 function gang_jobs_text(int $workerId): string
 {
     $done = completed_count($workerId);
-    return $done ? 'Darbų per GANG: '.$done : 'GANG naujokas';
+    $reliable = worker_reliability($workerId);
+    if ($reliable === null) {
+        return 'GANG naujokas';
+    }
+    return 'Darbų per GANG: '.$done.' · Patikimumas: '.$reliable.' %';
 }
 
 // Open to offers on at least one day between $from and $to (default: today).
@@ -248,13 +276,116 @@ function roles_with_experience(int $userId): string
 }
 
 // "Mano komanda": workers who already had a GANG contract with one of the manager's venues,
-// most frequent first. jobs = contracts together, last = date of the latest one.
+// most frequent first, then people who joined through the manager's invitation link.
+// jobs = contracts together, last = date of the latest one.
 function team_members(int $managerId): array
 {
-    return sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last
+    $worked = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last
         FROM contracts c JOIN venues v ON v.id = c.venue_id JOIN requests r ON r.id = c.request_id JOIN users u ON u.id = c.worker_id
-        WHERE v.manager_id = ? AND u.blocked = 0
+        WHERE v.manager_id = ? AND u.blocked = 0 AND c.cancelled_at IS NULL
         GROUP BY u.id, u.name, u.photo, u.roles, u.email, u.notify ORDER BY jobs DESC, last DESC LIMIT 60", [$managerId])->fetchAll();
+    $joined = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, 0 AS jobs, NULL AS last
+        FROM team_links t JOIN users u ON u.id = t.worker_id
+        WHERE t.manager_id = ? AND u.blocked = 0 AND u.kind = 'worker' AND u.roles <> '' ORDER BY t.created_at DESC LIMIT 100", [$managerId])->fetchAll();
+    $ids = array_column($worked, 'id');
+    return [...$worked, ...array_values(array_filter($joined, fn ($w) => !in_array($w['id'], $ids)))];
+}
+
+// A worker joins a manager's team (invitation link). Returns false when already in it.
+function join_team(int $managerId, int $workerId): bool
+{
+    if (sql('SELECT 1 FROM team_links WHERE manager_id = ? AND worker_id = ?', [$managerId, $workerId])->fetchColumn()) {
+        return false;
+    }
+    insert('team_links', ['manager_id' => $managerId, 'worker_id' => $workerId, 'created_at' => now()]);
+    $manager = sql("SELECT * FROM users WHERE id = ? AND kind = 'manager'", [$managerId])->fetch();
+    $worker = sql('SELECT * FROM users WHERE id = ?', [$workerId])->fetch();
+    if ($manager && $worker) {
+        send_mail($manager['email'], 'Prie jūsų komandos prisijungė '.first_name($worker['name']), [
+            'kicker' => 'Mano komanda',
+            'title' => 'Naujas komandos narys',
+            'lead' => '**'.first_name($worker['name']).'** priėmė jūsų kvietimą ir prisijungė prie jūsų komandos GANG.',
+            'facts' => array_filter(['Pareigos' => labels($worker['roles'], ROLES), 'Miestai' => labels($worker['cities'], CITIES)]),
+            'body' => 'Skelbdami paiešką, šį žmogų galėsite pakviesti asmeniškai, o pažymėję „Pirmiausia pasiūlyti komandai“ pasiūlymą jūsų komanda gaus anksčiau nei kiti darbuotojai.',
+            'cta' => ['Mano GANG', url('/mano')],
+        ]);
+    }
+    return true;
+}
+
+// The personal link code (/k/{code}), made on first use.
+function invite_code(array $u): string
+{
+    if (!empty($u['invite_code'])) {
+        return $u['invite_code'];
+    }
+    do {
+        $code = substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(9))), 0, 8);
+        $code = strtolower(preg_replace('/[^a-z0-9]/i', 'x', $code));
+    } while (sql('SELECT 1 FROM users WHERE invite_code = ?', [$code])->fetchColumn());
+    sql('UPDATE users SET invite_code = ? WHERE id = ?', [$code, $u['id']]);
+    return $code;
+}
+
+// Team first: once public_at has passed, the request goes to every matching worker.
+// Runs from cron and on page views, so the hour-long window is not stretched by the hourly cron.
+function release_team_requests(): void
+{
+    $due = sql("SELECT id FROM requests WHERE public_at IS NOT NULL AND public_at <= ? LIMIT 20", [now()])->fetchAll(PDO::FETCH_COLUMN);
+    foreach ($due as $id) {
+        // Only the call that clears public_at sends the emails.
+        if (sql('UPDATE requests SET public_at = NULL WHERE id = ? AND public_at IS NOT NULL', [$id])->rowCount() !== 1) {
+            continue;
+        }
+        $r = find_request((int) $id);
+        [$where, $params] = open_where();
+        if ($r && sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchColumn()) {
+            $skip = array_map('intval', sql('SELECT worker_id FROM invites WHERE request_id = ? UNION SELECT worker_id FROM responses WHERE request_id = ?', [$id, $id])->fetchAll(PDO::FETCH_COLUMN));
+            notify_workers($r, $skip);
+        }
+    }
+}
+
+// Usual pay for a role in a city: [low, high, number of GANG requests it is based on (0 = PAY_GUIDE)].
+function pay_guide(string $role, string $city): ?array
+{
+    $rows = sql("SELECT r.pay FROM requests r JOIN venues v ON v.id = r.venue_id WHERE r.role = ? AND v.city = ? AND r.created_at > ?",
+        [$role, $city, date('Y-m-d H:i:s', strtotime('-'.PAY_GUIDE_DAYS.' days'))])->fetchAll(PDO::FETCH_COLUMN);
+    $rates = array_values(array_filter(array_map('pay_number', $rows)));
+    if (count($rates) >= PAY_GUIDE_MIN) {
+        sort($rates);
+        $at = fn (float $q) => $rates[(int) floor($q * (count($rates) - 1))];
+        return [$at(0.25), $at(0.75), count($rates)];
+    }
+    return isset(PAY_GUIDE[$role]) ? [...PAY_GUIDE[$role], 0] : null;
+}
+
+// 12.5 from "12,50 €/val. į rankas"; null when the text has no hourly amount.
+function pay_number(?string $pay): ?float
+{
+    return preg_match('/^(\d+(?:,\d+)?)\s*€/u', (string) $pay, $m) ? (float) str_replace(',', '.', $m[1]) : null;
+}
+
+// Pay at or above the usual upper end for the role and city.
+function good_pay(array $r): bool
+{
+    $n = pay_number($r['pay'] ?? '');
+    $g = $n !== null && isset($r['city']) ? pay_guide($r['role'], $r['city']) : null;
+    return $g !== null && $n >= $g[1];
+}
+
+// "6–9 €" / "6,50–9 €"
+function money(float $n): string
+{
+    return str_replace('.', ',', (string) ($n == floor($n) ? (int) $n : number_format($n, 2, '.', '')));
+}
+
+// Average of each review criterion: [c1 => 4.8, …] and how many reviews had criteria.
+function criteria_averages(string $author, string $column, int $id): array
+{
+    $row = sql("SELECT AVG(rv.c1) AS c1, AVG(rv.c2) AS c2, AVG(rv.c3) AS c3, COUNT(rv.c1) AS n FROM reviews rv JOIN contracts c ON c.id = rv.contract_id
+        WHERE c.$column = ? AND rv.author = ? AND rv.c1 IS NOT NULL AND ".visible_review_sql(), [$id, $author, review_cutoff()])->fetch();
+    return [array_map(fn ($v) => $v !== null ? (float) $v : null, ['c1' => $row['c1'], 'c2' => $row['c2'], 'c3' => $row['c3']]), (int) $row['n']];
 }
 
 // Worker ids already invited to a request.
@@ -277,14 +408,14 @@ function invite_worker(array $r, array $worker): bool
         send_mail($worker['email'], 'Asmeninis kvietimas: '.$role.' – '.$r['venue_name'], [
             'kicker' => 'Asmeninis kvietimas',
             'title' => $role,
-            'lead' => "**{$r['venue_name']}** (".(CITIES[$r['city']] ?? '').') kviečia jus vėl dirbti kartu.',
+            'lead' => "**{$r['venue_name']}** (".(CITIES[$r['city']] ?? '').') kviečia jus, kaip savo komandos narį, į darbą.',
             'facts' => array_filter([
                 'Laikas' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
                 'Atlygis' => $r['pay'],
             ], fn ($v) => $v !== ''),
             'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
             'cta' => ['Peržiūrėti kvietimą', url('/darbas/'.$r['id'])],
-            'footnote' => 'Šį asmeninį kvietimą gavote, nes anksčiau per GANG dirbote šioje darbovietėje.',
+            'footnote' => 'Šį asmeninį kvietimą gavote, nes esate šio darbdavio komandos narys GANG platformoje.',
         ]);
     }
     return true;

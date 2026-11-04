@@ -68,6 +68,7 @@ function profile_page(): never
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
+                team_joined_notice(sql('SELECT * FROM users WHERE id = ?', [$u['id']])->fetch());
             }
             if ($photo !== $u['photo']) {
                 delete_photo($u['photo']);
@@ -325,7 +326,7 @@ const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r
 // Upcoming work first (soonest at the top), then past contracts (latest first).
 function sort_contracts(array $contracts): array
 {
-    $end = fn ($c) => $c['kind'] === 'nuolat' ? '9999-12-31' : ($c['end_date'] ?: $c['start_date']);
+    $end = fn ($c) => $c['cancelled_at'] ? '0000-00-00' : ($c['kind'] === 'nuolat' ? '9999-12-31' : ($c['end_date'] ?: $c['start_date']));
     $upcoming = array_values(array_filter($contracts, fn ($c) => $end($c) >= today()));
     $past = array_values(array_filter($contracts, fn ($c) => $end($c) < today()));
     usort($upcoming, fn ($a, $b) => strcmp($a['start_date'], $b['start_date']));
@@ -350,9 +351,12 @@ function full_address(array $c): string
 function contract_card(array $c, string $side, bool $reviewed): string
 {
     $worker = $side === 'worker';
-    $end = $c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date']);
+    $end = contract_end($c);
     $started = $c['start_date'] <= today();
     $over = $end < today();
+    if ($c['cancelled_at']) {
+        return cancelled_contract_card($c, $side);
+    }
     $steps = ['Kandidatūra' => 'done', 'Patvirtinta' => 'done', 'Darbas' => $over || $reviewed ? 'done' : ($started ? 'now' : ''), 'Įvertinimas' => $reviewed ? 'done' : ($over ? 'now' : '')];
     $stepper = '<ol class="stepper">';
     foreach ($steps as $label => $state) {
@@ -372,12 +376,36 @@ function contract_card(array $c, string $side, bool $reviewed): string
         $actions .= '<a class="btn small ghost" href="/kontraktas/'.(int) $c['id'].'/kalendorius">Į kalendorių</a>';
     }
     $actions .= review_link($c, $reviewed);
+    if (!$over) {
+        $actions .= '<a class="btn small ghost quiet" href="/kontraktas/'.(int) $c['id'].'/atsaukti">Atšaukti darbą</a>';
+    }
+    $attendance = '';
+    if (!$worker && $started && $end >= date('Y-m-d', strtotime('-'.NO_SHOW_DAYS.' days'))) {
+        $attendance = $c['no_show_at']
+            ? '<p class="shift-status warn">Pažymėta, kad darbuotojas neatvyko '.post_button('/kontraktas/'.(int) $c['id'].'/neatvyko', 'Pašalinti žymą', ['undo' => '1'], 'btn small ghost').'</p>'
+            : '<p class="attendance meta">Darbuotojas neatvyko? '.post_button('/kontraktas/'.(int) $c['id'].'/neatvyko', 'Pažymėti neatvykimą', [], 'btn small ghost',
+                'Pažymėti, kad darbuotojas neatvyko? Tai sumažins jo patikimumo rodiklį, o darbuotojas gaus pranešimą el. paštu.').'</p>';
+    } elseif ($worker && $c['no_show_at']) {
+        $attendance = '<p class="shift-status warn">Darbdavys pažymėjo, kad neatvykote</p>';
+    }
     $title = $worker ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e($c['worker_name']).' · '.e(ROLES[$c['role']] ?? '');
     return '<article class="contract'.($over ? ' past' : '').'">'.$stepper
         .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
         .'<p class="meta">'.e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
-        .'<dl class="contract-info">'.$info.'</dl>'.shift_status($c, $side)
+        .'<dl class="contract-info">'.$info.'</dl>'.shift_status($c, $side).$attendance
         .'<p class="contract-actions">'.$actions.'</p></article>';
+}
+
+function cancelled_contract_card(array $c, string $side): string
+{
+    $by = $c['cancelled_by'] === $side ? 'Atšaukėte jūs' : ($c['cancelled_by'] === 'worker' ? 'Atšaukė darbuotojas' : 'Atšaukė darbdavys');
+    $why = CANCEL_REASONS[$c['cancelled_by']][$c['cancel_reason']] ?? '';
+    $title = $side === 'worker' ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e($c['worker_name']).' · '.e(ROLES[$c['role']] ?? '');
+    return '<article class="contract past cancelled"><p class="tags"><span class="tag">Atšaukta</span></p>'
+        .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
+        .'<p class="meta">'.e(period($c)).'</p>'
+        .'<p class="meta">'.e($by.', '.date_lt($c['cancelled_at'])).($why !== '' ? ' · '.e($why) : '').($c['late'] ? ' · likus mažiau nei parai' : '').'</p>'
+        .($c['cancel_note'] !== '' ? '<p class="note">'.e($c['cancel_note']).'</p>' : '').'</article>';
 }
 
 function contract_ics(int $id): never
@@ -425,7 +453,7 @@ function worker_dashboard(array $u): string
         AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id AND s.worker_id = i.worker_id) ORDER BY r.start_date", array_merge([$u['id']], $params))->fetchAll();
     $inviteIds = array_column($invites, 'id');
     $jobs = array_filter($jobs, fn ($r) => !in_array($r['id'], $inviteIds));
-    $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: anksčiau jau dirbote kartu</p>'), $invites));
+    $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: esate šio darbdavio komandoje</p>'), $invites));
     $jobCards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
         .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
@@ -446,7 +474,8 @@ function worker_dashboard(array $u): string
         .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2>Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
-        .($hasDays ? $availability : '');
+        .($hasDays ? $availability : '')
+        .referral_box($u);
 }
 
 // Before launch there are no offers or contracts yet: the worker sees their profile as employers
@@ -483,7 +512,8 @@ function prelaunch_worker_dashboard(array $u): string
         .'<div><dt>Miestai</dt><dd>'.e(labels($u['cities'], CITIES)).'</dd></div>'
         .'<div><dt>Domina darbas</dt><dd>'.e(durations_text($u)).'</dd></div>'
         .'<div><dt>Apie save</dt><dd>'.($about !== '' ? nl2br(e($about)) : '<span class="meta">Neužpildyta</span>').'</dd></div>'
-        .'</dl><p class="meta">Telefono numerį darbdavys matys tik patvirtinęs jus darbui.</p></section>';
+        .'</dl><p class="meta">Telefono numerį darbdavys matys tik patvirtinęs jus darbui.</p></section>'
+        .referral_box($u);
 }
 
 // Before launch an employer registers venues; requests open on launch day.
@@ -507,6 +537,7 @@ function prelaunch_manager_dashboard(array $u): string
         .'<li><strong>Paskelbti paiešką</strong>Pareigos, datos, darbo laikas ir atlygis.</li>'
         .'<li><strong>Gauti kandidatūras</strong>Matysite kandidatų patirtį ir įvertinimus.</li>'
         .'<li><strong>Patvirtinti darbuotoją</strong>Abi šalys gauna viena kitos kontaktus.</li></ol>'
+        .'<h2 id="komanda">Mano komanda</h2><p class="meta">Pakvieskite savo esamus darbuotojus jau dabar: starto dieną jie bus jūsų komandoje, ir galėsite juos kviesti į pamainas pirmiausia.</p>'.team_invite_box($u)
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }
@@ -552,12 +583,12 @@ function manager_dashboard(array $u): string
         [$avg, $n] = worker_rating((int) $w['id']);
         $teamHtml .= '<div class="team-card">'.avatar($w).'<div class="who"><a class="venue-name" href="/darbuotojas/'.(int) $w['id'].'">'.e(first_name($w['name'])).'</a>'
             .'<span class="meta">'.e(labels($w['roles'], ROLES)).'</span>'.stars($avg, $n)
-            .'<p class="badges"><span class="badge">Kartu dirbta: '.(int) $w['jobs'].'</span>'.(is_available((int) $w['id']) ? '<span class="badge on">Laisvas šiandien</span>' : '').'</p>'
+            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span>'.(is_available((int) $w['id']) ? '<span class="badge on">Laisvas šiandien</span>' : '').'</p>'
             .'<p class="venue-actions"><a class="btn small" href="/poreikis/naujas?kviesti='.(int) $w['id'].'">Pakviesti į darbą</a></p></div></div>';
     }
-    $team = '<h2>Mano komanda</h2>'.($teamHtml
-        ? '<p class="meta">Žmonės, su kuriais jau dirbote per GANG. Pakviestas žmogus gaus asmeninį kvietimą, o darbas bus užfiksuotas kaip GANG kontraktas su abipusiais įvertinimais.</p><div class="venue-grid team-grid">'.$teamHtml.'</div>'
-        : '<p class="meta">Čia matysite žmones, su kuriais dirbote per GANG. Kitą kartą juos galėsite pakviesti vienu paspaudimu.</p>');
+    $team = '<h2 id="komanda">Mano komanda</h2>'.team_invite_box($u).($teamHtml
+        ? '<p class="meta">Žmonės, su kuriais dirbote per GANG, ir prisijungę pagal jūsų kvietimą. Pakviestas žmogus gaus asmeninį kvietimą, o darbas bus užfiksuotas kaip GANG kontraktas su abipusiais įvertinimais.</p><div class="venue-grid team-grid">'.$teamHtml.'</div>'
+        : '<p class="meta">Čia matysite žmones, su kuriais dirbote per GANG, ir tuos, kurie prisijungė pagal jūsų kvietimą. Juos galėsite pakviesti į pamainą vienu paspaudimu.</p>');
     return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
         .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
         .'<h2>Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'

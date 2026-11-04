@@ -725,3 +725,49 @@ table.data td.actions form + form { margin-left: 6px; }
 .job-venue { display: flex; align-items: center; gap: 10px; }
 .venue-card-head { display: flex; align-items: center; gap: 12px; }
 .avatar.venue-logo.small { font-size: .85rem; border-radius: 8px; }
+
+/* Reliability, cancellations, team first, events, review criteria, pay guide (v12) */
+.tag.good { color: var(--ink); border-color: rgba(216,255,54,.6); background: rgba(216,255,54,.14); text-transform: none; letter-spacing: 0; font-size: .8rem; }
+.tag.event { color: var(--ink); border-color: var(--line-strong); background: var(--surface-2); }
+.job-tags .tag + .tag { margin-left: 6px; }
+.pay-box .tag.good { display: inline-block; margin-top: 8px; }
+.event-name { margin: 4px 0 0; color: var(--lime); font-weight: 600; }
+.card .event-name { font-size: .85rem; margin: 2px 0; }
+.event-links { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.event-links li { display: flex; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.event-roles { border-top: 1px solid var(--line); padding-top: 18px; }
+.event-roles .extra-rows { display: grid; gap: 10px; margin: 8px 0 12px; }
+.extra-row { display: grid; grid-template-columns: 1.4fr .8fr 1fr auto; gap: 12px; align-items: end; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+.extra-row label { margin: 0; }
+@media (max-width: 600px) { .extra-row { grid-template-columns: 1fr 1fr; } .extra-row label:first-child { grid-column: 1 / -1; } }
+.event-title { display: block; margin: 10px 0; }
+.event-title[hidden] { display: none; }
+.pay-guide { display: block; margin-top: 6px; color: var(--muted); font-size: .88rem; line-height: 1.45; }
+.pay-guide[hidden] { display: none; }
+.team-first { margin-top: 12px; align-items: flex-start !important; }
+.team-first > span { display: grid; gap: 2px; line-height: 1.35; }
+.team-only { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin: 12px 0; }
+.team-only p { margin: 0; flex: 1 1 260px; }
+.contract.cancelled { opacity: .85; }
+.contract.cancelled .tags { margin: 0; }
+.contract-actions .quiet { color: var(--muted); border-color: var(--line); }
+.attendance { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 12px; }
+.invite-box h3 { margin: 0 0 6px; }
+.share-link { display: flex; gap: 8px; margin: 12px 0 4px; }
+.share-link input { flex: 1; min-width: 0; font-size: .9rem; }
+.invite-mail { margin-top: 12px; }
+.invite-mail summary { cursor: pointer; color: var(--muted); }
+.invite-mail .form { margin-top: 10px; }
+.invite-landing { text-align: left; }
+.invite-logo { margin: 8px 0 18px; }
+.criteria-input .criterion { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.criteria-input .criterion:last-child { border-bottom: 0; }
+.criteria-input .criterion-name { font-weight: 600; }
+.criteria-input .star-input label { font-size: 2rem; }
+.criteria-input .criterion .err { flex-basis: 100%; }
+.criteria { list-style: none; padding: 0; margin: 12px 0 18px; display: grid; gap: 8px; max-width: 520px; }
+.criteria li { display: grid; grid-template-columns: minmax(150px, 1fr) 1.2fr auto; gap: 12px; align-items: center; font-size: .92rem; }
+.criteria .bar { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.criteria .bar i { display: block; height: 100%; background: var(--star); }
+.criteria b { color: var(--star); min-width: 2.2em; text-align: right; }
+.review-criteria { font-size: .82rem; margin: 2px 0 6px; }

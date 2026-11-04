@@ -173,8 +173,11 @@ function finish_login(int $userId): never
     session_regenerate_id(true);
     $_SESSION['uid'] = $userId;
     unset($_SESSION['login_email'], $_SESSION['signup_kind']);
+    $new = !sql('SELECT last_login_at FROM users WHERE id = ?', [$userId])->fetchColumn();
     sql('UPDATE users SET last_login_at = ? WHERE id = ?', [now(), $userId]);
+    apply_invite($userId, $new);
     $user = sql('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
+    team_joined_notice($user);
     if (!profile_complete($user)) {
         redirect('/profilis');
     }

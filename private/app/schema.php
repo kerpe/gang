@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 function migrate(PDO $db): void
 {
@@ -73,7 +73,7 @@ function migrate(PDO $db): void
             notified INT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
             filled_at DATETIME NULL",
-        // status: sent | accepted | declined | withdrawn
+        // status: sent | accepted | declined | withdrawn | cancelled (the contract was cancelled later)
         'responses' => "id $id,
             request_id INT NOT NULL,
             worker_id INT NOT NULL,
@@ -118,6 +118,16 @@ function migrate(PDO $db): void
             confirmed_at DATETIME NULL,
             declined_at DATETIME NULL,
             alerted_at DATETIME NULL",
+        // Version 12: workers who joined a manager's team through the manager's invitation link.
+        'team_links' => "id $id,
+            manager_id INT NOT NULL,
+            worker_id INT NOT NULL,
+            created_at DATETIME NOT NULL",
+        // Version 12: team invitations a manager sent by email (duplicates and daily limit).
+        'team_mails' => "id $id,
+            manager_id INT NOT NULL,
+            email VARCHAR(190) NOT NULL,
+            created_at DATETIME NOT NULL",
         // Pre-launch sign-ups. kind: manager (employers wait for launch) | worker (from before
         // workers could build profiles; they are invited to sign up now).
         'waitlist' => "id $id,
@@ -154,6 +164,24 @@ function migrate(PDO $db): void
         "venues ADD facebook VARCHAR(255) NOT NULL DEFAULT ''",
         "venues ADD tiktok VARCHAR(255) NOT NULL DEFAULT ''",
         'venues ADD logo VARCHAR(64) NULL',
+        // Version 12: cancelled contracts (by whom, why, late = less than a day before the work) and no-shows.
+        'contracts ADD cancelled_at DATETIME NULL',
+        "contracts ADD cancelled_by VARCHAR(10) NOT NULL DEFAULT ''",
+        "contracts ADD cancel_reason VARCHAR(20) NOT NULL DEFAULT ''",
+        "contracts ADD cancel_note VARCHAR(500) NOT NULL DEFAULT ''",
+        'contracts ADD late TINYINT NOT NULL DEFAULT 0',
+        'contracts ADD no_show_at DATETIME NULL',
+        // Version 12: team first (other workers see the request from public_at), events (several roles, one event_id).
+        'requests ADD public_at DATETIME NULL',
+        'requests ADD event_id INT NULL',
+        "requests ADD event_title VARCHAR(120) NOT NULL DEFAULT ''",
+        // Version 12: three criteria per review; rating stays the rounded average.
+        'reviews ADD c1 TINYINT NULL',
+        'reviews ADD c2 TINYINT NULL',
+        'reviews ADD c3 TINYINT NULL',
+        // Version 12: personal invitation link (/k/{code}) and who invited the person.
+        'users ADD invite_code VARCHAR(16) NULL',
+        'users ADD referred_by INT NULL',
     ];
     foreach ($columns as $column) {
         try {
@@ -190,6 +218,10 @@ function migrate(PDO $db): void
         'reviews_contract' => 'reviews (contract_id)',
         'requests_status' => 'requests (status)',
         'login_codes_email' => 'login_codes (email)',
+        'team_links_manager' => 'team_links (manager_id)',
+        'team_mails_manager' => 'team_mails (manager_id, created_at)',
+        'requests_event' => 'requests (event_id)',
+        'users_invite_code' => 'users (invite_code)',
     ];
     foreach ($indexes as $name => $on) {
         try {

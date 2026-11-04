@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -30,6 +30,9 @@ $is = function (string $pattern) use ($path, &$m): bool {
     return (bool) preg_match('#^'.$pattern.'$#', $path, $m);
 };
 preview_gate($path);
+if (!prelaunch()) {
+    release_team_requests();
+}
 
 match (true) {
     $path === '/' => home_page(),
@@ -65,6 +68,11 @@ match (true) {
     $is('/pamaina/([0-9a-f]{32})') => shift_page($m[1]),
     $is('/vertinti/(\d+)') => review_page((int) $m[1]),
     $is('/kontraktas/(\d+)/kalendorius') => contract_ics((int) $m[1]),
+    $is('/kontraktas/(\d+)/atsaukti') => contract_cancel_page((int) $m[1]),
+    $is('/kontraktas/(\d+)/neatvyko') && $post => no_show_action((int) $m[1]),
+    $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
+    $is('/k/([a-z0-9]{8})') => invite_landing_page($m[1]),
+    $path === '/komanda/kviesti' && $post => team_mail_action(),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
     default => not_found(),
