@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 function migrate(PDO $db): void
 {
@@ -32,7 +32,8 @@ function migrate(PDO $db): void
             blocked TINYINT NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL,
             last_login_at DATETIME NULL,
-            launch_mail_at DATETIME NULL",
+            launch_mail_at DATETIME NULL,
+            durations VARCHAR(100) NOT NULL DEFAULT ''",
         'login_codes' => "id $id,
             email VARCHAR(190) NOT NULL,
             code_hash CHAR(64) NOT NULL,
@@ -130,6 +131,8 @@ function migrate(PDO $db): void
         "requests ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
         // Version 8: workers who signed up before launch get one "GANG jau veikia" email; NULL = not sent yet.
         'users ADD launch_mail_at DATETIME NULL',
+        // Version 10: job durations a worker is interested in (KINDS keys); empty = all of them.
+        "users ADD durations VARCHAR(100) NOT NULL DEFAULT ''",
     ];
     foreach ($columns as $column) {
         try {

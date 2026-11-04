@@ -37,6 +37,11 @@ function open_requests(array $filters = [], int $limit = 200): array
         $where .= " AND r.role IN ($in)";
         array_push($params, ...$filters['roles']);
     }
+    if (!empty($filters['kinds'])) {
+        $in = implode(',', array_fill(0, count($filters['kinds']), '?'));
+        $where .= " AND r.kind IN ($in)";
+        array_push($params, ...$filters['kinds']);
+    }
     if (!empty($filters['cities'])) {
         $in = implode(',', array_fill(0, count($filters['cities']), '?'));
         $where .= " AND v.city IN ($in)";
@@ -155,20 +160,22 @@ function first_name(string $name): string
 function notify_workers(array $r, array $skip = []): int
 {
     $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND cities LIKE ?
+        AND (durations = '' OR durations LIKE ?)
         AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = users.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1)) LIMIT 500",
-        ['%,'.$r['city'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
+        ['%,'.$r['city'].',%', '%,'.$r['kind'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
     // Team members invited personally already got their own email.
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
     $body = "{$r['venue_name']} ($city) ieško darbuotojo: $role\n"
+        .'Darbo trukmė: '.(KINDS[$r['kind']] ?? '')."\n"
         .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
         .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
         .'Reikalaujama patirtis: '.(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')."\n"
         ."\n{$r['description']}\n\n"
         ."Jei pasiūlymas jums tinka, kandidatūrą galite pateikti čia:\n".url('/darbas/'.$r['id'])
-        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas ir patirtis. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
+        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
     foreach ($workers as $w) {
         send_mail($w['email'], $subject, "Laba diena,\n\n".$body);
     }
@@ -177,11 +184,11 @@ function notify_workers(array $r, array $skip = []): int
 }
 
 // Matching workers, and how many of them marked $date as free.
-function matching_workers_count(string $role, string $city, string $date, int $minExperience = 1): array
+function matching_workers_count(string $role, string $city, string $date, int $minExperience = 1, string $kind = ''): array
 {
     $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM availability a WHERE a.user_id = u.id AND a.start_date <= ? AND a.end_date >= ?) THEN 1 ELSE 0 END) AS free FROM users u
-        WHERE kind = 'worker' AND blocked = 0 AND cities LIKE ?
-        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$date, $date, '%,'.$city.',%', $role, $minExperience, $minExperience])->fetch();
+        WHERE kind = 'worker' AND blocked = 0 AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
+        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$date, $date, '%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetch();
     return [(int) $row['n'], (int) $row['free']];
 }
 
@@ -199,6 +206,19 @@ function save_role_experience(int $userId, array $map): void
     foreach ($map as $role => $level) {
         insert('worker_roles', ['user_id' => $userId, 'role' => $role, 'experience' => (int) $level]);
     }
+}
+
+// Durations a worker is interested in; an empty list (profiles from before version 10) means all.
+function worker_durations(array $u): array
+{
+    return from_list($u['durations'] ?? '') ?: array_keys(KINDS);
+}
+
+// "Skubiai, trumpam, sezonui, nuolat"
+function durations_text(array $u): string
+{
+    $names = array_map(fn ($k) => KINDS[$k] ?? $k, worker_durations($u));
+    return ucfirst(mb_strtolower(implode(', ', $names)));
 }
 
 // "Barmenas (1–3 metai), Virėjas (3–5 metai)"

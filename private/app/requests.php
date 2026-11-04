@@ -574,7 +574,7 @@ function owner_panel(array $r, bool $isOpen): string
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
     $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';
-    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience']);
+    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience'], $r['kind']);
     $reach = '<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
@@ -735,7 +735,7 @@ function worker_profile_page(int $id): never
     $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
         .'<p class="meta">'.stars($avg, $n).' · Darbų per GANG: '.completed_count($id).'</p></div></div>'.$free
-        .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li></ul>'
+        .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.$reviews.'</section>', ['noindex' => true]);
 }
