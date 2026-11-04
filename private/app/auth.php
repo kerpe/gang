@@ -15,10 +15,10 @@ function current_user(): ?array
     return $user;
 }
 
+// Admin rights come only from the /admin login (see admin.php), never from a member account.
 function is_admin(?array $user = null): bool
 {
-    $user ??= current_user();
-    return $user !== null && strcasecmp($user['email'], (string) config()['admin_email']) === 0;
+    return admin_signed_in();
 }
 
 function require_user(?string $kind = null): array

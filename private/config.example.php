@@ -6,7 +6,7 @@ return [
     'db_dsn' => 'mysql:host=localhost;dbname=YOUR_DATABASE;charset=utf8mb4',
     'db_user' => 'YOUR_DATABASE_USER',
     'db_password' => 'YOUR_DATABASE_PASSWORD',
-    // Logging in with this email opens /admin.
+    // Not used for admin any more: /admin has its own login (user gangster + preview_password).
     'admin_email' => 'you@example.com',
     'mail_from' => 'GANG <hello@gang.lt>',
     // Optional: Resend API key. Empty means PHP mail() (works on Hostinger).

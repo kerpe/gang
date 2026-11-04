@@ -307,11 +307,10 @@ function dashboard_page(): never
         ? ($u['kind'] === 'worker' ? prelaunch_worker_dashboard($u) : prelaunch_manager_dashboard($u))
         : ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u));
     $kind = $u['kind'] === 'worker' ? 'Darbuotojo paskyra' : 'Darbdavio paskyra';
-    $admin = is_admin($u) ? '<a class="btn small ghost" href="/admin">Administravimas</a>' : '';
     page('Mano GANG', '<section class="wrap">'.$body
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><strong>'.e($u['name']).'</strong><span class="meta">'.e($u['email']).'</span></div>'
-        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.$admin.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
+        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
         .'</div></section>'.date_picker_script(), ['noindex' => true]);
 }
 

@@ -8,7 +8,7 @@
 #   FTP_USERNAME  hPanel -> Files -> FTP Accounts
 #   FTP_PASSWORD
 #   DB_NAME, DB_USER, DB_PASSWORD   hPanel -> Databases -> MySQL Databases
-#   ADMIN_EMAIL   the email that gets /admin after logging in
+#   ADMIN_EMAIL   required, kept for config; /admin has its own login (gangster + PREVIEW_PASSWORD)
 #   PREVIEW_PASSWORD  until launch the whole site asks for this password
 # Optional: RESEND_KEY (sends mail through Resend instead of PHP mail()).
 # Launch: set the repository variable SITE_PUBLIC to true (Variables tab) and deploy again.
