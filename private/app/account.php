@@ -6,7 +6,7 @@ function profile_page(): never
 {
     $u = require_user();
     $worker = $u['kind'] === 'worker';
-    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'notify' => (bool) $u['notify']];
+    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'durations' => worker_durations($u), 'notify' => (bool) $u['notify']];
     $errors = [];
     if (is_post()) {
         // A file over post_max_size empties $_POST, so say that instead of "form expired".
@@ -16,7 +16,7 @@ function profile_page(): never
         }
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
-            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'notify' => isset($_POST['notify'])];
+            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify'])];
         if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
             $errors['name'] = 'Įrašykite vardą ir pavardę.';
         }
@@ -40,6 +40,9 @@ function profile_page(): never
         if ($worker && to_list($v['cities'], CITIES) === '') {
             $errors['cities'] = 'Pažymėkite bent vieną miestą.';
         }
+        if ($worker && to_list($v['durations'], KINDS) === '') {
+            $errors['durations'] = 'Pažymėkite bent vieną jus dominančią darbo trukmę.';
+        }
         if (mb_strlen($v['about']) > 2000) {
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
@@ -60,8 +63,8 @@ function profile_page(): never
         }
         if (!$errors) {
             $first = !profile_complete($u);
-            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, experience = ?, notify = ?, photo = ? WHERE id = ?', [
-                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $u['id'],
+            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ? WHERE id = ?', [
+                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? to_list($v['durations'], KINDS) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $u['id'],
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
@@ -93,9 +96,16 @@ function profile_page(): never
             $roleRows .= '<div class="role-xp"><label class="choice"><input type="checkbox" name="roles[]" value="'.$role.'"'.(in_array($role, $v['roles'], true) ? ' checked' : '').'> '.e($label).'</label>'
                 .'<select name="xp['.$role.']" aria-label="'.e($label).': patirtis">'.options(['' => 'Nurodykite patirtį'] + EXPERIENCE, $v['xp'][$role] ?? '').'</select></div>';
         }
+        $durationChoices = '';
+        foreach (KINDS as $kind => $label) {
+            $durationChoices .= '<label class="choice"><input type="checkbox" name="durations[]" value="'.$kind.'"'.(in_array($kind, $v['durations'], true) ? ' checked' : '').'>'
+                .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$kind]).'</small></span></label>';
+        }
         $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
+            .'<fieldset><legend>Jus dominantis darbas</legend><p class="hint">Pažymėkite, kokios trukmės darbo ieškote. Galite pasirinkti kelis variantus, pavyzdžiui, skubius pavadavimus ir nuolatinį darbą.</p>'
+            .'<div class="choices kind-choices">'.$durationChoices.'</div>'.err($errors, 'durations').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
@@ -403,7 +413,7 @@ function worker_dashboard(array $u): string
     $hasDays = (bool) availability_ranges((int) $u['id']);
     $availability = availability_panel($u);
 
-    $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities'])], 30);
+    $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
     $jobs = array_filter($jobs, fn ($r) => !isset($responded[$r['id']]));
     // Personal invitations from employers the worker already worked with come first.
@@ -414,7 +424,7 @@ function worker_dashboard(array $u): string
     $jobs = array_filter($jobs, fn ($r) => !in_array($r['id'], $inviteIds));
     $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: anksčiau jau dirbote kartu</p>'), $invites));
     $jobCards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
-        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas ir miestą atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
+        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
 
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed FROM contracts c', CONTRACT_SELECT)
@@ -468,6 +478,7 @@ function prelaunch_worker_dashboard(array $u): string
         .'<section class="profile-preview"><dl class="contract-info">'
         .'<div><dt>Pareigos ir patirtis</dt><dd><ul class="xp-list">'.$xp.'</ul></dd></div>'
         .'<div><dt>Miestai</dt><dd>'.e(labels($u['cities'], CITIES)).'</dd></div>'
+        .'<div><dt>Domina darbas</dt><dd>'.e(durations_text($u)).'</dd></div>'
         .'<div><dt>Apie save</dt><dd>'.($about !== '' ? nl2br(e($about)) : '<span class="meta">Neužpildyta</span>').'</dd></div>'
         .'</dl><p class="meta">Telefono numerį darbdavys matys tik patvirtinęs jus darbui.</p></section>';
 }
