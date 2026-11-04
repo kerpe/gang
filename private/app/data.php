@@ -178,16 +178,22 @@ function notify_workers(array $r, array $skip = []): int
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
-    $body = "{$r['venue_name']} ($city) ieško darbuotojo: $role\n"
-        .'Darbo trukmė: '.(KINDS[$r['kind']] ?? '')."\n"
-        .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
-        .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
-        .'Reikalaujama patirtis: '.(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')."\n"
-        ."\n{$r['description']}\n\n"
-        ."Jei pasiūlymas jums tinka, kandidatūrą galite pateikti čia:\n".url('/darbas/'.$r['id'])
-        ."\n\nŠį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite profilio nustatymuose: ".url('/profilis');
+    $mail = [
+        'kicker' => $r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas' : 'Darbo pasiūlymas',
+        'title' => $role,
+        'lead' => "**{$r['venue_name']}** ($city) ieško darbuotojo. Jei pasiūlymas jums tinka, pateikite kandidatūrą.",
+        'facts' => array_filter([
+            'Darbo trukmė' => KINDS[$r['kind']] ?? '',
+            'Laikas' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
+            'Atlygis' => $r['pay'],
+            'Patirtis' => EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '',
+        ], fn ($v) => $v !== ''),
+        'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
+        'cta' => ['Pateikti kandidatūrą', url('/darbas/'.$r['id'])],
+        'footnote' => 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').',
+    ];
     foreach ($workers as $w) {
-        send_mail($w['email'], $subject, "Laba diena,\n\n".$body);
+        send_mail($w['email'], $subject, $mail);
     }
     sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
     return count($workers);
@@ -268,15 +274,18 @@ function invite_worker(array $r, array $worker): bool
     insert('invites', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'created_at' => now()]);
     if ((int) $worker['notify'] === 1) {
         $role = ROLES[$r['role']] ?? $r['role'];
-        send_mail($worker['email'], 'Asmeninis kvietimas: '.$role.' – '.$r['venue_name'],
-            "Laba diena,\n\n{$r['venue_name']} ("
-            .(CITIES[$r['city']] ?? '').") kviečia jus vėl dirbti kartu.\n\n"
-            ."Pareigos: $role\n"
-            .'Laikas: '.period($r).($r['hours'] !== '' ? ", {$r['hours']}" : '')."\n"
-            .($r['pay'] !== '' ? "Atlygis: {$r['pay']}\n" : '')
-            ."\n{$r['description']}\n\n"
-            ."Jei pasiūlymas jums tinka, patvirtinkite susidomėjimą čia:\n".url('/darbas/'.$r['id'])
-            ."\n\nŠį asmeninį kvietimą gavote, nes anksčiau per GANG dirbote šioje darbovietėje.");
+        send_mail($worker['email'], 'Asmeninis kvietimas: '.$role.' – '.$r['venue_name'], [
+            'kicker' => 'Asmeninis kvietimas',
+            'title' => $role,
+            'lead' => "**{$r['venue_name']}** (".(CITIES[$r['city']] ?? '').') kviečia jus vėl dirbti kartu.',
+            'facts' => array_filter([
+                'Laikas' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
+                'Atlygis' => $r['pay'],
+            ], fn ($v) => $v !== ''),
+            'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
+            'cta' => ['Peržiūrėti kvietimą', url('/darbas/'.$r['id'])],
+            'footnote' => 'Šį asmeninį kvietimą gavote, nes anksčiau per GANG dirbote šioje darbovietėje.',
+        ]);
     }
     return true;
 }
