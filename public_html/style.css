@@ -252,6 +252,14 @@ label.day.weekend span { color: var(--orange); }
 .photo-row .hint, .photo-row .meta { margin: 0; }
 .photo-row input[type=file] { padding: 9px; }
 @media (max-width: 520px) { .photo-row { flex-direction: column; } }
+.photo-crop-wrap { display: grid; gap: 10px; width: 168px; flex-shrink: 0; }
+.photo-crop { position: relative; width: 168px; height: 168px; border-radius: 50%; overflow: hidden; background: var(--surface-2); border: 1px solid var(--line-strong); cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.photo-crop.moving { cursor: grabbing; }
+.photo-crop img { position: absolute; left: 0; top: 0; max-width: none; transform-origin: 0 0; pointer-events: none; }
+.photo-zoom { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px; font-size: .85rem; color: var(--muted); margin: 0; }
+.photo-zoom input[type=range] { width: 100%; padding: 0; margin: 0; border: 0; background: none; accent-color: var(--lime); }
+.photo-zoom input:disabled { opacity: .4; }
+.photo-help { color: var(--lime); }
 .responder .who { flex: 1; }
 .notice.tip { background: rgba(255,101,74,.08); border: 1px solid rgba(255,101,74,.4); margin: 12px 0; }
 .rows { display: grid; gap: 10px; }
