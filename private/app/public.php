@@ -50,6 +50,23 @@ function cam_photo(string $n): string
     return is_file(__DIR__.'/../../public_html/img/cam-'.$n.'.jpg') ? '/img/cam-'.$n : '';
 }
 
+// Sign-up buttons for visitors; a signed-in member gets the next step for their own role instead.
+function join_cta(string $workerClass = 'btn', string $employerClass = 'btn light'): string
+{
+    $u = current_user();
+    if (!$u) {
+        return '<p class="cta"><a class="'.$workerClass.'" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="'.$employerClass.'" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
+    }
+    if ($u['kind'] === 'manager') {
+        return prelaunch()
+            ? '<p class="cta"><a class="'.$workerClass.'" href="/mano">Mano GANG</a></p>'
+            : '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+    }
+    return prelaunch()
+        ? '<p class="cta"><a class="'.$workerClass.'" href="/mano">Mano GANG</a><a class="'.$employerClass.'" href="/profilis">Mano profilis</a></p>'
+        : '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+}
+
 function home_page(): never
 {
     // Before launch there are no real listings yet: the team tiles lead to worker sign-up.
@@ -93,6 +110,19 @@ function home_page(): never
     }
 
     $mark = knives();
+    $me = current_user();
+    $heroCta = join_cta();
+    $workerBtn = !$me ? '<a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>'
+        : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Mano profilis</a>' : '');
+    $venueBtn = !$me ? '<a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>'
+        : ($me['kind'] === 'manager' ? '<a class="btn light" href="'.(prelaunch() ? '/mano' : '/poreikis/naujas').'">'.(prelaunch() ? 'Mano GANG' : 'Paskelbti paiešką').'</a>' : '');
+    $finalCta = $me ? '' : '<section class="wrap home-block">
+  <div class="final-cta">
+    <h2>Prisijunkite prie GANG</h2>
+    <p>Registracija trunka kelias minutes ir šiuo metu yra nemokama.</p>
+    '.join_cta('btn dark', 'btn dark ghost').'
+  </div>
+</section>';
     page('', <<<HTML
 <section class="hero home-hero">
   <div class="cams">$slides</div>
@@ -103,7 +133,7 @@ function home_page(): never
     <p class="eyebrow">Darbas barams, restoranams ir kavinėms</p>
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
-    <p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
+    $heroCta
     <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof$start</ul>
   </div>
   $tabs
@@ -120,7 +150,7 @@ function home_page(): never
         <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų profilį.</li>
         <li><strong>Jūsų pasirinkimas</strong>Patys sprendžiate, kur, kada ir su kokia komanda dirbti.</li>
       </ul>
-      <a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>
+      $workerBtn
     </div>
     <div class="aud venue">
       <p class="eyebrow">Darbdaviams</p>
@@ -130,7 +160,7 @@ function home_page(): never
         <li><strong>Matote, ką kviečiate</strong>Kandidato patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
         <li><strong>Salė ir virtuvė</strong>Nuo barmeno iki indų plovėjo – visos komandos pareigos.</li>
       </ul>
-      <a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>
+      $venueBtn
     </div>
   </div>
 </section>
@@ -160,13 +190,7 @@ $list
   </ol>
 </section>
 
-<section class="wrap home-block">
-  <div class="final-cta">
-    <h2>Prisijunkite prie GANG</h2>
-    <p>Registracija trunka kelias minutes ir šiuo metu yra nemokama.</p>
-    <p class="cta"><a class="btn dark" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn dark ghost" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>
-  </div>
-</section>
+$finalCta
 <script>
 (function () {
   var cams = document.querySelectorAll('.home-hero .cam'), tabs = document.querySelectorAll('.cam-tabs button'), i = 0, timer;
@@ -193,7 +217,7 @@ function jobs_page(): never
     $jobs = open_requests($f);
     $count = count($jobs);
     $cards = $count ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
-        : '<p class="empty">Pagal pasirinktus filtrus darbo pasiūlymų šiuo metu nėra. Susikūrę profilį, apie naujus pasiūlymus gausite pranešimą el. paštu. <a href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a></p>';
+        : '<p class="empty">Pagal pasirinktus filtrus darbo pasiūlymų šiuo metu nėra. '.(current_user() ? '' : 'Susikūrę profilį, apie naujus pasiūlymus gausite pranešimą el. paštu. <a href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>').'</p>';
     $cities = options(['' => 'Visi miestai'] + CITIES, $f['city']);
     $roles = options(['' => 'Visos pareigos'] + ROLES, $f['role']);
     $kinds = options(['' => 'Visi tipai'] + KINDS, $f['kind']);
@@ -240,7 +264,8 @@ function team_page(string $n): never
     $t = TEAM_PAGES[$n];
     $label = CAMS[$n][0];
     $chips = '<p class="chips">'.implode('', array_map(fn ($r) => '<span>'.e($r).'</span>', $t['roles'])).'</p>';
-    $join = '<p>'.e($t['join']).'</p><p class="cta"><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="btn light" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
+    $me = current_user();
+    $join = ($me && $me['kind'] === 'manager' ? '' : '<p>'.e($t['join']).'</p>').join_cta();
     split_page($t['title'], '', $t['heading'], $n, [
         ['apie', $t['about'], $t['intro'].$chips],
         ['gang', 'Darbas per GANG', $join],
