@@ -81,7 +81,6 @@ const VENUE_PERKS = [
     'transportas' => 'Parvežimas po vėlyvos pamainos',
     'apgyvendinimas' => 'Apgyvendinimas sezono metu',
     'nuolaida' => 'Nuolaida personalui',
-    'sutartis' => 'Oficialus įdarbinimas',
 ];
 // Order and labels of the venue's links on its page.
 const VENUE_LINKS = ['website' => 'Svetainė', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'tiktok' => 'TikTok'];
