@@ -466,14 +466,35 @@ function worker_dashboard(array $u): string
     foreach ($pending as $r) {
         $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>');
     }
+    // The one thing to do now, most urgent first.
+    $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
+    $toReview = array_values(array_filter($contracts, fn ($c) => !$c['reviewed'] && $c['start_date'] <= today()));
+    $check = sql(SHIFT_SELECT.' WHERE c.worker_id = ? AND s.shift_date >= ? AND s.confirmed_at IS NULL AND s.declined_at IS NULL ORDER BY s.shift_date LIMIT 1', [$u['id'], today()])->fetch();
+    $what = fn ($r) => (ROLES[$r['role']] ?? $r['role']).' · '.$r['venue_name'];
+    $next = match (true) {
+        (bool) $check => ['warn', ($check['shift_date'] === today() ? 'Šiandien' : 'Rytoj').' dirbate', $what($check).'. Patvirtinkite, kad atvyksite.', '/pamaina/'.$check['token'], 'Patvirtinti atvykimą'],
+        (bool) $invites => ['', 'Asmeninis kvietimas', $what($invites[0]).', '.rtrim(period($invites[0]), '.').'. Su šiuo darbdaviu jau dirbote kartu.', '/darbas/'.(int) $invites[0]['id'], 'Peržiūrėti kvietimą'],
+        (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
+        (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
+        !$hasDays => ['', 'Pažymėkite laisvas dienas', 'Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tomis dienomis esate laisvi.', '#laisvumas', 'Pažymėti kalendoriuje'],
+        (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '#pasiulymai', 'Peržiūrėti'],
+        default => ['calm', 'Viskas sutvarkyta', 'Kai atsiras jums tinkantis darbo pasiūlymas, iš karto pranešime el. paštu.', '', ''],
+    };
+    $tiles = summary_tiles([
+        ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
+        ['Pateiktos kandidatūros', (string) count($pending), '#kandidaturos'],
+        ['Tinkantys pasiūlymai', (string) count($jobs), '#pasiulymai'],
+        ['Įvertinimas', $n ? number_format((float) $avg, 1, ',', '') : '–', ''],
+    ]);
     // Until the first days are marked, the calendar comes first; after that, work and offers do.
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
+        .next_step(...$next).$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($hasDays ? '' : $availability)
-        .($contractHtml ? '<h2>Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
-        .($pendingHtml ? '<h2>Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
-        .'<h2>Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
+        .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
+        .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
+        .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
         .($hasDays ? $availability : '')
         .referral_box($u);
 }
@@ -562,8 +583,12 @@ function manager_dashboard(array $u): string
     [$where, $params] = open_where();
     $open = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND $where ORDER BY r.start_date", $params)->fetchAll();
     $openHtml = '';
+    $waiting = [];
     foreach ($open as $r) {
         $n = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'sent'", [$r['id']])->fetchColumn();
+        if ($n) {
+            $waiting[] = [$r, $n];
+        }
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : '<p class="meta wait">Kandidatūrų dar negauta</p>';
         $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>');
     }
@@ -589,16 +614,52 @@ function manager_dashboard(array $u): string
     $team = '<h2 id="komanda">Mano komanda</h2>'.team_invite_box($u).($teamHtml
         ? '<p class="meta">Žmonės, su kuriais dirbote per GANG, ir prisijungę pagal jūsų kvietimą. Pakviestas žmogus gaus asmeninį kvietimą, o darbas bus užfiksuotas kaip GANG kontraktas su abipusiais įvertinimais.</p><div class="venue-grid team-grid">'.$teamHtml.'</div>'
         : '<p class="meta">Čia matysite žmones, su kuriais dirbote per GANG, ir tuos, kurie prisijungė pagal jūsų kvietimą. Juos galėsite pakviesti į pamainą vienu paspaudimu.</p>');
-    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'.$aboutTip
-        .($openHtml ? '<p class="cta-row"><a class="btn" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
-        .'<h2>Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
+    $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
+    $toReview = array_values(array_filter($contracts, fn ($c) => !$c['reviewed'] && $c['start_date'] <= today()));
+    $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
+    $candidates = array_sum(array_column($waiting, 1));
+    $next = match (true) {
+        (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Paskambinkite darbuotojui arba raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
+        (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. Pirmoji paieška: '.(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
+        (bool) $toReview => ['', 'Įvertinkite darbuotoją', $toReview[0]['worker_name'].' · '.(ROLES[$toReview[0]['role']] ?? '').'. Įvertinimas padeda kitiems darbdaviams.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
+        !$open => ['', 'Aktyvių paieškų nėra', 'Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką.', '/poreikis/naujas', '+ Paskelbti paiešką'],
+        default => ['calm', 'Paieškos aktyvios', 'Kai darbuotojai pateiks kandidatūras, pranešime el. paštu.', '/poreikis/naujas', '+ Nauja paieška'],
+    };
+    $tiles = summary_tiles([
+        ['Aktyvios paieškos', (string) count($open), '#paieskos'],
+        ['Laukia sprendimo', (string) $candidates, $waiting ? '/darbas/'.(int) $waiting[0][0]['id'] : ''],
+        ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
+        ['Komanda', (string) count(team_members((int) $u['id'])), '#komanda'],
+    ]);
+    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
+        .next_step(...$next).$tiles.$aboutTip
+        .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
+        .'<h2 id="paieskos">Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
             .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
             .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>')
         .$team
-        .($contractHtml ? '<h2>GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
+        .($contractHtml ? '<h2 id="kontraktai">GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
+}
+
+// "Kitas žingsnis": the one thing to do now, on top of Mano GANG. $tone: '' | warn | calm.
+function next_step(string $tone, string $title, string $text, string $href, string $label): string
+{
+    return '<section class="next-step'.($tone ? ' '.$tone : '').'"><div><p class="eyebrow">Kitas žingsnis</p><h2>'.e($title).'</h2><p>'.e($text).'</p></div>'
+        .($href !== '' ? '<a class="btn" href="'.e($href).'">'.e($label).'</a>' : '').'</section>';
+}
+
+// A row of small figures that jump to their section. Each item: [label, value, href or ''].
+function summary_tiles(array $items): string
+{
+    $out = '<div class="sum-tiles">';
+    foreach ($items as [$label, $value, $href]) {
+        $inner = '<strong>'.e($value).'</strong><span>'.e($label).'</span>';
+        $out .= $href !== '' ? '<a class="sum-tile" href="'.e($href).'">'.$inner.'</a>' : '<div class="sum-tile">'.$inner.'</div>';
+    }
+    return $out.'</div>';
 }
 
 // The same calendar employers use for requests, always open: marked days, quick picks and save in one place.

@@ -44,7 +44,13 @@ function page(string $title, string $body, array $opt = []): never
         }
         $tabbar .= '</nav>';
     }
-    $bodyClass = $tabbar ? ' class="has-tabbar"' : '';
+    // The admin area has its own frame: no public menu, footer or tab bar.
+    $admin = ($opt['shell'] ?? '') === 'admin';
+    if ($admin) {
+        $nav = '<span class="admin-badge">Administravimas</span>';
+        $tabbar = '';
+    }
+    $bodyClass = $admin ? ' class="admin-body"' : ($tabbar ? ' class="has-tabbar"' : '');
     $flash = flash();
     // Shown as a toast at the bottom of the screen, where it is seen after a form is sent.
     $flash = $flash !== '' ? '<div class="toast" role="status"><p>'.e($flash).'</p><button type="button" aria-label="Uždaryti" onclick="this.parentNode.remove()">×</button></div>'
@@ -52,6 +58,10 @@ function page(string $title, string $body, array $opt = []): never
     $year = date('Y');
     $logoMark = knives();
     $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
+    $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
+        .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>'
+        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>'.$jobsLink.' · <a href="/privatumas">Privatumas ir taisyklės</a> · © '.$year.'</p>'
+        .'</div></footer>';
     echo <<<HTML
 <!doctype html>
 <html lang="lt">
@@ -66,7 +76,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=40">
+<link rel="stylesheet" href="/style.css?v=41">
 $head
 </head>
 <body$bodyClass>
@@ -78,10 +88,7 @@ $head
 $flash
 $body
 </main>
-<footer class="foot"><div class="wrap">
-  <p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>
-  <p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>$jobsLink · <a href="/privatumas">Privatumas ir taisyklės</a> · © $year</p>
-</div></footer>
+$footer
 $tabbar
 <script>
 // A field's error disappears as soon as the field is changed.
@@ -160,15 +167,52 @@ function stars(?float $avg, int $count): string
     return '<span class="stars" title="'.number_format($avg, 1, ',', '').' iš 5">'.knives().' '.number_format($avg, 1, ',', '').' <small>('.$count.')</small></span>';
 }
 
+// One look for a job's duration everywhere: label from KINDS, colour per kind (style.css .tag.k-*).
+function kind_tag(string $kind): string
+{
+    return '<span class="tag k-'.e($kind).($kind === 'skubu' ? ' urgent' : '').'">'.e(KINDS[$kind] ?? $kind).'</span>';
+}
+
+// "14 €" + "/val. į rankas" from a stored pay label; null when the label has no amount.
+function pay_parts(string $pay): ?array
+{
+    return preg_match('/^([\d,]+)\s*€\s*(.*)$/u', $pay, $m) ? [$m[1].' €', $m[2]] : null;
+}
+
+const MONTHS_SHORT = ['', 'Saus', 'Vas', 'Kov', 'Bal', 'Geg', 'Birž', 'Liep', 'Rugp', 'Rugs', 'Spal', 'Lapkr', 'Gruod'];
+
+// "Šiandien", "Rytoj", "Po 3 d." for work starting within a week; '' otherwise.
+function starts_in(string $date): string
+{
+    $days = (int) round((strtotime($date) - strtotime(date('Y-m-d'))) / 86400);
+    return match (true) {
+        $days <= 0 => 'Šiandien',
+        $days === 1 => 'Rytoj',
+        $days <= 7 => 'Po '.$days.' d.',
+        default => '',
+    };
+}
+
 function request_card(array $r, string $extra = ''): string
 {
-    $badge = $r['kind'] === 'skubu' ? '<span class="tag urgent">Skubu</span>' : '<span class="tag">'.e(KINDS[$r['kind']] ?? '').'</span>';
-    $pay = $r['pay'] !== '' ? '<span class="tag pay">'.e($r['pay']).'</span>' : '';
     $people = (int) $r['people'] > 1 ? ' · reikia darbuotojų: '.(int) $r['people'] : '';
     $good = good_pay($r) ? '<span class="tag good">Geras atlygis</span>' : '';
     $event = !empty($r['event_title']) ? '<p class="meta event-name">Renginys: '.e($r['event_title']).'</p>' : '';
-    return '<div class="card"><a class="card-link" href="/darbas/'.(int) $r['id'].'"><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
-        .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p>'
-        .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').'</p>'
-        .'<p class="tags">'.$badge.$pay.$good.'</p></a>'.$extra.'</div>';
+    $logo = venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo'] ?? null], 'card-logo');
+    $pay = '';
+    if ($r['pay'] !== '') {
+        $parts = pay_parts($r['pay']);
+        $pay = $parts ? '<p class="card-pay"><strong>'.e($parts[0]).'</strong> <span>'.e($parts[1]).'</span></p>' : '<p class="card-pay text"><strong>'.e($r['pay']).'</strong></p>';
+    }
+    $first = !empty($r['dates']) ? explode(':', explode(',', $r['dates'])[0])[0] : $r['start_date'];
+    $soon = $r['kind'] !== 'nuolat' ? starts_in($first) : '';
+    $cal = '<span class="cal k-'.e($r['kind']).'" aria-hidden="true"><b>'.MONTHS_SHORT[(int) substr($first, 5, 2)].'</b><span>'.(int) substr($first, 8, 2).'</span></span>';
+    return '<div class="card job-card"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
+        .'<div class="card-head">'.$logo.'<div><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
+        .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p></div></div>'
+        .$pay
+        .'<p class="tags">'.kind_tag($r['kind']).$good.'</p>'
+        .'<div class="card-when">'.$cal.'<div><strong>'.e(period($r)).'</strong>'
+        .($r['hours'] !== '' ? '<span class="meta">'.e($r['hours']).'</span>' : '')
+        .($soon !== '' ? '<span class="starts">'.e($soon).'</span>' : '').'</div></div></a>'.$extra.'</div>';
 }

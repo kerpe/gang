@@ -550,8 +550,9 @@ function request_form_page(): never
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Nauja paieška', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
-        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card"><div class="card-link"><h3 data-p="role">Pareigos</h3>'
-        .'<p class="meta" data-p="venue"></p><p class="meta" data-p="when">Datos nepažymėtos</p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag pay" data-p="pay" hidden></span></p></div></div></aside>'
+        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
+        .'<p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span></p>'
+        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></aside>'
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
@@ -628,10 +629,10 @@ function request_preview_script(): string
     el('when').textContent = (dates && dates.dataset.label) || 'Datos nepažymėtos';
     var k = el('kind');
     k.textContent = kind ? kind.parentNode.querySelector('.choice-name').textContent : '';
-    k.className = 'tag' + (kind && kind.value === 'skubu' ? ' urgent' : '');
+    k.className = 'tag' + (kind ? ' k-' + kind.value : '') + (kind && kind.value === 'skubu' ? ' urgent' : '');
     var pay = val('pay').trim().replace('.', ','), ok = payOk(pay);
     el('pay').hidden = !ok;
-    el('pay').textContent = pay + ' €/val. į rankas';
+    el('pay').firstChild.textContent = pay + ' €';
   }
   // Pay: digits and one comma or dot only, at most 100 €/val.; a message shows straight away when the number is out of range.
   var payIn = f.querySelector('input[name=pay]'), payMsg = document.getElementById('pay-live');
@@ -747,6 +748,7 @@ function request_page(int $id): never
     $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
     $venueLogo = $r['venue_logo'] ? venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo']], 'small') : '';
+    $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
     $e = 'e';
@@ -782,7 +784,7 @@ function request_page(int $id): never
 <article class="wrap job">
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
   <header class="job-head">
-    <p class="job-tags"><span class="tag{$e($r['kind'] === 'skubu' ? ' urgent' : '')}">{$e(KINDS[$r['kind']] ?? '')}</span>$eventTag</p>
+    <p class="job-tags">$kindTag$eventTag</p>
     <h1>{$e($role)}</h1>$eventLine
     <p class="meta job-venue">$venueLogo<span>$venueLink · {$e($city)}</span></p>
   </header>
@@ -871,7 +873,7 @@ function owner_panel(array $r, bool $isOpen): string
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
-            .($s['note'] ? '<p class="note">„'.e($s['note']).'“</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
+            .($s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
     }
     $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';

@@ -49,7 +49,7 @@ function admin_login_page(): never
         $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
     }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=39"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=41"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'
         .'<form method="post" action="/admin" class="form">'.csrf_field()
@@ -91,10 +91,21 @@ function admin_page(): never
         redirect($back);
     }
     $tab = (string) ($_GET['tab'] ?? 'stats');
-    $tabs = ['stats' => 'Rodikliai', 'users' => 'Nariai', 'venues' => 'Darbovietės', 'requests' => 'Paieškos', 'reviews' => 'Įvertinimai', 'waitlist' => 'Laukiantieji', 'settings' => 'Nustatymai'];
-    $nav = '<nav class="tabs">';
-    foreach ($tabs as $k => $label) {
-        $nav .= '<a href="/admin?tab='.$k.'"'.($tab === $k || ($tab === 'user' && $k === 'users') ? ' class="active"' : '').'>'.$label.'</a>';
+    $count = fn (string $q, array $p = []) => (int) sql($q, $p)->fetchColumn();
+    [$openWhere, $openParams] = open_where();
+    $tabs = [
+        'stats' => ['Rodikliai', null],
+        'users' => ['Nariai', $count('SELECT COUNT(*) FROM users')],
+        'venues' => ['Darbovietės', $count('SELECT COUNT(*) FROM venues')],
+        'requests' => ['Paieškos', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
+        'reviews' => ['Įvertinimai', $count('SELECT COUNT(*) FROM reviews')],
+        'waitlist' => ['Laukiantieji', $count('SELECT COUNT(*) FROM waitlist WHERE invited_at IS NULL')],
+        'settings' => ['Nustatymai', null],
+    ];
+    $nav = '<nav class="admin-nav" aria-label="Administravimas">';
+    foreach ($tabs as $k => [$label, $n]) {
+        $active = $tab === $k || ($tab === 'user' && $k === 'users');
+        $nav .= '<a href="/admin?tab='.$k.'"'.($active ? ' class="active" aria-current="page"' : '').'><span>'.$label.'</span>'.($n ? '<small>'.$n.'</small>' : '').'</a>';
     }
     $nav .= '</nav>';
     $body = match ($tab) {
@@ -105,10 +116,59 @@ function admin_page(): never
         'reviews' => admin_reviews(),
         'waitlist' => admin_waitlist(),
         'settings' => admin_settings(),
-        default => admin_stats(),
+        default => admin_attention().admin_stats(),
     };
+    $title = $tab === 'user' ? 'Narys' : ($tabs[$tab][0] ?? 'Rodikliai');
     $logout = post_button('/admin', 'Atsijungti', ['action' => 'logout'], 'btn small ghost');
-    page('Administravimas', '<section class="wrap"><div class="admin-head"><h1>Administravimas</h1>'.$logout.'</div>'.$nav.$body.'</section>', ['noindex' => true]);
+    page('Administravimas', '<div class="admin-layout"><aside class="admin-side">'.$nav.'<div class="admin-out">'.$logout.'</div></aside>'
+        .'<section class="admin-main"><h1>'.e($title).'</h1>'.$body.'</section></div>'.admin_table_script(), ['noindex' => true, 'shell' => 'admin']);
+}
+
+// What needs a look today, on top of Rodikliai. Nothing to show = a calm line.
+function admin_attention(): string
+{
+    [$where, $params] = open_where();
+    $items = [];
+    $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind = 'skubu' AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", $params)->fetchColumn();
+    if ($urgent) {
+        $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
+    }
+    $shifts = (int) sql('SELECT COUNT(*) FROM shift_checks WHERE shift_date >= ? AND confirmed_at IS NULL AND (declined_at IS NOT NULL OR alerted_at IS NOT NULL)', [today()])->fetchColumn();
+    if ($shifts) {
+        $items[] = 'Nepatvirtintos pamainos: '.$shifts;
+    }
+    $waiting = (int) sql('SELECT COUNT(*) FROM waitlist WHERE invited_at IS NULL')->fetchColumn();
+    if ($waiting) {
+        $items[] = '<a href="/admin?tab=waitlist">Nepakviesti laukiantieji: '.$waiting.'</a>';
+    }
+    return $items
+        ? '<div class="attention"><strong>Šiandien reikia dėmesio</strong><span>'.implode('</span><span>', $items).'</span></div>'
+        : '<div class="attention calm"><strong>Šiandien viskas tvarkoje</strong><span>Skubių paieškų be kandidatų ir nepatvirtintų pamainų nėra.</span></div>';
+}
+
+// Daily counts for the last 14 days as a small line; $table must have created_at.
+function admin_spark(string $table, string $where = '1 = 1'): string
+{
+    $from = date('Y-m-d', strtotime('-13 days'));
+    $rows = sql("SELECT substr(created_at, 1, 10) AS d, COUNT(*) AS n FROM $table WHERE $where AND created_at >= ? GROUP BY d", [$from])->fetchAll();
+    $byDay = array_column($rows, 'n', 'd');
+    $values = [];
+    for ($i = 13; $i >= 0; $i--) {
+        $values[] = (int) ($byDay[date('Y-m-d', strtotime("-$i days"))] ?? 0);
+    }
+    $max = max(1, max($values));
+    $points = [];
+    foreach ($values as $i => $v) {
+        $points[] = round($i * 100 / 13, 1).','.round(26 - $v / $max * 22, 1);
+    }
+    return '<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="'.implode(' ', $points).'"/></svg>';
+}
+
+// Phones: every data table reads as cards; each cell gets its column name.
+function admin_table_script(): string
+{
+    return '<script>document.querySelectorAll(".admin-main table.data").forEach(function (t) { var h = []; t.querySelectorAll("tr:first-child th").forEach(function (th) { h.push(th.textContent.trim()); });'
+        .' t.querySelectorAll("tr").forEach(function (tr) { tr.querySelectorAll("td").forEach(function (td, i) { if (h[i]) td.setAttribute("data-label", h[i]); }); }); });</script>';
 }
 
 // Search box above a list: free text plus an optional select (kind or status).
@@ -216,17 +276,18 @@ function admin_stats(): string
 {
     $count = fn (string $q, array $p = []) => (int) sql($q, $p)->fetchColumn();
     $since = date('Y-m-d H:i:s', strtotime('-30 days'));
+    $week = date('Y-m-d H:i:s', strtotime('-7 days'));
     $tiles = [
-        'Darbuotojų' => $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"),
-        'Laisvi šiandien' => $count("SELECT COUNT(DISTINCT user_id) FROM availability WHERE start_date <= ? AND end_date >= ?", [today(), today()]),
-        'Darboviečių' => $count('SELECT COUNT(*) FROM venues'),
-        'Paieškų (30 d.)' => $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]),
-        'Kontraktų (30 d.)' => $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]),
-        'Įvertinimų' => $count('SELECT COUNT(*) FROM reviews'),
+        ['Darbuotojai', $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"), $count("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND created_at > ?", [$week]), admin_spark('users', "kind = 'worker'")],
+        ['Laisvi šiandien', $count('SELECT COUNT(DISTINCT user_id) FROM availability WHERE start_date <= ? AND end_date >= ?', [today(), today()]), null, ''],
+        ['Darbovietės', $count('SELECT COUNT(*) FROM venues'), $count('SELECT COUNT(*) FROM venues WHERE created_at > ?', [$week]), admin_spark('venues')],
+        ['Paieškos (30 d.)', $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$week]), admin_spark('requests')],
+        ['Kontraktai (30 d.)', $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$week]), admin_spark('contracts')],
+        ['Įvertinimai', $count('SELECT COUNT(*) FROM reviews'), $count('SELECT COUNT(*) FROM reviews WHERE created_at > ?', [$week]), admin_spark('reviews')],
     ];
-    $html = '<div class="tiles">';
-    foreach ($tiles as $label => $n) {
-        $html .= '<div class="tile"><span>'.$label.'</span><strong>'.$n.'</strong></div>';
+    $html = '<div class="tiles kpis">';
+    foreach ($tiles as [$label, $n, $delta, $spark]) {
+        $html .= '<div class="tile"><span>'.$label.'</span><strong>'.$n.($delta ? ' <i>+'.$delta.' per 7 d.</i>' : '').'</strong>'.$spark.'</div>';
     }
     $html .= '</div>';
     // Fill rate and time to first contract, per kind: the numbers that later sell subscriptions.
