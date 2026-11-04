@@ -141,6 +141,9 @@ function admin_delete_user(int $id): bool
     foreach (['availability' => 'user_id', 'worker_roles' => 'user_id', 'responses' => 'worker_id', 'invites' => 'worker_id'] as $table => $col) {
         sql("DELETE FROM $table WHERE $col = ?", [$id]);
     }
+    sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
+    sql('DELETE FROM team_mails WHERE manager_id = ?', [$id]);
+    sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
     sql('DELETE FROM waitlist WHERE email = ?', [$u['email']]);
     sql('DELETE FROM users WHERE id = ?', [$id]);

@@ -82,6 +82,53 @@ const VENUE_PERKS = [
     'apgyvendinimas' => 'Apgyvendinimas sezono metu',
     'nuolaida' => 'Nuolaida personalui',
 ];
+// Why a GANG contract is cancelled, per side. "susitarta" (agreed by both) never counts against reliability.
+const CANCEL_REASONS = [
+    'worker' => [
+        'liga' => 'Liga',
+        'aplinkybes' => 'Asmeninės aplinkybės',
+        'susitarta' => 'Susitarėme su darbdaviu',
+        'kita' => 'Kita priežastis',
+    ],
+    'manager' => [
+        'nebereikia' => 'Darbuotojo nebereikia',
+        'pasikeite' => 'Pasikeitė darbo planai',
+        'susitarta' => 'Susitarėme su darbuotoju',
+        'kita' => 'Kita priežastis',
+    ],
+];
+// After the work ends, the employer can mark a no-show for this many days.
+const NO_SHOW_DAYS = 7;
+// Team first: other workers get the request this many hours after the team, unless it is filled by then.
+const TEAM_FIRST_HOURS = ['skubu' => 1, 'trumpai' => 12, 'sezonas' => 24, 'nuolat' => 24];
+// Review criteria by author: the employer rates the worker, the worker rates the employer.
+const REVIEW_CRITERIA = [
+    'manager' => ['c1' => 'Punktualumas', 'c2' => 'Darbo kokybė', 'c3' => 'Bendradarbiavimas'],
+    'worker' => ['c1' => 'Atsiskaitė kaip sutarta', 'c2' => 'Darbas atitiko aprašymą', 'c3' => 'Požiūris į darbuotojus'],
+];
+// Usual hourly pay "į rankas" (€) per role, shown while posting a request until GANG has enough
+// requests of its own (PAY_GUIDE_MIN in the last PAY_GUIDE_DAYS for the role and city).
+const PAY_GUIDE = [
+    'barmenas' => [6, 9],
+    'padavejas' => [5, 7],
+    'barista' => [5.5, 7.5],
+    'virejas' => [7, 10],
+    'sefas' => [10, 15],
+    'plovejas' => [5, 6.5],
+    'administratorius' => [6.5, 9],
+    'vadovas' => [8, 12],
+    'someljee' => [8, 12],
+    'pagalbinis' => [5, 6.5],
+];
+// For the pay hint: "Vilniuje barmenams dažniausiai siūloma …".
+const ROLES_DATIVE = [
+    'barmenas' => 'barmenams', 'padavejas' => 'padavėjams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
+    'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
+    'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
+];
+const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'palanga' => 'Palangoje'];
+const PAY_GUIDE_MIN = 5;
+const PAY_GUIDE_DAYS = 180;
 // Order and labels of the venue's links on its page.
 const VENUE_LINKS = ['website' => 'Svetainė', 'instagram' => 'Instagram', 'facebook' => 'Facebook', 'tiktok' => 'TikTok'];
 
@@ -275,6 +322,15 @@ function date_lt(?string $date): string
     $months = ['', 'sausio', 'vasario', 'kovo', 'balandžio', 'gegužės', 'birželio', 'liepos', 'rugpjūčio', 'rugsėjo', 'spalio', 'lapkričio', 'gruodžio'];
     $t = strtotime($date);
     return $months[(int) date('n', $t)].' '.date('j', $t).' d.';
+}
+
+// "šiandien 14:00", "rytoj 9:00" or "lapkričio 7 d. 14:00".
+function when_lt(string $datetime): string
+{
+    $t = strtotime($datetime);
+    $day = date('Y-m-d', $t);
+    $label = $day === date('Y-m-d') ? 'šiandien' : ($day === date('Y-m-d', strtotime('+1 day')) ? 'rytoj' : date_lt($day));
+    return $label.' '.date('G:i', $t);
 }
 
 // Planned launch: config launch_date (from the LAUNCH_DATE repository variable), else this default.

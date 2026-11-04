@@ -66,7 +66,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=39">
+<link rel="stylesheet" href="/style.css?v=40">
 $head
 </head>
 <body$bodyClass>
@@ -165,8 +165,10 @@ function request_card(array $r, string $extra = ''): string
     $badge = $r['kind'] === 'skubu' ? '<span class="tag urgent">Skubu</span>' : '<span class="tag">'.e(KINDS[$r['kind']] ?? '').'</span>';
     $pay = $r['pay'] !== '' ? '<span class="tag pay">'.e($r['pay']).'</span>' : '';
     $people = (int) $r['people'] > 1 ? ' · reikia darbuotojų: '.(int) $r['people'] : '';
+    $good = good_pay($r) ? '<span class="tag good">Geras atlygis</span>' : '';
+    $event = !empty($r['event_title']) ? '<p class="meta event-name">Renginys: '.e($r['event_title']).'</p>' : '';
     return '<div class="card"><a class="card-link" href="/darbas/'.(int) $r['id'].'"><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
-        .'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p>'
+        .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p>'
         .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').'</p>'
-        .'<p class="tags">'.$badge.$pay.'</p></a>'.$extra.'</div>';
+        .'<p class="tags">'.$badge.$pay.$good.'</p></a>'.$extra.'</div>';
 }

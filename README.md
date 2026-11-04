@@ -17,6 +17,10 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 - Login has no passwords: a 6-digit code is emailed (15 min, 5 attempts).
 - Phones and the venue address are shown to the other side only after the manager accepts a worker (a contract).
 - Reviews only after a contract, both directions; a review becomes visible when both sides have rated or after 7 days (`REVIEW_HIDE_DAYS`). Worker reviews are visible to managers only, venue reviews to workers only. Authors are never shown.
+- Either side can cancel a contract (`/kontraktas/{id}/atsaukti`, reason required, the other side is emailed). Less than a day before the work counts as late, unless the reason is "agreed by both". The employer can mark a no-show for `NO_SHOW_DAYS` after the work. "Patikimumas" = completed jobs against late cancellations and no-shows (`worker_reliability()`, `venue_reliability()`).
+- Team = past GANG contracts plus people who joined through the manager's link `/k/{code}` (`team_links`). "Pirmiausia pasiūlyti komandai" sets `requests.public_at`; until then only invited team members see the request, and `release_team_requests()` (cron and page views) sends it to everyone else. A worker's `/k/{code}` is a referral link (`users.referred_by`).
+- Events: one form, several roles; each role is its own request sharing `event_id` and `event_title`.
+- Reviews have three criteria (`REVIEW_CRITERIA`); `rating` is their rounded average. Pay hints use `PAY_GUIDE` until a role and city have `PAY_GUIDE_MIN` GANG requests in `PAY_GUIDE_DAYS`; pay at or above the upper end gets "Geras atlygis".
 - Admin = the user whose email equals `admin_email` in config.
 - Schema changes: bump `SCHEMA_VERSION` in `schema.php` and add the statements; the marker file in `private/data/` makes it run once.
 - Worker photos are stored in `private/data/photos/` (outside the web root, never overwritten by deploys) and served by `/nuotrauka/{id}` only to managers, the worker and the admin.

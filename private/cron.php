@@ -6,7 +6,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') {
     exit;
 }
-foreach (['bootstrap', 'data', 'views', 'account', 'shifts'] as $f) {
+foreach (['bootstrap', 'data', 'views', 'account', 'shifts', 'contracts'] as $f) {
     require __DIR__."/app/$f.php";
 }
 
@@ -17,7 +17,7 @@ sql("UPDATE requests SET status = 'expired' WHERE status = 'open' AND NOT ($wher
 // Ask both sides for a review once the work is over (permanent jobs: after 30 days).
 $due = sql("SELECT c.id, r.role, v.name AS venue_name, w.email AS worker_email, w.name AS worker_name, m.email AS manager_email, m.name AS manager_name
     FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users w ON w.id = c.worker_id JOIN users m ON m.id = v.manager_id
-    WHERE c.review_mail_at IS NULL AND ((r.kind <> 'nuolat' AND COALESCE(r.end_date, r.start_date) < ?) OR (r.kind = 'nuolat' AND c.created_at < ?))
+    WHERE c.review_mail_at IS NULL AND c.cancelled_at IS NULL AND ((r.kind <> 'nuolat' AND COALESCE(r.end_date, r.start_date) < ?) OR (r.kind = 'nuolat' AND c.created_at < ?))
     LIMIT 200", [today(), date('Y-m-d H:i:s', strtotime('-30 days'))])->fetchAll();
 foreach ($due as $c) {
     $link = url('/vertinti/'.$c['id']);
@@ -37,6 +37,9 @@ foreach ($due as $c) {
     ]);
     sql('UPDATE contracts SET review_mail_at = ? WHERE id = ?', [now(), $c['id']]);
 }
+
+// Team first: requests whose team-only window has passed go to every matching worker.
+release_team_requests();
 
 // Arrival confirmation for tomorrow's shifts (10:00 reminder, 16:00 warning to the employer).
 run_shift_checks();

@@ -93,7 +93,7 @@ function run_shift_checks(?int $hour = null): void
     if ($hour >= SHIFT_REMIND_HOUR && $hour < SHIFT_ALERT_HOUR) {
         // Contracts agreed today need no reminder: both sides have just talked.
         $contracts = sql("SELECT c.*, r.kind, r.start_date, r.end_date, r.dates, r.status FROM contracts c JOIN requests r ON r.id = c.request_id
-            WHERE c.created_at < ? AND r.start_date <= ? AND (r.kind = 'nuolat' OR COALESCE(r.end_date, r.start_date) >= ?)
+            WHERE c.cancelled_at IS NULL AND c.created_at < ? AND r.start_date <= ? AND (r.kind = 'nuolat' OR COALESCE(r.end_date, r.start_date) >= ?)
             AND NOT EXISTS (SELECT 1 FROM shift_checks s WHERE s.contract_id = c.id AND s.shift_date = ?)", [today().' 00:00:00', tomorrow(), tomorrow(), tomorrow()])->fetchAll();
         foreach ($contracts as $c) {
             if ($c['status'] === 'cancelled' || !in_array(tomorrow(), array_column(contract_ranges($c), 0), true)) {
