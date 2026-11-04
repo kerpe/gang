@@ -64,7 +64,13 @@ function login_page(): never
             } else {
                 $code = (string) random_int(100000, 999999);
                 insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now()]);
-                send_mail($email, "GANG prisijungimo kodas: $code", "Laba diena,\n\njūsų prisijungimo prie GANG.lt kodas:\n\n$code\n\nKodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.");
+                send_mail($email, "GANG prisijungimo kodas: $code", [
+                    'kicker' => 'Prisijungimas',
+                    'title' => 'Jūsų prisijungimo kodas',
+                    'lead' => 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
+                    'code' => $code,
+                    'after' => 'Kodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.',
+                ]);
                 $_SESSION['login_email'] = $email;
                 redirect('/prisijungti/kodas');
             }

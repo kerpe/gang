@@ -21,8 +21,20 @@ $due = sql("SELECT c.id, r.role, v.name AS venue_name, w.email AS worker_email, 
     LIMIT 200", [today(), date('Y-m-d H:i:s', strtotime('-30 days'))])->fetchAll();
 foreach ($due as $c) {
     $link = url('/vertinti/'.$c['id']);
-    send_mail($c['worker_email'], 'Įvertinkite darbdavį: '.$c['venue_name'], "Laba diena,\n\nkviečiame įvertinti, kaip sekėsi dirbti pas šį darbdavį: {$c['venue_name']}. Tai užtruks mažiau nei minutę ir padės kitiems darbuotojams priimti pagrįstus sprendimus:\n$link");
-    send_mail($c['manager_email'], 'Įvertinkite darbuotoją: '.first_name($c['worker_name']), "Laba diena,\n\nkviečiame įvertinti darbuotoją (".first_name($c['worker_name']).", ".mb_strtolower(ROLES[$c['role']] ?? '')."). Jūsų įvertinimas padės kitiems vadovams rasti patikimus darbuotojus:\n$link");
+    send_mail($c['worker_email'], 'Įvertinkite darbdavį: '.$c['venue_name'], [
+        'kicker' => 'Įvertinimas',
+        'title' => 'Kaip sekėsi darbas?',
+        'lead' => "kviečiame įvertinti, kaip sekėsi dirbti pas **{$c['venue_name']}**. Tai užtruks mažiau nei minutę ir padės kitiems darbuotojams priimti pagrįstus sprendimus.",
+        'cta' => ['Įvertinti darbdavį', $link],
+        'footnote' => 'Įvertinimas tampa matomas, kai įvertina abi pusės arba praėjus '.REVIEW_HIDE_DAYS.' dienoms. Autorius nerodomas.',
+    ]);
+    send_mail($c['manager_email'], 'Įvertinkite darbuotoją: '.first_name($c['worker_name']), [
+        'kicker' => 'Įvertinimas',
+        'title' => 'Kaip sekėsi darbas?',
+        'lead' => 'kviečiame įvertinti darbuotoją: **'.first_name($c['worker_name']).'**, '.mb_strtolower(ROLES[$c['role']] ?? '').'. Jūsų įvertinimas padės kitiems vadovams rasti patikimus darbuotojus.',
+        'cta' => ['Įvertinti darbuotoją', $link],
+        'footnote' => 'Įvertinimas tampa matomas, kai įvertina abi pusės arba praėjus '.REVIEW_HIDE_DAYS.' dienoms. Autorius nerodomas.',
+    ]);
     sql('UPDATE contracts SET review_mail_at = ? WHERE id = ?', [now(), $c['id']]);
 }
 

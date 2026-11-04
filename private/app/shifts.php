@@ -102,11 +102,14 @@ function run_shift_checks(?int $hour = null): void
             $id = insert('shift_checks', ['contract_id' => $c['id'], 'shift_date' => tomorrow(), 'token' => bin2hex(random_bytes(16)), 'reminded_at' => now()]);
             $s = sql(SHIFT_SELECT.' WHERE s.id = ?', [$id])->fetch();
             $link = url('/pamaina/'.$s['token']);
-            $role = mb_strtolower(ROLES[$s['role']] ?? '');
-            send_mail($s['worker_email'], 'Patvirtinkite rytojaus pamainą: '.$s['venue_name'],
-                "Laba diena,\n\nrytoj, ".date_lt(tomorrow()).", jūsų laukia {$s['venue_name']} ($role).\n"
-                .'Adresas: '.full_address($s)."\n\n"
-                .'Prašome patvirtinti atvykimą iki '.SHIFT_ALERT_HOUR." val. Jei negalėsite atvykti, praneškite tame pačiame puslapyje, kad darbdavys spėtų rasti pakaitinį darbuotoją:\n$link");
+            send_mail($s['worker_email'], 'Patvirtinkite rytojaus pamainą: '.$s['venue_name'], [
+                'kicker' => 'Rytojaus pamaina',
+                'title' => 'Patvirtinkite atvykimą',
+                'lead' => 'rytoj, '.date_lt(tomorrow()).", jūsų laukia **{$s['venue_name']}**.",
+                'facts' => ['Pareigos' => ROLES[$s['role']] ?? '', 'Data' => date_lt(tomorrow()), 'Adresas' => full_address($s)],
+                'body' => 'Prašome patvirtinti atvykimą iki **'.SHIFT_ALERT_HOUR.' val.** Jei negalėsite atvykti, praneškite tame pačiame puslapyje, kad darbdavys spėtų rasti pakaitinį darbuotoją.',
+                'cta' => ['Patvirtinti atvykimą', $link],
+            ]);
             send_sms($s['worker_phone'], 'GANG: rytoj dirbate '.ascii($s['venue_name']).'. Patvirtinkite atvykima iki '.SHIFT_ALERT_HOUR.' val.: '.$link);
         }
     }
@@ -126,13 +129,17 @@ function alert_manager(array $s, bool $declined): void
     $role = mb_strtolower(ROLES[$s['role']] ?? '');
     $link = url(replacement_url($s));
     $what = $declined ? "$who pranešė, kad rytoj (".date_lt($s['shift_date']).") negalės atvykti į pamainą" : "$who iki ".SHIFT_ALERT_HOUR.' val. nepatvirtino rytojaus pamainos';
-    send_mail($s['manager_email'], ($declined ? 'Darbuotojas neatvyks rytoj: ' : 'Nepatvirtinta rytojaus pamaina: ').$who.' – '.$s['venue_name'],
-        "Laba diena,\n\n$what ({$s['venue_name']}, $role).\n\n"
-        .($declined
-            ? "Darbuotojo telefonas: {$s['worker_phone']}\n\n"
-            : "Rekomenduojame pirmiausia paskambinti darbuotojui ir įsitikinti, kad rytoj atvyks: {$s['worker_phone']}\n"
-              ."Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.\n\n")
-        .($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas')." pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą:\n$link");
+    send_mail($s['manager_email'], ($declined ? 'Darbuotojas neatvyks rytoj: ' : 'Nepatvirtinta rytojaus pamaina: ').$who.' – '.$s['venue_name'], [
+        'kicker' => 'Rytojaus pamaina',
+        'title' => $declined ? 'Darbuotojas neatvyks' : 'Atvykimas nepatvirtintas',
+        'lead' => "$what.",
+        'facts' => ['Darbuotojas' => "$who, $role", 'Telefonas' => $s['worker_phone'], 'Darbovietė' => $s['venue_name']],
+        'body' => [
+            $declined ? '' : 'Rekomenduojame pirmiausia paskambinti darbuotojui ir įsitikinti, kad rytoj atvyks. Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.',
+            ($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas').' pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą.',
+        ],
+        'cta' => ['Rasti pakaitinį darbuotoją', $link],
+    ]);
     send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks. Pakaitinis darbuotojas: '.$link : ' nepatvirtino rytojaus pamainos. Paskambinkite: '.sms_phone($s['worker_phone']).'. Pakaitinis: '.$link));
 }
 
@@ -156,8 +163,12 @@ function shift_page(string $token): never
         if (input('answer') === 'yes' && !$s['confirmed_at']) {
             sql('UPDATE shift_checks SET confirmed_at = ?, declined_at = NULL WHERE id = ?', [now(), $s['id']]);
             if ($s['alerted_at']) {
-                send_mail($s['manager_email'], 'Pamaina patvirtinta: '.first_name($s['worker_name']).' – '.$s['venue_name'],
-                    "Laba diena,\n\n".first_name($s['worker_name'])." patvirtino, kad atvyks į pamainą ".date_lt($s['shift_date']).'.');
+                send_mail($s['manager_email'], 'Pamaina patvirtinta: '.first_name($s['worker_name']).' – '.$s['venue_name'], [
+                    'kicker' => 'Rytojaus pamaina',
+                    'title' => 'Atvykimas patvirtintas',
+                    'lead' => '**'.first_name($s['worker_name']).'** patvirtino, kad atvyks į pamainą '.date_lt($s['shift_date'])." ({$s['venue_name']}).",
+                    'cta' => ['Mano GANG', url('/mano')],
+                ]);
             }
             flash('Ačiū. Atvykimas patvirtintas, darbdavys tai matys savo paskyroje.');
         } elseif (input('answer') === 'no' && !$s['declined_at']) {
