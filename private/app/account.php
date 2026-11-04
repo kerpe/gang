@@ -85,7 +85,7 @@ function profile_page(): never
         $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
             .'<div class="photo-row">'.avatar($u, 'large').'<div>'
             .'<p class="hint">Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje. Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
-            .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-resize="1600">'
+            .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-crop>'
             .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik prisijungę darbdaviai.</p>'
             .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $roleRows = '';
@@ -115,30 +115,143 @@ function profile_page(): never
         .'<button class="btn">Išsaugoti</button></form></section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
 }
 
-// Shrinks large phone photos in the browser before upload; the server still validates and re-encodes.
+// Shows the chosen photo in the circle right away and lets the worker zoom and drag it into place.
+// On submit the visible square is drawn to a 600 × 600 JPEG that replaces the file; the server still
+// validates and re-encodes it. Without DataTransfer support the photo is only previewed and cropped server-side.
 function photo_resize_script(): string
 {
     return <<<'HTML'
 <script>
-document.querySelectorAll('input[data-resize]').forEach(function (input) {
+document.querySelectorAll('input[data-crop]').forEach(function (input) {
+  var row = input.closest('.photo-row'), form = input.form, OUT = 600, MIN = 200;
+  var canCrop = !!(window.DataTransfer && HTMLCanvasElement.prototype.toBlob);
+  var box, img, zoom, help, st = null, pointers = {}, pinch = 0;
+  function build() {
+    box = document.createElement('div');
+    box.className = 'photo-crop';
+    img = document.createElement('img');
+    img.alt = '';
+    img.draggable = false;
+    box.appendChild(img);
+    var wrap = document.createElement('div');
+    wrap.className = 'photo-crop-wrap';
+    wrap.appendChild(box);
+    if (canCrop) {
+      var lab = document.createElement('label');
+      lab.className = 'photo-zoom';
+      lab.innerHTML = '<span>Priartinti</span><input type="range" min="1" max="4" step="0.01" value="1">';
+      zoom = lab.querySelector('input');
+      wrap.appendChild(lab);
+      help = document.createElement('p');
+      help.className = 'meta photo-help';
+      help.textContent = 'Patempkite nuotrauką ir pasirinkite, kuri jos dalis bus matoma apskritime.';
+      input.insertAdjacentElement('afterend', help);
+      zoom.addEventListener('input', function () { setZoom(+zoom.value); });
+      box.addEventListener('pointerdown', down);
+      box.addEventListener('pointermove', move);
+      ['pointerup', 'pointercancel'].forEach(function (t) { box.addEventListener(t, up); });
+      box.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        setZoom(st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
+      }, {passive: false});
+    }
+    var old = row.querySelector('.avatar');
+    old.style.display = 'none';
+    old.insertAdjacentElement('afterend', wrap);
+  }
+  function size() { return box.clientWidth; }
+  function render() {
+    var s = st.base * st.z, v = size();
+    st.x = Math.min(0, Math.max(v - st.w * s, st.x));
+    st.y = Math.min(0, Math.max(v - st.h * s, st.y));
+    img.style.width = st.w * s + 'px';
+    img.style.height = st.h * s + 'px';
+    img.style.transform = 'translate(' + st.x + 'px,' + st.y + 'px)';
+    if (zoom) zoom.value = st.z;
+  }
+  function setZoom(z, cx, cy) {
+    z = Math.min(st.max, Math.max(1, z));
+    var v = size(), old = st.base * st.z, s = st.base * z;
+    cx = cx === undefined ? v / 2 : cx; cy = cy === undefined ? v / 2 : cy;
+    st.x = cx - (cx - st.x) * s / old;
+    st.y = cy - (cy - st.y) * s / old;
+    st.z = z;
+    render();
+  }
+  function down(e) {
+    box.setPointerCapture(e.pointerId);
+    pointers[e.pointerId] = {x: e.clientX, y: e.clientY};
+    box.classList.add('moving');
+  }
+  function move(e) {
+    var p = pointers[e.pointerId];
+    if (!p) return;
+    var ids = Object.keys(pointers);
+    if (ids.length === 2) {
+      var a = pointers[ids[0]], b = pointers[ids[1]];
+      var d0 = Math.hypot(a.x - b.x, a.y - b.y);
+      p.x = e.clientX; p.y = e.clientY;
+      var d1 = Math.hypot(a.x - b.x, a.y - b.y), r = box.getBoundingClientRect();
+      if (d0 > 0) setZoom(st.z * d1 / d0, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+      return;
+    }
+    st.x += e.clientX - p.x; st.y += e.clientY - p.y;
+    p.x = e.clientX; p.y = e.clientY;
+    render();
+  }
+  function up(e) {
+    delete pointers[e.pointerId];
+    if (!Object.keys(pointers).length) box.classList.remove('moving');
+  }
   input.addEventListener('change', function () {
-    var file = input.files[0], max = +input.dataset.resize;
-    if (!file || !window.DataTransfer || file.size < 1.5e6) return;
-    var img = new Image();
-    img.onload = function () {
-      var k = Math.min(1, max / Math.max(img.width, img.height));
-      var c = document.createElement('canvas');
-      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      c.toBlob(function (blob) {
-        if (!blob) return;
+    var file = input.files[0];
+    st = null;
+    if (!file || !/^image\//.test(file.type)) return;
+    if (!box) build();
+    var remove = row.querySelector('input[name=remove_photo]');
+    if (remove) remove.checked = false;
+    var url = URL.createObjectURL(file), probe = new Image();
+    probe.onload = function () {
+      var w = probe.naturalWidth, h = probe.naturalHeight, v = size(), side = Math.min(w, h);
+      st = {w: w, h: h, z: 1, base: v / side, max: Math.max(1, Math.min(4, side / MIN))};
+      // Same starting point as the server crop: centred, portraits a little above centre.
+      st.x = (v - w * st.base) / 2;
+      st.y = h > w ? -(h - side) / 4 * st.base : (v - h * st.base) / 2;
+      if (zoom) { zoom.max = st.max; zoom.disabled = st.max === 1; }
+      img.src = url;
+      render();
+    };
+    probe.onerror = function () { URL.revokeObjectURL(url); };
+    probe.src = url;
+  });
+  window.addEventListener('resize', function () {
+    if (!st) return;
+    var v = size(), k = v / (st.base * Math.min(st.w, st.h));
+    if (Math.abs(k - 1) < 0.001) return;
+    st.base *= k; st.x *= k; st.y *= k;
+    render();
+  });
+  if (!canCrop) return;
+  var sending = false;
+  form.addEventListener('submit', function (e) {
+    if (!st || sending) return;
+    e.preventDefault();
+    var s = st.base * st.z, c = document.createElement('canvas');
+    c.width = c.height = OUT;
+    var g = c.getContext('2d');
+    g.fillStyle = '#fff';
+    g.fillRect(0, 0, OUT, OUT);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(img, -st.x / s, -st.y / s, size() / s, size() / s, 0, 0, OUT, OUT);
+    c.toBlob(function (blob) {
+      if (blob) {
         var dt = new DataTransfer();
         dt.items.add(new File([blob], 'nuotrauka.jpg', {type: 'image/jpeg'}));
         input.files = dt.files;
-      }, 'image/jpeg', 0.9);
-      URL.revokeObjectURL(img.src);
-    };
-    img.src = URL.createObjectURL(file);
+      }
+      sending = true;
+      form.submit();
+    }, 'image/jpeg', 0.9);
   });
 });
 </script>
