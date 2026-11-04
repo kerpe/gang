@@ -34,4 +34,4 @@ One-time setup in hPanel: create the MySQL database, the mailbox `hello@gang.lt`
 
 ## Testing locally
 
-`private/config.php` with an SQLite DSN works for a quick run (`'db_dsn' => 'sqlite:/tmp/gang.db'`), then `php -S localhost:8080 router.php` from `public_html`, where the router serves existing files and otherwise includes `index.php`. Defining `GANG_MAIL_CAPTURE` (a file path) in the router writes outgoing mails to that file instead of sending them.
+`private/config.php` with an SQLite DSN works for a quick run (`'db_dsn' => 'sqlite:/tmp/gang.db'`), then `php -S localhost:8080 router.php` from `public_html`, where the router serves existing files and otherwise includes `index.php`. Defining `GANG_MAIL_CAPTURE` (a file path) in the router writes outgoing mails to that file instead of sending them; `GANG_MAIL_HTML_DIR` (a folder) also saves each HTML version for a look in the browser. Emails are built from parts in `private/app/mail.php` (dark card, lime button, logo `public_html/img/mail-logo.png`) and always go out as HTML with a plain-text alternative.

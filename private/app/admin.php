@@ -163,17 +163,26 @@ function invite_waitlist(): int
         sql('UPDATE waitlist SET invited_at = ? WHERE id = ?', [now(), $r['id']]);
         $worker = $r['kind'] === 'worker';
         $intro = $public ? 'GANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų ' : 'dėkojame, kad užsiregistravote GANG laukiančiųjų sąraše. Kviečiame jus jau dabar ';
-        $text = "Laba diena,\n\n".$intro.($worker
-            ? ($public
-                ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.'
-                : "susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti. ".(launch_when() !== '' ? launch_headline().'. Starto dieną' : 'Paleidimo dieną')." jūsų profilis jau bus matomas darbdaviams.\n\nNuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.")
-            : ($public
-                ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
-                : "užregistruoti savo barą, restoraną ar kavinę.\n\n".(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos')." galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto."))
-            ."\n\nRegistracija trunka kelias minutes:\n".url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))
-            ."\n\nŠį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.";
+        $mail = [
+            'kicker' => $public ? 'GANG jau veikia' : 'Kvietimas',
+            'title' => $worker ? 'Susikurkite profilį' : 'Užregistruokite darbovietę',
+            'lead' => $intro.($worker
+                ? ($public
+                    ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.'
+                    : 'susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti.')
+                : ($public
+                    ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
+                    : 'užregistruoti savo barą, restoraną ar kavinę.')),
+            'body' => $public ? [] : ($worker
+                ? [(launch_when() !== '' ? launch_headline().'. Starto dieną' : 'Paleidimo dieną').' jūsų profilis jau bus matomas darbdaviams.',
+                    'Nuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.']
+                : [(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos').' galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.']),
+            'cta' => [$worker ? 'Susikurti profilį' : 'Užregistruoti darbovietę', url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))],
+            'after' => 'Registracija trunka kelias minutes.',
+            'footnote' => 'Šį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.',
+        ];
         $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
-        if (send_mail($r['email'], $subject, $text)) {
+        if (send_mail($r['email'], $subject, $mail)) {
             $sent++;
         }
     }
@@ -184,13 +193,18 @@ function invite_waitlist(): int
         sql('UPDATE users SET launch_mail_at = ? WHERE id = ?', [now(), $u['id']]);
         $ready = profile_complete($u) && ($u['kind'] === 'worker' || sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn());
         if (!$ready) {
-            $text = "Laba diena,\n\nGANG jau veikia. Jūsų registracija dar neužbaigta. Užbaikite ją: tai trunka kelias minutes.\n\n".url('/profilis');
+            $mail = ['title' => 'Užbaikite registraciją', 'lead' => 'GANG jau veikia. Jūsų registracija dar neužbaigta. Užbaikite ją: tai trunka kelias minutes.',
+                'cta' => ['Užbaigti registraciją', url('/profilis')]];
         } elseif ($u['kind'] === 'worker') {
-            $text = "Laba diena,\n\nGANG jau veikia. Jūsų profilis dabar matomas barams, restoranams ir kavinėms jūsų miestuose.\n\nKalendoriuje pažymėkite dienas, kuriomis galite dirbti: darbdaviai, ieškantys žmogaus konkrečiai datai, matys, kad esate laisvi, o tinkamus pasiūlymus gausite el. paštu.\n\nPažymėti laisvas dienas:\n".url('/mano#laisvumas');
+            $mail = ['title' => 'Jūsų profilis matomas', 'lead' => 'GANG jau veikia. Jūsų profilis dabar matomas barams, restoranams ir kavinėms jūsų miestuose.',
+                'body' => 'Kalendoriuje pažymėkite dienas, kuriomis galite dirbti: darbdaviai, ieškantys žmogaus konkrečiai datai, matys, kad esate laisvi, o tinkamus pasiūlymus gausite el. paštu.',
+                'cta' => ['Pažymėti laisvas dienas', url('/mano#laisvumas')]];
         } else {
-            $text = "Laba diena,\n\nGANG jau veikia. Nuo šiandien galite skelbti darbuotojų paieškas: pavadavimui, sezonui ar nuolatiniam darbui. Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste.\n\nPaskelbti pirmą paiešką:\n".url('/poreikis/naujas');
+            $mail = ['title' => 'Paskelbkite pirmą paiešką', 'lead' => 'GANG jau veikia. Nuo šiandien galite skelbti darbuotojų paieškas: pavadavimui, sezonui ar nuolatiniam darbui.',
+                'body' => 'Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste.',
+                'cta' => ['Paskelbti paiešką', url('/poreikis/naujas')]];
         }
-        if (send_mail($u['email'], 'GANG jau veikia', $text."\n\nŠį laišką gavote, nes užsiregistravote GANG.")) {
+        if (send_mail($u['email'], 'GANG jau veikia', $mail + ['kicker' => 'GANG jau veikia', 'footnote' => 'Šį laišką gavote, nes užsiregistravote GANG.'])) {
             $sent++;
         }
     }

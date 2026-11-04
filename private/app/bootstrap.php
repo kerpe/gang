@@ -192,16 +192,21 @@ function check_csrf(): void
     }
 }
 
-function send_mail(string $to, string $subject, string $text, string $replyTo = ''): bool
+// $mail: the email's parts (see mail.php); sent as HTML with a plain-text alternative.
+function send_mail(string $to, string $subject, array $mail, string $replyTo = ''): bool
 {
     $c = config();
-    $text .= "\n\nPagarbiai\nGANG komanda\n\n--\nGANG.lt – darbas hospitality komandoms\n".url('/');
+    $text = mail_text($mail);
+    $html = mail_html($mail, $subject);
     if (defined('GANG_MAIL_CAPTURE')) {
         file_put_contents(GANG_MAIL_CAPTURE, "To: $to\nSubject: $subject\n\n$text\n-----\n", FILE_APPEND);
+        if (defined('GANG_MAIL_HTML_DIR')) {
+            file_put_contents(GANG_MAIL_HTML_DIR.'/'.date('His').'-'.substr(md5($to.$subject.microtime()), 0, 6).'.html', $html);
+        }
         return true;
     }
     if ($c['resend_key'] !== '') {
-        $body = ['from' => $c['mail_from'], 'to' => [$to], 'subject' => $subject, 'text' => $text];
+        $body = ['from' => $c['mail_from'], 'to' => [$to], 'subject' => $subject, 'text' => $text, 'html' => $html];
         if ($replyTo !== '') {
             $body['reply_to'] = $replyTo;
         }
@@ -215,13 +220,17 @@ function send_mail(string $to, string $subject, string $text, string $replyTo = 
         $res = @file_get_contents('https://api.resend.com/emails', false, $ctx);
         return $res !== false && str_contains($http_response_header[0] ?? '', ' 200');
     }
-    $headers = ['From' => $c['mail_from'], 'Content-Type' => 'text/plain; charset=UTF-8', 'MIME-Version' => '1.0'];
+    $boundary = 'gang-'.bin2hex(random_bytes(12));
+    $headers = ['From' => $c['mail_from'], 'MIME-Version' => '1.0', 'Content-Type' => 'multipart/alternative; boundary="'.$boundary.'"'];
     if ($replyTo !== '') {
         $headers['Reply-To'] = $replyTo;
     }
+    $part = fn (string $type, string $content) => "--$boundary\r\nContent-Type: $type; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+        .chunk_split(base64_encode($content))."\r\n";
+    $message = $part('text/plain', $text).$part('text/html', $html)."--$boundary--\r\n";
     // Envelope sender on the site's own mailbox, so Hostinger accepts and signs the mail.
     $envelope = preg_match('/[^<\s]+@[^>\s]+/', $c['mail_from'], $m) ? '-f'.$m[0] : '';
-    return mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $text, $headers, $envelope);
+    return mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $message, $headers, $envelope);
 }
 
 function date_lt(?string $date): string
@@ -292,3 +301,5 @@ function span_lt(string $from, string $to): string
     }
     return date_lt($from).' – '.date_lt($to);
 }
+
+require_once __DIR__.'/mail.php';
