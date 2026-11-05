@@ -288,23 +288,19 @@ function send_mail(string $to, string $subject, array $mail, string $replyTo = '
         }
         return true;
     }
-    if ($c['resend_key'] !== '') {
-        $body = ['from' => $c['mail_from'], 'to' => [$to], 'subject' => $subject, 'text' => $text, 'html' => $html];
-        if ($replyTo !== '') {
-            $body['reply_to'] = $replyTo;
-        }
-        $ctx = stream_context_create(['http' => [
-            'method' => 'POST',
-            'header' => "Authorization: Bearer {$c['resend_key']}\r\nContent-Type: application/json\r\n",
-            'content' => json_encode($body),
-            'timeout' => 15,
-            'ignore_errors' => true,
-        ]]);
-        $res = @file_get_contents('https://api.resend.com/emails', false, $ctx);
-        return $res !== false && str_contains($http_response_header[0] ?? '', ' 200');
+    if ($c['resend_key'] !== '' && resend_mail($c, $to, $subject, $text, $html, $replyTo)) {
+        return true;
     }
+    // PHP mail() on Hostinger: also the fallback when Resend is down or refuses the mail.
+    $from = preg_match('/[^<\s]+@[^>\s]+/', $c['mail_from'], $m) ? $m[0] : 'hello@gang.lt';
     $boundary = 'gang-'.bin2hex(random_bytes(12));
-    $headers = ['From' => $c['mail_from'], 'MIME-Version' => '1.0', 'Content-Type' => 'multipart/alternative; boundary="'.$boundary.'"'];
+    $headers = [
+        'From' => $c['mail_from'],
+        'Date' => date(DATE_RFC2822),
+        'Message-ID' => '<'.bin2hex(random_bytes(16)).'@'.substr(strrchr($from, '@'), 1).'>',
+        'MIME-Version' => '1.0',
+        'Content-Type' => 'multipart/alternative; boundary="'.$boundary.'"',
+    ];
     if ($replyTo !== '') {
         $headers['Reply-To'] = $replyTo;
     }
@@ -312,8 +308,34 @@ function send_mail(string $to, string $subject, array $mail, string $replyTo = '
         .chunk_split(base64_encode($content))."\r\n";
     $message = $part('text/plain', $text).$part('text/html', $html)."--$boundary--\r\n";
     // Envelope sender on the site's own mailbox, so Hostinger accepts and signs the mail.
-    $envelope = preg_match('/[^<\s]+@[^>\s]+/', $c['mail_from'], $m) ? '-f'.$m[0] : '';
-    return mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $message, $headers, $envelope);
+    $ok = mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $message, $headers, '-f'.$from);
+    if (!$ok) {
+        error_log("GANG mail: PHP mail() failed for $to");
+    }
+    return $ok;
+}
+
+// Resend API (DKIM-signed for gang.lt, bounces via send.gang.lt). False on any error, so the caller can fall back.
+function resend_mail(array $c, string $to, string $subject, string $text, string $html, string $replyTo): bool
+{
+    $body = ['from' => $c['mail_from'], 'to' => [$to], 'subject' => $subject, 'text' => $text, 'html' => $html];
+    if ($replyTo !== '') {
+        $body['reply_to'] = $replyTo;
+    }
+    $ctx = stream_context_create(['http' => [
+        'method' => 'POST',
+        'header' => "Authorization: Bearer {$c['resend_key']}\r\nContent-Type: application/json\r\n",
+        'content' => json_encode($body),
+        'timeout' => 15,
+        'ignore_errors' => true,
+    ]]);
+    $res = @file_get_contents('https://api.resend.com/emails', false, $ctx);
+    $status = $http_response_header[0] ?? '';
+    if ($res !== false && preg_match('#^HTTP/\S+ 2\d\d#', $status)) {
+        return true;
+    }
+    error_log('GANG mail: Resend failed for '.$to.': '.$status.' '.substr((string) $res, 0, 300));
+    return false;
 }
 
 function date_lt(?string $date): string

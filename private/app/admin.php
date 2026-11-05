@@ -82,6 +82,7 @@ function admin_page(): never
             'delete_request' => flash(admin_delete_requests([$id]) ? 'Paieška ištrinta.' : 'Paieška nerasta.') ?: redirect($back),
             'delete_venue' => flash(admin_delete_venue($id) ? 'Darbovietė ir jos paieškos ištrintos.' : 'Darbovietė nerasta.') ?: redirect($back),
             'message' => admin_send_message($id),
+            'test_mail' => admin_test_mail(),
             'delete_review' => sql('DELETE FROM reviews WHERE id = ?', [$id]),
             'close_request' => sql("UPDATE requests SET status = 'cancelled' WHERE id = ?", [$id]),
             'invite_waitlist' => flash(invite_waitlist().' laiškų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
@@ -253,6 +254,24 @@ function admin_delete_contracts(array $ids): void
         sql("DELETE FROM shift_checks WHERE contract_id IN ($in)");
         sql("DELETE FROM contracts WHERE id IN ($in)");
     }
+}
+
+// A sample email to any address, e.g. the one mail-tester.com gives, to see how inboxes score GANG's mail.
+function admin_test_mail(): never
+{
+    $to = strtolower(trim(input('email')));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        flash('Įrašykite teisingą el. pašto adresą.');
+        redirect('/admin?tab=settings');
+    }
+    $ok = send_mail($to, 'GANG bandomasis laiškas', [
+        'title' => 'Bandomasis laiškas',
+        'lead' => 'Tai bandomasis GANG laiškas. Juo tikriname, ar laiškai pasiekia gautuosius.',
+        'cta' => ['Atidaryti GANG', url('/')],
+        'footnote' => 'Laišką išsiuntė GANG administratorius iš gang.lt/admin.',
+    ]);
+    flash($ok ? 'Bandomasis laiškas išsiųstas: '.$to.'.' : 'Laiško išsiųsti nepavyko.');
+    redirect('/admin?tab=settings');
 }
 
 // A personal email from the GANG team; replies go to hello@gang.lt.
@@ -446,7 +465,10 @@ function admin_settings(): string
         $html .= '<dt>'.$k.'</dt><dd>'.$v.'</dd>';
     }
     $test = (int) sql('SELECT COUNT(*) FROM users')->fetchColumn();
-    return $html.'</dl><p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Prieš paleidimą ištrinkite bandomuosius narius skiltyje „Nariai“ (dabar narių: '.$test.'), kad paleidimo laiškai nenukeliautų netikriems adresams.</p>';
+    $html .= '</dl><h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
+        .'<form method="post" action="/admin?tab=settings" class="inline">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
+        .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
+    return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Prieš paleidimą ištrinkite bandomuosius narius skiltyje „Nariai“ (dabar narių: '.$test.'), kad paleidimo laiškai nenukeliautų netikriems adresams.</p>';
 }
 
 function admin_reviews(): string
