@@ -604,6 +604,16 @@ h2[id] { scroll-margin-top: 84px; }
 .request-form .live-preview { display: none; }
 .request-form .live-preview .card { pointer-events: none; }
 .request-form .live-preview .card-link { padding-bottom: 16px; }
+.preview-count { margin: -4px 0 10px; color: var(--muted); font-size: .85rem; }
+.live-preview { min-width: 0; }
+.preview-cards { display: grid; gap: 12px; }
+.preview-cards.many { max-height: calc(100vh - 200px); overflow-y: auto; overscroll-behavior: contain; scroll-snap-type: y proximity; padding-right: 6px; margin-right: -6px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); padding-bottom: 24px; }
+.preview-cards > .card { scroll-snap-align: start; }
+@media (max-width: 979px) {
+  .preview-cards.many { max-height: none; display: flex; overflow-x: auto; overflow-y: visible; scroll-snap-type: x mandatory; padding: 0 0 8px; margin: 0; -webkit-mask-image: none; mask-image: none; }
+  .preview-cards.many > .card { flex: 0 0 85%; }
+}
 @media (min-width: 980px) {
   .request-form { grid-template-columns: minmax(0, 1fr) 300px; column-gap: 48px; }
   .request-form > * { grid-column: 1; }

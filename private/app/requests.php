@@ -559,9 +559,9 @@ function request_form_page(): never
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Nauja paieška', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
-        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
-        .'<p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span></p>'
-        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></aside>'
+        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
+        .'<p class="event-name" data-p="event" hidden></p><p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag event" data-p="eventtag" hidden>Renginys</span></p>'
+        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></div></aside>'
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
@@ -634,11 +634,10 @@ function request_preview_script(): string
   function val(n) { var x = f.querySelector('[name=' + n + ']:checked') || f.querySelector('[name=' + n + ']'); return x ? x.value : ''; }
   function update() {
     var role = f.querySelector('select[name=role]'), kind = f.querySelector('input[name=kind]:checked');
-    var extra = f.querySelectorAll('.event-body:not([disabled]) .extra-rows select'), more = 0;
-    extra.forEach(function (x) { if (x.value) more++; });
-    el('role').textContent = (role && role.value ? role.options[role.selectedIndex].text : 'Pareigos') + (more ? ' ir dar ' + more + ' pareigos' : '');
-    var people = +val('people');
-    el('venue').textContent = (f.dataset['v' + val('venue_id')] || '') + (people > 1 ? ' · reikia darbuotojų: ' + people : '');
+    var venue = f.dataset['v' + val('venue_id')] || '';
+    function venueLine(n) { return venue + (n > 1 ? ' · reikia darbuotojų: ' + n : ''); }
+    el('role').textContent = role && role.value ? role.options[role.selectedIndex].text : 'Pareigos';
+    el('venue').textContent = venueLine(+val('people'));
     var dates = f.querySelector('input[name=dates]');
     el('when').textContent = (dates && dates.dataset.label) || 'Datos nepažymėtos';
     var k = el('kind');
@@ -647,6 +646,25 @@ function request_preview_script(): string
     var pay = val('pay').trim().replace('.', ','), ok = payOk(pay);
     el('pay').hidden = !ok;
     el('pay').firstChild.textContent = pay + ' €';
+    // Event: every extra role shows straight away as its own card, the same way workers will see it.
+    var on = f.querySelector('input[name=event]').checked, title = val('event_title').trim();
+    el('event').hidden = el('eventtag').hidden = !on;
+    el('event').textContent = title || 'Renginio pavadinimas';
+    var list = f.querySelector('.preview-cards'), main = list.firstElementChild;
+    while (list.children.length > 1) list.removeChild(list.lastElementChild);
+    if (on) f.querySelectorAll('.extra-row').forEach(function (row) {
+      var sel = row.querySelector('select'); if (!sel.value) return;
+      var card = main.cloneNode(true), xp = row.querySelector('[name="extra_pay[]"]').value.trim().replace('.', ',');
+      card.querySelector('[data-p=role]').textContent = sel.options[sel.selectedIndex].text;
+      card.querySelector('[data-p=venue]').textContent = venueLine(+row.querySelector('[name="extra_people[]"]').value);
+      var cp = card.querySelector('[data-p=pay]'); cp.hidden = !payOk(xp); cp.firstChild.textContent = xp + ' €';
+      card.querySelectorAll('[data-p]').forEach(function (x) { x.removeAttribute('data-p'); });
+      list.appendChild(card);
+    });
+    var n = list.children.length;
+    el('count').hidden = n < 2;
+    el('count').textContent = 'Bus paskelbti ' + n + ' skelbimai';
+    list.classList.toggle('many', n > 1);
   }
   // Pay: digits and one comma or dot only, at most 100 €/val.; a message shows straight away when the number is out of range.
   var payIn = f.querySelector('input[name=pay]'), payMsg = document.getElementById('pay-live');
