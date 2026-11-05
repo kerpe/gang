@@ -155,7 +155,7 @@ function choose_kind_page(): never
             finish_login($existing ? (int) $existing : create_user($kind, $email));
         }
     }
-    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, kaip naudositės GANG.</p>'
+    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, ko ieškote GANG – vėliau pakeisti nebegalėsite.</p>'
         .'<form method="post" class="pick">'.csrf_field()
         .'<button name="kind" value="worker" class="pick-card"><strong>Ieškau darbo</strong><span>Barmenas, padavėjas, virėjas ar kitas hospitality darbuotojas</span></button>'
         .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau darbuotojų</strong><span>Baro, restorano, kavinės ar viešbučio vadovas</span></button>'
