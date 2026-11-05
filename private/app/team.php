@@ -9,7 +9,7 @@ const TEAM_MAIL_PER_DAY = 50;
 
 function invite_landing_page(string $code): never
 {
-    $from = sql('SELECT * FROM users WHERE invite_code = ? AND blocked = 0', [$code])->fetch();
+    $from = invite_owner($code);
     if (!$from) {
         not_found();
     }
@@ -60,7 +60,7 @@ function apply_invite(int $userId, bool $new): void
     if ($code === '') {
         return;
     }
-    $from = sql('SELECT * FROM users WHERE invite_code = ? AND blocked = 0', [$code])->fetch();
+    $from = invite_owner($code);
     if (!$from || (int) $from['id'] === $userId) {
         return;
     }
