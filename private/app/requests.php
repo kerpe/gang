@@ -431,7 +431,7 @@ function request_form_page(): never
         }
         $extras = [];
         // Extra roles count only with "Renginiui reikalingi darbuotojai kelioms pareigoms" ticked.
-        $eventOn = input('event') === '1';
+        $eventOn = input('event') === '1' && in_array($v['kind'], EVENT_KINDS, true);
         foreach ($eventOn ? (array) ($_POST['extra_role'] ?? []) : [] as $i => $role) {
             $line = ['role' => trim((string) $role), 'people' => trim((string) ($_POST['extra_people'][$i] ?? '1')), 'pay' => trim((string) ($_POST['extra_pay'][$i] ?? ''))];
             if ($line['role'] !== '' || $line['pay'] !== '') {
@@ -573,7 +573,7 @@ function request_form_page(): never
         .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
         .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?" aria-describedby="pay-live"><span aria-hidden="true">€/val.</span></span>'
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span><span class="hint pay-guide" id="pay-guide" hidden></span></label>'
-        .event_roles_fieldset($extras, $v['event_title'], $errors)
+        .event_roles_fieldset($extras, $v['event_title'], $errors, in_array($v['kind'], EVENT_KINDS, true))
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
         .team_invite_fieldset($team, $invite, $v['team_first'] === '1', $errors)
         .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script(), ['noindex' => true]);
@@ -601,18 +601,20 @@ function team_invite_fieldset(array $team, array $checked, bool $teamFirst = fal
 }
 
 const EVENT_MAX_ROLES = 6;
+// Several roles for one event only with "Skubiai": a one-day, repeated one-day or few-day event.
+const EVENT_KINDS = ['skubu'];
 
 // Events need several roles on the same dates: one row per extra role, each posted as its own request.
-function event_roles_fieldset(array $extras, string $title, array $errors): string
+function event_roles_fieldset(array $extras, string $title, array $errors, bool $shown = true): string
 {
     $row = fn (array $x) => '<div class="extra-row"><label>Pareigos <select name="extra_role[]">'.options(['' => 'Pasirinkite'] + ROLES, $x['role']).'</select></label>'
         .'<label>Darbuotojų skaičius <input type="number" name="extra_people[]" min="1" max="20" value="'.e($x['people']).'"></label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="extra_pay[]" value="'.e($x['pay']).'" inputmode="decimal" maxlength="6" placeholder="10"><span aria-hidden="true">€/val.</span></span></label>'
         .'<button type="button" class="btn small ghost" data-rm-role aria-label="Pašalinti šias pareigas">×</button></div>';
-    $on = (bool) $extras;
+    $on = $extras && $shown;
     // Without the tick the part stays visible but greyed out and disabled, so nothing from it is sent.
     $rows = implode('', array_map($row, $extras ?: [['role' => '', 'people' => '1', 'pay' => '']]));
-    return '<fieldset class="event-roles'.($on ? ' on' : '').'"><legend class="sr-only">Renginys</legend>'
+    return '<fieldset class="event-roles'.($on ? ' on' : '').'"'.($shown ? '' : ' hidden').'><legend class="sr-only">Renginys</legend>'
         .'<label class="choice event-toggle"><input type="checkbox" name="event" value="1"'.($on ? ' checked' : '').'>'
         .'<span><span class="choice-name">Renginiui reikalingi darbuotojai kelioms pareigoms</span><small>Pavyzdžiui, barmenai, padavėjai ir virėjai tam pačiam renginiui.</small></span></label>'
         .'<fieldset class="event-body"'.($on ? '' : ' disabled').'>'
@@ -707,6 +709,15 @@ function request_preview_script(): string
     box.classList.toggle('on', tick.checked);
     box.querySelector('[data-add-role]').hidden = rows.children.length >= 5;
   }
+  // Only for Skubiai: for any other kind the part is hidden and switched off.
+  f.querySelectorAll('input[name=kind]').forEach(function (k) {
+    k.addEventListener('change', function () {
+      var shown = k.value === 'skubu';
+      box.hidden = !shown;
+      if (!shown && tick.checked) tick.checked = false;
+      syncEvent(); update();
+    });
+  });
   tick.addEventListener('change', function () {
     syncEvent();
     if (tick.checked) (box.querySelector('input[name=event_title]').value ? rows.querySelector('select') : box.querySelector('input[name=event_title]')).focus();
