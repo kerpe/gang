@@ -316,7 +316,7 @@ function join_team(int $managerId, int $workerId): bool
 // Words for the personal link /k/{word}: what the person does, a noun of honour with a wink.
 // No gendered adjectives, so the link fits everyone; Lithuanian letters become plain Latin ones.
 const INVITE_DOMAINS = [
-    'barmenas' => ['baro', 'kokteiliu'], 'padavejas' => ['sales', 'padeklu'], 'barista' => ['kavos', 'espreso'],
+    'barmenas' => ['baro', 'kokteiliu'], 'padavejas' => ['sales', 'padeklu'], 'runneris' => ['sales', 'padeklu'], 'barista' => ['kavos', 'espreso'],
     'virejas' => ['virtuves', 'keptuves'], 'sefas' => ['virtuves', 'peilio'], 'plovejas' => ['puodu', 'indu'],
     'administratorius' => ['rezervaciju', 'sales'], 'vadovas' => ['pamainos', 'sales'], 'someljee' => ['vyno', 'taures'],
     'pagalbinis' => ['pamainos', 'virtuves'],
