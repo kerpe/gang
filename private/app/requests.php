@@ -430,7 +430,9 @@ function request_form_page(): never
             $v[$k] = input($k);
         }
         $extras = [];
-        foreach ((array) ($_POST['extra_role'] ?? []) as $i => $role) {
+        // Extra roles count only with "Renginiui reikalingi darbuotojai kelioms pareigoms" ticked.
+        $eventOn = input('event') === '1';
+        foreach ($eventOn ? (array) ($_POST['extra_role'] ?? []) : [] as $i => $role) {
             $line = ['role' => trim((string) $role), 'people' => trim((string) ($_POST['extra_people'][$i] ?? '1')), 'pay' => trim((string) ($_POST['extra_pay'][$i] ?? ''))];
             if ($line['role'] !== '' || $line['pay'] !== '') {
                 $extras[] = $line;
@@ -478,6 +480,9 @@ function request_form_page(): never
             $seen[] = $line['role'];
         }
         $extras = array_slice($extras, 0, EVENT_MAX_ROLES - 1);
+        if ($eventOn && !$extras) {
+            $errors['extra'] = 'Pasirinkite bent vienas papildomas pareigas arba nuimkite varnelę „Renginiui reikalingi darbuotojai kelioms pareigoms“.';
+        }
         if ($extras && (mb_strlen($v['event_title']) < 3 || mb_strlen($v['event_title']) > 120)) {
             $errors['event_title'] = 'Įrašykite renginio pavadinimą, pavyzdžiui, „Įmonės kalėdinis vakarėlis“.';
         }
@@ -604,12 +609,17 @@ function event_roles_fieldset(array $extras, string $title, array $errors): stri
         .'<label>Darbuotojų skaičius <input type="number" name="extra_people[]" min="1" max="20" value="'.e($x['people']).'"></label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="extra_pay[]" value="'.e($x['pay']).'" inputmode="decimal" maxlength="6" placeholder="10"><span aria-hidden="true">€/val.</span></span></label>'
         .'<button type="button" class="btn small ghost" data-rm-role aria-label="Pašalinti šias pareigas">×</button></div>';
-    $rows = implode('', array_map($row, $extras));
-    return '<fieldset class="event-roles'.($extras ? ' on' : '').'"><legend>Renginiui reikia kelių pareigų?</legend>'
+    $on = (bool) $extras;
+    // Without the tick the part stays visible but greyed out and disabled, so nothing from it is sent.
+    $rows = implode('', array_map($row, $extras ?: [['role' => '', 'people' => '1', 'pay' => '']]));
+    return '<fieldset class="event-roles'.($on ? ' on' : '').'"><legend class="sr-only">Renginys</legend>'
+        .'<label class="choice event-toggle"><input type="checkbox" name="event" value="1"'.($on ? ' checked' : '').'>'
+        .'<span><span class="choice-name">Renginiui reikalingi darbuotojai kelioms pareigoms</span><small>Pavyzdžiui, barmenai, padavėjai ir virėjai tam pačiam renginiui.</small></span></label>'
+        .'<fieldset class="event-body"'.($on ? '' : ' disabled').'>'
         .'<p class="hint">Pridėkite kitas pareigas su darbuotojų skaičiumi ir atlygiu. Datos, darbo laikas ir aprašymas bus bendri, o kiekvienos pareigos bus paskelbtos kaip atskiras skelbimas su renginio pavadinimu.</p>'
-        .'<label class="event-title"'.($extras ? '' : ' hidden').'>Renginio pavadinimas <input name="event_title" value="'.e($title).'" maxlength="120" placeholder="Pavyzdžiui: įmonės kalėdinis vakarėlis, 120 svečių">'.err($errors, 'event_title').'</label>'
+        .'<label class="event-title">Renginio pavadinimas <input name="event_title" value="'.e($title).'" maxlength="120" placeholder="Pavyzdžiui: įmonės kalėdinis vakarėlis, 120 svečių">'.err($errors, 'event_title').'</label>'
         .'<div class="extra-rows">'.$rows.'</div>'.err($errors, 'extra')
-        .'<button type="button" class="btn small ghost" data-add-role>+ Pridėti pareigas</button>'
+        .'<button type="button" class="btn small ghost" data-add-role>+ Pridėti pareigas</button></fieldset>'
         .'<template id="extra-row">'.$row(['role' => '', 'people' => '1', 'pay' => '']).'</template></fieldset>';
 }
 
@@ -624,7 +634,7 @@ function request_preview_script(): string
   function val(n) { var x = f.querySelector('[name=' + n + ']:checked') || f.querySelector('[name=' + n + ']'); return x ? x.value : ''; }
   function update() {
     var role = f.querySelector('select[name=role]'), kind = f.querySelector('input[name=kind]:checked');
-    var extra = f.querySelectorAll('.extra-rows select'), more = 0;
+    var extra = f.querySelectorAll('.event-body:not([disabled]) .extra-rows select'), more = 0;
     extra.forEach(function (x) { if (x.value) more++; });
     el('role').textContent = (role && role.value ? role.options[role.selectedIndex].text : 'Pareigos') + (more ? ' ir dar ' + more + ' pareigos' : '');
     var people = +val('people');
@@ -669,16 +679,22 @@ function request_preview_script(): string
     }
     guideOut.textContent = text; guideOut.hidden = false;
   }
-  // Event roles: add and remove rows; the event title shows once there is more than one role.
-  var box = f.querySelector('.event-roles'), rows = box.querySelector('.extra-rows'), tpl = document.getElementById('extra-row');
+  // Event roles: the tick turns the part on; without it the part is greyed out and nothing from it is sent.
+  var box = f.querySelector('.event-roles'), body = box.querySelector('.event-body'), tick = box.querySelector('input[name=event]');
+  var rows = box.querySelector('.extra-rows'), tpl = document.getElementById('extra-row');
+  function addRow() { rows.appendChild(tpl.content.cloneNode(true)); }
   function syncEvent() {
-    var n = rows.children.length;
-    box.classList.toggle('on', n > 0);
-    box.querySelector('.event-title').hidden = n === 0;
-    box.querySelector('[data-add-role]').hidden = n >= 5;
+    if (!rows.children.length) addRow();
+    body.disabled = !tick.checked;
+    box.classList.toggle('on', tick.checked);
+    box.querySelector('[data-add-role]').hidden = rows.children.length >= 5;
   }
+  tick.addEventListener('change', function () {
+    syncEvent();
+    if (tick.checked) (box.querySelector('input[name=event_title]').value ? rows.querySelector('select') : box.querySelector('input[name=event_title]')).focus();
+  });
   box.addEventListener('click', function (e) {
-    if (e.target.closest('[data-add-role]')) { rows.appendChild(tpl.content.cloneNode(true)); syncEvent(); rows.lastElementChild.querySelector('select').focus(); }
+    if (e.target.closest('[data-add-role]')) { addRow(); syncEvent(); rows.lastElementChild.querySelector('select').focus(); }
     var rm = e.target.closest('[data-rm-role]'); if (rm) { rm.closest('.extra-row').remove(); syncEvent(); }
   });
   syncEvent();
