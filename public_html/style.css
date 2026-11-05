@@ -870,6 +870,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .card .event-name { font-size: .85rem; margin: 2px 0; }
 .event-links { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .event-links li { display: flex; justify-content: space-between; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+.event-roles[hidden], .tag[hidden] { display: none; }
 .event-roles { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 14px; }
 .event-toggle { align-items: flex-start !important; padding: 12px 14px !important; }
 .event-toggle input { margin-top: 4px; }
