@@ -76,7 +76,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=41">
+<link rel="stylesheet" href="/style.css?v=42">
 $head
 </head>
 <body$bodyClass>
@@ -191,6 +191,26 @@ function starts_in(string $date): string
         $days <= 7 => 'Po '.$days.' d.',
         default => '',
     };
+}
+
+// Home page version (Vilius 2026-11-05: calmer): role, workplace, pay and one muted line
+// "Sezonui · nuo birželio 1 d." – no colour tags, calendar leaf, hours or countdown.
+function request_card_short(array $r): string
+{
+    $logo = venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo'] ?? null], 'card-logo');
+    $parts = $r['pay'] !== '' ? pay_parts($r['pay']) : null;
+    $pay = $r['pay'] === '' ? '' : ($parts
+        ? '<p class="card-pay"><strong>'.e($parts[0]).'</strong> <span>'.e($parts[1]).'</span></p>'
+        : '<p class="card-pay text"><strong>'.e($r['pay']).'</strong></p>');
+    $ranges = !empty($r['dates']) ? explode(',', $r['dates']) : [$r['start_date'].':'.($r['end_date'] ?: $r['start_date'])];
+    [$from, $to] = explode(':', $ranges[0]) + [1 => ''];
+    $oneDay = count($ranges) === 1 && $from === $to && $r['kind'] !== 'nuolat';
+    $when = ($oneDay ? '' : 'nuo ').date_lt($from);
+    return '<div class="card job-card short"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
+        .'<div class="card-head">'.$logo.'<div><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
+        .'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').'</p></div></div>'
+        .$pay
+        .'<p class="card-when-short">'.e(KINDS[$r['kind']] ?? $r['kind']).' · '.e($when).'</p></a></div>';
 }
 
 function request_card(array $r, string $extra = ''): string

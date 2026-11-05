@@ -77,7 +77,7 @@ function home_page(): never
     }
     $urgent = $latest && !array_filter($latest, fn ($r) => $r['kind'] !== 'skubu');
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
-    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card', $latest)).'</div></section>' : '';
+    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
     $start = prelaunch() && launch_when() !== '' ? '<li><strong>'.e(str_replace('GANG startuoja', 'Startuojame', launch_headline())).'</strong> registracija jau vyksta</li>' : '';
     $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
