@@ -482,9 +482,13 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .pick-nav { display: flex; justify-content: flex-end; gap: 6px; margin: 4px 0 10px; }
 .pick-nav .btn { padding: 6px 12px; }
 .pick-nav .btn:disabled { opacity: .35; cursor: default; }
-.pick-months { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
-.pick-months .month:nth-child(2) { margin-top: 0; }
-@media (max-width: 560px) { .pick-months { grid-template-columns: 1fr; } .pick-months .month + .month { display: none; } }
+.pick-months { display: grid; grid-template-columns: repeat(var(--n, 2), minmax(0, 1fr)); gap: 28px; }
+.pick-months.n1 { --n: 1; } .pick-months.n3 { --n: 3; gap: clamp(14px, 2.4vw, 24px); }
+.pick-months .month:nth-child(n+2) { margin-top: 0; }
+.pick-months.n3 .days { gap: 3px; }
+.pick-months.n3 .week span { font-size: .66rem; }
+.picker .pick-months.n3 button.day { font-size: .8rem; border-radius: 5px; }
+.pick-months.n3 .month h3 { letter-spacing: .14em; }
 .picker button.day { cursor: pointer; background: var(--bg); border: 1px solid var(--line); color: var(--ink); font: inherit; font-size: .85rem; padding: 0; }
 .picker button.day:hover { border-color: var(--lime); }
 .picker button.day.weekend span { color: var(--orange); }
@@ -615,7 +619,6 @@ h2[id] { scroll-margin-top: 84px; }
 .responder .who { min-width: 0; }
 .responder.accepted .actions { flex-direction: column; align-items: flex-end; }
 .responder.accepted .actions p { margin: 0; }
-.avail .picker { max-width: 760px; }
 .panel .contract-actions .btn + a { margin: 0; }
 @media (max-width: 600px) { .responder.accepted .actions { align-items: flex-start; } }
 
