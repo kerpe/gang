@@ -36,7 +36,7 @@ function preview_gate(string $path): void
         return;
     }
     if (PRELAUNCH_OPEN && (in_array($path, PRELAUNCH_PAGES, true) || in_array($path, PRELAUNCH_SIGNUP_PAGES, true) || $path === '/atsijungti'
-        || preg_match('#^/k/[a-z0-9]{8}$#', $path) || $path === '/komanda/kviesti')) {
+        || preg_match('#^/k/[a-z0-9]{3,80}$#', $path) || $path === '/komanda/kviesti')) {
         return;
     }
     $user = PRELAUNCH_OPEN ? current_user() : null;

@@ -71,7 +71,7 @@ match (true) {
     $is('/kontraktas/(\d+)/atsaukti') => contract_cancel_page((int) $m[1]),
     $is('/kontraktas/(\d+)/neatvyko') && $post => no_show_action((int) $m[1]),
     $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
-    $is('/k/([a-z0-9]{8})') => invite_landing_page($m[1]),
+    $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),
     $path === '/komanda/kviesti' && $post => team_mail_action(),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),

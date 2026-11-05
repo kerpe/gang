@@ -313,16 +313,95 @@ function join_team(int $managerId, int $workerId): bool
     return true;
 }
 
-// The personal link code (/k/{code}), made on first use.
+// Words for the personal link /k/{word}: what the person does, a noun of honour with a wink.
+// No gendered adjectives, so the link fits everyone; Lithuanian letters become plain Latin ones.
+const INVITE_DOMAINS = [
+    'barmenas' => ['baro', 'kokteiliu'], 'padavejas' => ['sales', 'padeklu'], 'barista' => ['kavos', 'espreso'],
+    'virejas' => ['virtuves', 'keptuves'], 'sefas' => ['virtuves', 'peilio'], 'plovejas' => ['puodu', 'indu'],
+    'administratorius' => ['rezervaciju', 'sales'], 'vadovas' => ['pamainos', 'sales'], 'someljee' => ['vyno', 'taures'],
+    'pagalbinis' => ['pamainos', 'virtuves'],
+];
+const INVITE_NOUNS = ['legenda', 'zvaigzde', 'raketa', 'nindze', 'masina', 'viesulas', 'audra', 'greitojipagalba'];
+const INVITE_CITIES_OF = ['vilnius' => 'vilniaus', 'kaunas' => 'kauno', 'klaipeda' => 'klaipedos', 'palanga' => 'palangos'];
+const INVITE_CITIES_IN = ['vilnius' => 'vilniuje', 'kaunas' => 'kaune', 'klaipeda' => 'klaipedoje', 'palanga' => 'palangoje'];
+const INVITE_VENUE_TAILS = ['ieskolegendu', 'turivietoslegendai', 'laukiazvaigzdziu', 'komandaauga', 'kviecia'];
+
+function ascii_slug(string $text): string
+{
+    $text = strtr(mb_strtolower($text), ['ą' => 'a', 'č' => 'c', 'ę' => 'e', 'ė' => 'e', 'į' => 'i', 'š' => 's', 'ų' => 'u', 'ū' => 'u', 'ž' => 'z']);
+    $ascii = function_exists('iconv') ? @iconv('UTF-8', 'ASCII//TRANSLIT', $text) : false;
+    return preg_replace('/[^a-z0-9]/', '', $ascii !== false ? strtolower($ascii) : $text);
+}
+
+// Link words to choose from, best first. Empty until the profile or venue says enough.
+function invite_slug_options(array $u): array
+{
+    if ($u['kind'] === 'manager') {
+        $name = (string) sql('SELECT name FROM venues WHERE manager_id = ? ORDER BY id LIMIT 1', [$u['id']])->fetchColumn();
+        $venue = substr(ascii_slug($name), 0, 40);
+        return strlen($venue) >= 2 ? array_map(fn ($tail) => $venue.$tail, INVITE_VENUE_TAILS) : [];
+    }
+    $role = array_values(array_filter(explode(',', (string) $u['roles']), fn ($r) => isset(INVITE_DOMAINS[$r])))[0] ?? '';
+    if ($role === '') {
+        return [];
+    }
+    $city = array_values(array_filter(explode(',', (string) $u['cities']), fn ($c) => isset(INVITE_CITIES_OF[$c])))[0] ?? '';
+    $options = [];
+    foreach (INVITE_DOMAINS[$role] as $domain) {
+        foreach (INVITE_NOUNS as $noun) {
+            $options[] = $city !== '' ? INVITE_CITIES_OF[$city].$domain.$noun : $domain.$noun;
+            if ($city !== '') {
+                $options[] = $domain.$noun.INVITE_CITIES_IN[$city];
+            }
+        }
+    }
+    return $options;
+}
+
+// Free words in random order; if every one is taken, the first one with a number.
+function new_invite_slug(array $u): string
+{
+    $options = invite_slug_options($u);
+    if (!$options) {
+        return '';
+    }
+    $taken = fn ($s) => (bool) sql('SELECT 1 FROM users WHERE invite_slug = ? OR invite_code = ?', [$s, $s])->fetchColumn();
+    shuffle($options);
+    foreach ($options as $slug) {
+        if (!$taken($slug)) {
+            return $slug;
+        }
+    }
+    for ($n = 2; $taken($options[0].$n); $n++) {
+    }
+    return $options[0].$n;
+}
+
+// The person behind /k/{word}: the readable word, or the older random code, which keeps working.
+function invite_owner(string $code): array|false
+{
+    return sql('SELECT * FROM users WHERE (invite_slug = ? OR invite_code = ?) AND blocked = 0 ORDER BY invite_slug = ? DESC LIMIT 1', [$code, $code, $code])->fetch();
+}
+
+// The personal link word (/k/{word}), made on first use and then kept, so shared links stay valid.
+// Until the profile or venue says enough for a word, a random code stands in (and keeps working later).
 function invite_code(array $u): string
 {
+    if (!empty($u['invite_slug'])) {
+        return $u['invite_slug'];
+    }
+    $slug = new_invite_slug($u);
+    if ($slug !== '') {
+        sql('UPDATE users SET invite_slug = ? WHERE id = ?', [$slug, $u['id']]);
+        return $slug;
+    }
     if (!empty($u['invite_code'])) {
         return $u['invite_code'];
     }
     do {
         $code = substr(str_replace(['+', '/', '='], '', base64_encode(random_bytes(9))), 0, 8);
         $code = strtolower(preg_replace('/[^a-z0-9]/i', 'x', $code));
-    } while (sql('SELECT 1 FROM users WHERE invite_code = ?', [$code])->fetchColumn());
+    } while (sql('SELECT 1 FROM users WHERE invite_code = ? OR invite_slug = ?', [$code, $code])->fetchColumn());
     sql('UPDATE users SET invite_code = ? WHERE id = ?', [$code, $u['id']]);
     return $code;
 }
