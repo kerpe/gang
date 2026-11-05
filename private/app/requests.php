@@ -430,7 +430,9 @@ function request_form_page(): never
             $v[$k] = input($k);
         }
         $extras = [];
-        foreach ((array) ($_POST['extra_role'] ?? []) as $i => $role) {
+        // Extra roles count only with "Renginiui reikalingi darbuotojai kelioms pareigoms" ticked.
+        $eventOn = input('event') === '1';
+        foreach ($eventOn ? (array) ($_POST['extra_role'] ?? []) : [] as $i => $role) {
             $line = ['role' => trim((string) $role), 'people' => trim((string) ($_POST['extra_people'][$i] ?? '1')), 'pay' => trim((string) ($_POST['extra_pay'][$i] ?? ''))];
             if ($line['role'] !== '' || $line['pay'] !== '') {
                 $extras[] = $line;
@@ -478,6 +480,9 @@ function request_form_page(): never
             $seen[] = $line['role'];
         }
         $extras = array_slice($extras, 0, EVENT_MAX_ROLES - 1);
+        if ($eventOn && !$extras) {
+            $errors['extra'] = 'Pasirinkite bent vienas papildomas pareigas arba nuimkite varnelę „Renginiui reikalingi darbuotojai kelioms pareigoms“.';
+        }
         if ($extras && (mb_strlen($v['event_title']) < 3 || mb_strlen($v['event_title']) > 120)) {
             $errors['event_title'] = 'Įrašykite renginio pavadinimą, pavyzdžiui, „Įmonės kalėdinis vakarėlis“.';
         }
@@ -554,9 +559,9 @@ function request_form_page(): never
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Nauja paieška', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
-        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
-        .'<p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span></p>'
-        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></aside>'
+        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
+        .'<p class="event-name" data-p="event" hidden></p><p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag event" data-p="eventtag" hidden>Renginys</span></p>'
+        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></div></aside>'
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
@@ -604,12 +609,17 @@ function event_roles_fieldset(array $extras, string $title, array $errors): stri
         .'<label>Darbuotojų skaičius <input type="number" name="extra_people[]" min="1" max="20" value="'.e($x['people']).'"></label>'
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="extra_pay[]" value="'.e($x['pay']).'" inputmode="decimal" maxlength="6" placeholder="10"><span aria-hidden="true">€/val.</span></span></label>'
         .'<button type="button" class="btn small ghost" data-rm-role aria-label="Pašalinti šias pareigas">×</button></div>';
-    $rows = implode('', array_map($row, $extras));
-    return '<fieldset class="event-roles'.($extras ? ' on' : '').'"><legend>Renginiui reikia kelių pareigų?</legend>'
+    $on = (bool) $extras;
+    // Without the tick the part stays visible but greyed out and disabled, so nothing from it is sent.
+    $rows = implode('', array_map($row, $extras ?: [['role' => '', 'people' => '1', 'pay' => '']]));
+    return '<fieldset class="event-roles'.($on ? ' on' : '').'"><legend class="sr-only">Renginys</legend>'
+        .'<label class="choice event-toggle"><input type="checkbox" name="event" value="1"'.($on ? ' checked' : '').'>'
+        .'<span><span class="choice-name">Renginiui reikalingi darbuotojai kelioms pareigoms</span><small>Pavyzdžiui, barmenai, padavėjai ir virėjai tam pačiam renginiui.</small></span></label>'
+        .'<fieldset class="event-body"'.($on ? '' : ' disabled').'>'
         .'<p class="hint">Pridėkite kitas pareigas su darbuotojų skaičiumi ir atlygiu. Datos, darbo laikas ir aprašymas bus bendri, o kiekvienos pareigos bus paskelbtos kaip atskiras skelbimas su renginio pavadinimu.</p>'
-        .'<label class="event-title"'.($extras ? '' : ' hidden').'>Renginio pavadinimas <input name="event_title" value="'.e($title).'" maxlength="120" placeholder="Pavyzdžiui: įmonės kalėdinis vakarėlis, 120 svečių">'.err($errors, 'event_title').'</label>'
+        .'<label class="event-title">Renginio pavadinimas <input name="event_title" value="'.e($title).'" maxlength="120" placeholder="Pavyzdžiui: įmonės kalėdinis vakarėlis, 120 svečių">'.err($errors, 'event_title').'</label>'
         .'<div class="extra-rows">'.$rows.'</div>'.err($errors, 'extra')
-        .'<button type="button" class="btn small ghost" data-add-role>+ Pridėti pareigas</button>'
+        .'<button type="button" class="btn small ghost" data-add-role>+ Pridėti pareigas</button></fieldset>'
         .'<template id="extra-row">'.$row(['role' => '', 'people' => '1', 'pay' => '']).'</template></fieldset>';
 }
 
@@ -624,11 +634,10 @@ function request_preview_script(): string
   function val(n) { var x = f.querySelector('[name=' + n + ']:checked') || f.querySelector('[name=' + n + ']'); return x ? x.value : ''; }
   function update() {
     var role = f.querySelector('select[name=role]'), kind = f.querySelector('input[name=kind]:checked');
-    var extra = f.querySelectorAll('.extra-rows select'), more = 0;
-    extra.forEach(function (x) { if (x.value) more++; });
-    el('role').textContent = (role && role.value ? role.options[role.selectedIndex].text : 'Pareigos') + (more ? ' ir dar ' + more + ' pareigos' : '');
-    var people = +val('people');
-    el('venue').textContent = (f.dataset['v' + val('venue_id')] || '') + (people > 1 ? ' · reikia darbuotojų: ' + people : '');
+    var venue = f.dataset['v' + val('venue_id')] || '';
+    function venueLine(n) { return venue + (n > 1 ? ' · reikia darbuotojų: ' + n : ''); }
+    el('role').textContent = role && role.value ? role.options[role.selectedIndex].text : 'Pareigos';
+    el('venue').textContent = venueLine(+val('people'));
     var dates = f.querySelector('input[name=dates]');
     el('when').textContent = (dates && dates.dataset.label) || 'Datos nepažymėtos';
     var k = el('kind');
@@ -637,6 +646,25 @@ function request_preview_script(): string
     var pay = val('pay').trim().replace('.', ','), ok = payOk(pay);
     el('pay').hidden = !ok;
     el('pay').firstChild.textContent = pay + ' €';
+    // Event: every extra role shows straight away as its own card, the same way workers will see it.
+    var on = f.querySelector('input[name=event]').checked, title = val('event_title').trim();
+    el('event').hidden = el('eventtag').hidden = !on;
+    el('event').textContent = title || 'Renginio pavadinimas';
+    var list = f.querySelector('.preview-cards'), main = list.firstElementChild;
+    while (list.children.length > 1) list.removeChild(list.lastElementChild);
+    if (on) f.querySelectorAll('.extra-row').forEach(function (row) {
+      var sel = row.querySelector('select'); if (!sel.value) return;
+      var card = main.cloneNode(true), xp = row.querySelector('[name="extra_pay[]"]').value.trim().replace('.', ',');
+      card.querySelector('[data-p=role]').textContent = sel.options[sel.selectedIndex].text;
+      card.querySelector('[data-p=venue]').textContent = venueLine(+row.querySelector('[name="extra_people[]"]').value);
+      var cp = card.querySelector('[data-p=pay]'); cp.hidden = !payOk(xp); cp.firstChild.textContent = xp + ' €';
+      card.querySelectorAll('[data-p]').forEach(function (x) { x.removeAttribute('data-p'); });
+      list.appendChild(card);
+    });
+    var n = list.children.length;
+    el('count').hidden = n < 2;
+    el('count').textContent = 'Bus paskelbti ' + n + ' skelbimai';
+    list.classList.toggle('many', n > 1);
   }
   // Pay: digits and one comma or dot only, at most 100 €/val.; a message shows straight away when the number is out of range.
   var payIn = f.querySelector('input[name=pay]'), payMsg = document.getElementById('pay-live');
@@ -669,16 +697,22 @@ function request_preview_script(): string
     }
     guideOut.textContent = text; guideOut.hidden = false;
   }
-  // Event roles: add and remove rows; the event title shows once there is more than one role.
-  var box = f.querySelector('.event-roles'), rows = box.querySelector('.extra-rows'), tpl = document.getElementById('extra-row');
+  // Event roles: the tick turns the part on; without it the part is greyed out and nothing from it is sent.
+  var box = f.querySelector('.event-roles'), body = box.querySelector('.event-body'), tick = box.querySelector('input[name=event]');
+  var rows = box.querySelector('.extra-rows'), tpl = document.getElementById('extra-row');
+  function addRow() { rows.appendChild(tpl.content.cloneNode(true)); }
   function syncEvent() {
-    var n = rows.children.length;
-    box.classList.toggle('on', n > 0);
-    box.querySelector('.event-title').hidden = n === 0;
-    box.querySelector('[data-add-role]').hidden = n >= 5;
+    if (!rows.children.length) addRow();
+    body.disabled = !tick.checked;
+    box.classList.toggle('on', tick.checked);
+    box.querySelector('[data-add-role]').hidden = rows.children.length >= 5;
   }
+  tick.addEventListener('change', function () {
+    syncEvent();
+    if (tick.checked) (box.querySelector('input[name=event_title]').value ? rows.querySelector('select') : box.querySelector('input[name=event_title]')).focus();
+  });
   box.addEventListener('click', function (e) {
-    if (e.target.closest('[data-add-role]')) { rows.appendChild(tpl.content.cloneNode(true)); syncEvent(); rows.lastElementChild.querySelector('select').focus(); }
+    if (e.target.closest('[data-add-role]')) { addRow(); syncEvent(); rows.lastElementChild.querySelector('select').focus(); }
     var rm = e.target.closest('[data-rm-role]'); if (rm) { rm.closest('.extra-row').remove(); syncEvent(); }
   });
   syncEvent();
