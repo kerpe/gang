@@ -9,6 +9,7 @@ const CITIES = ['vilnius' => 'Vilnius', 'kaunas' => 'Kaunas', 'klaipeda' => 'Kla
 const ROLES = [
     'barmenas' => 'Barmenas',
     'padavejas' => 'Padavėjas',
+    'runneris' => 'Runneris',
     'barista' => 'Barista',
     'virejas' => 'Virėjas',
     'sefas' => 'Šefas',
@@ -111,6 +112,7 @@ const REVIEW_CRITERIA = [
 const PAY_GUIDE = [
     'barmenas' => [6, 9],
     'padavejas' => [5, 7],
+    'runneris' => [5, 6.5],
     'barista' => [5.5, 7.5],
     'virejas' => [7, 10],
     'sefas' => [10, 15],
@@ -122,7 +124,7 @@ const PAY_GUIDE = [
 ];
 // For the pay hint: "Vilniuje barmenams dažniausiai siūloma …".
 const ROLES_DATIVE = [
-    'barmenas' => 'barmenams', 'padavejas' => 'padavėjams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
+    'barmenas' => 'barmenams', 'padavejas' => 'padavėjams', 'runneris' => 'runneriams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
     'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
     'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
 ];
