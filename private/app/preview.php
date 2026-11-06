@@ -8,8 +8,8 @@ declare(strict_types=1);
 // preview password; visitors see the sign-up page instead.
 // 'public' => true in config opens it; without a preview_password nobody gets in.
 // PRELAUNCH_OPEN = false closes even the public pages and sign-up: every visitor without the
-// password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so).
-// 2026-11-06 Vilius reopened it to test real sign-up; launch emails still go only from /admin.
+// password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so;
+// 2026-11-06: opened so real sign-up can be tested).
 const PRELAUNCH_OPEN = true;
 const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/sale', '/privatumas', '/favicon.svg', '/robots.txt'];
 const PRELAUNCH_SIGNUP_PAGES = ['/prisijungti', '/prisijungti/kodas', '/prisijungti/kas', '/profilis', '/mano'];

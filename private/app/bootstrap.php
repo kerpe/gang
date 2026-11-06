@@ -128,7 +128,7 @@ const ROLES_DATIVE = [
     'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
     'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
 ];
-const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'siauliai' => 'Šiauliuose', 'panevezys' => 'Panevėžyje', 'palanga' => 'Palangoje'];
+const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'palanga' => 'Palangoje', 'siauliai' => 'Šiauliuose', 'panevezys' => 'Panevėžyje'];
 const PAY_GUIDE_MIN = 5;
 const PAY_GUIDE_DAYS = 180;
 // Order and labels of the venue's links on its page.
