@@ -134,7 +134,7 @@ function home_page(): never
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     $heroCta
-    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>4 miestai</strong> Vilnius, Kaunas, Klaipėda, Palanga</li>$proof$start</ul>
+    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li>$proof$start</ul>
   </div>
   $tabs
 </section>
@@ -168,7 +168,7 @@ function home_page(): never
 <section class="wrap home-block">
   <div class="bento">
     <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">12 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
-    <div class="bt t-2"><span class="k">Miestai</span><span class="big">4</span><p>Vilnius, Kaunas, Klaipėda ir Palanga.</p></div>
+    <div class="bt t-2"><span class="k">Miestai</span><span class="big">6</span><p>Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys ir Palanga.</p></div>
     <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">{$mark}1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
 </section>
@@ -221,7 +221,7 @@ function jobs_page(): never
     $cities = options(['' => 'Visi miestai'] + CITIES, $f['city']);
     $roles = options(['' => 'Visos pareigos'] + ROLES, $f['role']);
     $kinds = options(['' => 'Visi tipai'] + KINDS, $f['kind']);
-    $cityName = $f['city'] ? ' '.CITIES[$f['city']].'e' : '';
+    $cityName = $f['city'] ? ' '.CITIES_IN[$f['city']] : '';
     page('Darbas baruose, restoranuose ir kavinėse'.($f['city'] ? ' – '.CITIES[$f['city']] : ''), <<<HTML
 <section class="wrap list-page">
   <h1>Darbai{$cityName}</h1>
