@@ -9,8 +9,8 @@ declare(strict_types=1);
 // 'public' => true in config opens it; without a preview_password nobody gets in.
 // PRELAUNCH_OPEN = false closes even the public pages and sign-up: every visitor without the
 // password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so;
-// 2026-11-06: opened so real sign-up can be tested).
-const PRELAUNCH_OPEN = true;
+// 2026-11-06: briefly opened to test sign-up, then locked again the same day).
+const PRELAUNCH_OPEN = false;
 const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/sale', '/privatumas', '/favicon.svg', '/robots.txt'];
 const PRELAUNCH_SIGNUP_PAGES = ['/prisijungti', '/prisijungti/kodas', '/prisijungti/kas', '/profilis', '/mano'];
 
