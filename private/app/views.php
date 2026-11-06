@@ -59,7 +59,7 @@ function page(string $title, string $body, array $opt = []): never
     $logoMark = knives();
     $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
     $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
-        .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Palanga.</p>'
+        .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms. Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga.</p>'
         .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>'.$jobsLink.' · <a href="/privatumas">Privatumas ir taisyklės</a> · © '.$year.'</p>'
         .'</div></footer>';
     echo <<<HTML

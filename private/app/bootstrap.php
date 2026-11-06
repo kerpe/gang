@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Dates, "today" and the 10:00 / 16:00 shift reminders follow Lithuanian time.
 date_default_timezone_set('Europe/Vilnius');
 
-const CITIES = ['vilnius' => 'Vilnius', 'kaunas' => 'Kaunas', 'klaipeda' => 'Klaipėda', 'palanga' => 'Palanga'];
+const CITIES = ['vilnius' => 'Vilnius', 'kaunas' => 'Kaunas', 'klaipeda' => 'Klaipėda', 'siauliai' => 'Šiauliai', 'panevezys' => 'Panevėžys', 'palanga' => 'Palanga'];
 const ROLES = [
     'barmenas' => 'Barmenas',
     'padavejas' => 'Padavėjas',
@@ -128,7 +128,7 @@ const ROLES_DATIVE = [
     'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
     'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
 ];
-const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'palanga' => 'Palangoje'];
+const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'siauliai' => 'Šiauliuose', 'panevezys' => 'Panevėžyje', 'palanga' => 'Palangoje'];
 const PAY_GUIDE_MIN = 5;
 const PAY_GUIDE_DAYS = 180;
 // Order and labels of the venue's links on its page.
