@@ -322,8 +322,8 @@ const INVITE_DOMAINS = [
     'pagalbinis' => ['pamainos', 'virtuves'],
 ];
 const INVITE_NOUNS = ['legenda', 'zvaigzde', 'raketa', 'nindze', 'masina', 'viesulas', 'audra', 'greitojipagalba'];
-const INVITE_CITIES_OF = ['vilnius' => 'vilniaus', 'kaunas' => 'kauno', 'klaipeda' => 'klaipedos', 'palanga' => 'palangos'];
-const INVITE_CITIES_IN = ['vilnius' => 'vilniuje', 'kaunas' => 'kaune', 'klaipeda' => 'klaipedoje', 'palanga' => 'palangoje'];
+const INVITE_CITIES_OF = ['vilnius' => 'vilniaus', 'kaunas' => 'kauno', 'klaipeda' => 'klaipedos', 'palanga' => 'palangos', 'siauliai' => 'siauliu', 'panevezys' => 'panevezio'];
+const INVITE_CITIES_IN = ['vilnius' => 'vilniuje', 'kaunas' => 'kaune', 'klaipeda' => 'klaipedoje', 'palanga' => 'palangoje', 'siauliai' => 'siauliuose', 'panevezys' => 'panevezyje'];
 const INVITE_VENUE_TAILS = ['ieskolegendu', 'turivietoslegendai', 'laukiazvaigzdziu', 'komandaauga', 'kviecia'];
 
 function ascii_slug(string $text): string
