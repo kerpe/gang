@@ -808,7 +808,7 @@ function request_page(int $id): never
     $payBox = '';
     if ($r['pay'] !== '') {
         $payBox = preg_match('/^([\d,]+)\s*€/u', $r['pay'], $m)
-            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).' €</strong><span class="unit">už valandą</span>'.($showGood ? '<span class="tag good">Geras atlygis</span>' : '').'</div>'
+            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).'&nbsp;€</strong><p class="pay-unit"><span class="unit">už valandą</span>'.($showGood ? '<span class="tag good">Geras atlygis</span>' : '').'</p></div>'
             : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
     }
     $facts = '<dl class="job-facts">'
