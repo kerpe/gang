@@ -151,7 +151,7 @@ function team_mail_action(): never
             'body' => 'Komandos nariai pirmieji gauna asmeninius kvietimus į pamainas, o kiekvienas darbas per GANG kaupia jūsų darbų istoriją ir įvertinimus. Profilio sukūrimas užtrunka kelias minutes.',
             'cta' => ['Priimti kvietimą', $link],
             'footnote' => 'Šį laišką gavote, nes darbdavys nurodė jūsų el. pašto adresą. Jei kvietimas jums neaktualus, laišką galite ištrinti: daugiau laiškų negausite.',
-        ], $u['email']);
+        ]);
         $sent++;
     }
     flash($sent ? 'Išsiųsta kvietimų: '.$sent.'.' : 'Šiais adresais kvietimai jau buvo išsiųsti arba pasiektas dienos limitas.');
