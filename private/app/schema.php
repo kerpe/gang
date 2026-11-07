@@ -228,6 +228,8 @@ function migrate(PDO $db): void
         'contracts ADD start_date DATE NULL',
         'contracts ADD end_date DATE NULL',
         "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        // Version 19: GANG checks every employer before they publish searches or open worker profiles.
+        'users ADD verified_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {
@@ -248,6 +250,11 @@ function migrate(PDO $db): void
                 $insert->execute([$w['id'], $role, $w['experience']]);
             }
         }
+    }
+    // Version 19: employers who signed up before the check existed count as checked (once).
+    if (!$db->query("SELECT 1 FROM settings WHERE name = 'managers_verified'")->fetchColumn()) {
+        $db->exec("UPDATE users SET verified_at = created_at WHERE kind = 'manager' AND verified_at IS NULL");
+        $db->exec("INSERT INTO settings (name, value) VALUES ('managers_verified', '1')");
     }
     // Version 6: a request requires at most one year of experience.
     $db->exec('UPDATE requests SET min_experience = 3 WHERE min_experience > 3');

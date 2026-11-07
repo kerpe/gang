@@ -457,6 +457,28 @@ function roles_with_experience(int $userId): string
 // "Mano komanda": workers who already had a GANG contract with one of the manager's venues,
 // most frequent first, then people who joined through the manager's invitation link.
 // jobs = contracts together, last = date of the latest one.
+// GANG checks every employer (admin -> Nariai -> Patvirtinti) before they can publish searches
+// or open worker profiles.
+function manager_verified(array $u): bool
+{
+    return $u['kind'] === 'manager' && !empty($u['verified_at']);
+}
+
+// A worker who applied to one of the employer's searches, worked for them or joined their team.
+function manager_knows_worker(int $managerId, int $workerId): bool
+{
+    return (bool) sql('SELECT 1 FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? AND s.worker_id = ?
+        UNION SELECT 1 FROM contracts c JOIN venues v ON v.id = c.venue_id WHERE v.manager_id = ? AND c.worker_id = ?
+        UNION SELECT 1 FROM team_links t WHERE t.manager_id = ? AND t.worker_id = ?', [$managerId, $workerId, $managerId, $workerId, $managerId, $workerId])->fetchColumn();
+}
+
+// Worker profiles and photos: the worker, GANG, and employers the worker applied to, worked for
+// or joined the team of. Only checked employers can publish searches, so only they get applicants.
+function sees_worker_profile(?array $u, int $workerId): bool
+{
+    return is_admin() || ($u && (int) $u['id'] === $workerId) || ($u && $u['kind'] === 'manager' && manager_knows_worker((int) $u['id'], $workerId));
+}
+
 function team_members(int $managerId): array
 {
     $worked = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last

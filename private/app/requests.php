@@ -92,7 +92,12 @@ function venue_form_page(?int $id = null): never
                 flash('Darbovietės duomenys išsaugoti.');
                 redirect('/mano');
             }
-            insert('venues', ['manager_id' => $u['id']] + $row + ['created_at' => now()]);
+            $venueId = insert('venues', ['manager_id' => $u['id']] + $row + ['created_at' => now()]);
+            if (!manager_verified($u)) {
+                verification_requested($u, $venueId);
+                flash('Darbovietė užregistruota. Patikrinsime ją ir el. paštu pranešime, kai galėsite skelbti paieškas.');
+                redirect('/mano');
+            }
             flash('Darbovietė užregistruota. Dabar galite skelbti darbuotojų paieškas.');
             redirect('/mano');
         }
@@ -368,8 +373,8 @@ function sees_venue_reviews(?array $u, array $venue): bool
 function venue_page(int $id): never
 {
     $u = current_user();
-    $venue = sql('SELECT * FROM venues WHERE id = ?', [$id])->fetch();
-    if (!$venue) {
+    $venue = sql('SELECT v.*, m.verified_at FROM venues v JOIN users m ON m.id = v.manager_id WHERE v.id = ?', [$id])->fetch();
+    if (!$venue || (!$venue['verified_at'] && !($u && ((int) $venue['manager_id'] === (int) $u['id'] || is_admin($u))))) {
         not_found();
     }
     $private = sees_venue_reviews($u, $venue);
@@ -408,6 +413,9 @@ function request_form_page(): never
     $venues = sql('SELECT * FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll();
     if (!$venues) {
         redirect('/darboviete/nauja');
+    }
+    if (!manager_verified($u)) {
+        page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į Mano GANG</a></p></section>', ['noindex' => true]);
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => '', 'team_first' => ''];
@@ -1370,15 +1378,39 @@ function declined_mail(array $r, string $why): array
     ];
 }
 
+function verification_note(): string
+{
+    return '<div class="panel"><p><strong>Tikriname jūsų darbovietę.</strong> Kad darbuotojų duomenys būtų saugūs, kiekvieną darbdavį GANG patikrina prieš leisdamas skelbti paieškas ir matyti darbuotojų profilius. Kai patvirtinsime, pranešime el. paštu.</p></div>';
+}
+
+// A new employer registered a venue: GANG gets an email to check it in /admin.
+function verification_requested(array $u, int $venueId): void
+{
+    $email = admin_email();
+    $venue = sql('SELECT * FROM venues WHERE id = ?', [$venueId])->fetch();
+    if ($email === '' || !$venue) {
+        return;
+    }
+    send_mail($email, 'Naujas darbdavys laukia patvirtinimo: '.$venue['name'], [
+        'kicker' => 'Administravimas',
+        'title' => 'Naujas darbdavys laukia patvirtinimo',
+        'lead' => 'užregistruota nauja darbovietė: '.$venue['name'].', '.(CITIES[$venue['city']] ?? '').($venue['address'] !== '' ? ', '.$venue['address'] : '').'. Patikrinkite darbovietę ir darbdavį, tada paspauskite „Patvirtinti“.',
+        'cta' => ['Atidaryti administravime', url('/admin?tab=user&id='.(int) $u['id'])],
+    ]);
+}
+
 function worker_profile_page(int $id): never
 {
-    $u = require_user();
+    $u = is_admin() ? current_user() : require_user();
     $w = sql("SELECT * FROM users WHERE id = ? AND kind = 'worker'", [$id])->fetch();
     if (!$w) {
         not_found();
     }
-    if ($u['kind'] !== 'manager' && (int) $u['id'] !== $id && !is_admin($u)) {
-        flash('Darbuotojų profilius gali peržiūrėti tik darbdaviai.');
+    if (!sees_worker_profile($u, $id)) {
+        flash(match (true) {
+            $u['kind'] !== 'manager' => 'Darbuotojų profilius gali peržiūrėti tik darbdaviai.',
+            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką arba prisijungs prie jūsų komandos.',
+        });
         redirect('/mano');
     }
     [$avg, $n] = worker_rating($id);

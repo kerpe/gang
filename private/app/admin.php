@@ -210,6 +210,7 @@ function admin_page(): never
         match (input('action')) {
             'block' => sql('UPDATE users SET blocked = 1 WHERE id = ?', [$id]),
             'unblock' => sql('UPDATE users SET blocked = 0 WHERE id = ?', [$id]),
+            'verify' => flash(admin_verify_manager($id) ? 'Darbdavys patvirtintas, jam išsiųstas laiškas.' : 'Darbdavys jau patvirtintas.') ?: redirect('/admin?tab=user&id='.$id),
             'delete_user' => flash(admin_delete_user($id) ? 'Narys ir visi jo duomenys ištrinti.' : 'Narys nerastas.') ?: redirect($back),
             'delete_request' => flash(admin_delete_requests([$id]) ? 'Paieška ištrinta.' : 'Paieška nerasta.') ?: redirect($back),
             'delete_venue' => flash(admin_delete_venue($id) ? 'Darbovietė ir jos paieškos ištrintos.' : 'Darbovietė nerasta.') ?: redirect($back),
@@ -265,6 +266,10 @@ function admin_attention(): string
     $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind = 'skubu' AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", $params)->fetchColumn();
     if ($urgent) {
         $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
+    }
+    $pending = (int) sql("SELECT COUNT(*) FROM users u WHERE u.kind = 'manager' AND u.verified_at IS NULL AND u.blocked = 0 AND EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id)")->fetchColumn();
+    if ($pending) {
+        $items[] = '<a href="/admin?tab=users&amp;kind=manager">Darbdaviai laukia patvirtinimo: '.$pending.'</a>';
     }
     $shifts = (int) sql('SELECT COUNT(*) FROM shift_checks WHERE shift_date >= ? AND confirmed_at IS NULL AND (declined_at IS NOT NULL OR alerted_at IS NOT NULL)', [today()])->fetchColumn();
     if ($shifts) {
@@ -508,10 +513,28 @@ function admin_users(): string
     foreach ($rows as $r) {
         $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
         $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
-            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
             .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
     }
     return $html.($rows ? '' : '<tr><td colspan="8">Narių nerasta.</td></tr>').'</table></div>';
+}
+
+// The employer may publish searches and see the profiles of workers who apply. Mails them once.
+function admin_verify_manager(int $id): bool
+{
+    $u = sql("SELECT * FROM users WHERE id = ? AND kind = 'manager' AND verified_at IS NULL", [$id])->fetch();
+    if (!$u) {
+        return false;
+    }
+    sql('UPDATE users SET verified_at = ? WHERE id = ?', [now(), $id]);
+    send_mail($u['email'], 'Jūsų darbovietė patvirtinta', [
+        'kicker' => 'GANG',
+        'title' => 'Darbovietė patvirtinta',
+        'lead' => 'patikrinome jūsų darbovietę. Dabar galite skelbti darbuotojų paieškas: pavadavimui, sezonui, renginiui ar nuolatiniam darbui.',
+        'body' => 'Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste, o atsiliepusių darbuotojų profilius matysite paieškos puslapyje.',
+        'cta' => ['Paskelbti paiešką', url('/poreikis/naujas')],
+    ]);
+    return true;
 }
 
 // One member: every detail, their venues and requests, a message form and delete.
@@ -533,6 +556,11 @@ function admin_user(int $id): string
         'Sutiko su taisyklėmis' => $u['terms_accepted_at'] ? e(substr($u['terms_accepted_at'], 0, 16).' (redakcija '.$u['terms_version'].')').($u['terms_version'] !== TERMS_VERSION ? ' – <strong>senesnė redakcija</strong>' : '') : 'Dar nesutiko',
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
+    if (!$worker) {
+        $facts['Patvirtinimas'] = $u['verified_at'] ? 'Patvirtintas '.e(substr($u['verified_at'], 0, 10))
+            : '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų profilius.')
+                .'<br><small>Prieš tvirtindami patikrinkite: ar darbovietė tikrai egzistuoja (Google Maps, Instagram, svetainė), ar darbdavio vardas ir telefonas atrodo tikri. Jei abejojate, paskambinkite.</small>';
+    }
     if ($worker) {
         $facts += [
             'Miestai' => e(labels($u['cities'], CITIES) ?: '–'),
