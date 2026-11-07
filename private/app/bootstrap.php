@@ -371,13 +371,14 @@ function period(array $r): string
 }
 
 // "lapkričio 7 d.", "lapkričio 7–8 d." or "lapkričio 30 d. – gruodžio 2 d."
+// Word joiners and a no-break space keep "7–8 d." on one line.
 function span_lt(string $from, string $to): string
 {
     if ($from === $to) {
         return date_lt($from);
     }
     if (substr($from, 0, 7) === substr($to, 0, 7)) {
-        return substr(date_lt($from), 0, -3).'–'.(int) substr($to, 8).' d.';
+        return substr(date_lt($from), 0, -3)."\u{2060}–\u{2060}".(int) substr($to, 8)."\u{00A0}d.";
     }
     return date_lt($from).' – '.date_lt($to);
 }

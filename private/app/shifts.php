@@ -147,7 +147,7 @@ function alert_manager(array $s, bool $declined): void
 function ascii(string $s): string
 {
     return strtr($s, ['ą' => 'a', 'č' => 'c', 'ę' => 'e', 'ė' => 'e', 'į' => 'i', 'š' => 's', 'ų' => 'u', 'ū' => 'u', 'ž' => 'z',
-        'Ą' => 'A', 'Č' => 'C', 'Ę' => 'E', 'Ė' => 'E', 'Į' => 'I', 'Š' => 'S', 'Ų' => 'U', 'Ū' => 'U', 'Ž' => 'Z', '„' => '"', '“' => '"', '–' => '-']);
+        'Ą' => 'A', 'Č' => 'C', 'Ę' => 'E', 'Ė' => 'E', 'Į' => 'I', 'Š' => 'S', 'Ų' => 'U', 'Ū' => 'U', 'Ž' => 'Z', '„' => '"', '“' => '"', '–' => '-', "\u{2060}" => '', "\u{00A0}" => ' ']);
 }
 
 // /pamaina/{token}: the worker confirms or declines tomorrow's shift. The link itself is the key, no login needed.
