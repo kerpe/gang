@@ -8,8 +8,9 @@ date_default_timezone_set('Europe/Vilnius');
 const CITIES = ['vilnius' => 'Vilnius', 'kaunas' => 'Kaunas', 'klaipeda' => 'Klaipėda', 'siauliai' => 'Šiauliai', 'panevezys' => 'Panevėžys', 'palanga' => 'Palanga'];
 const ROLES = [
     'barmenas' => 'Barmenas',
+    'barback' => 'Barback',
     'padavejas' => 'Padavėjas',
-    'runneris' => 'Runneris',
+    'runneris' => 'Runner',
     'barista' => 'Barista',
     'virejas' => 'Virėjas',
     'sefas' => 'Šefas',
@@ -111,6 +112,7 @@ const REVIEW_CRITERIA = [
 // requests of its own (PAY_GUIDE_MIN in the last PAY_GUIDE_DAYS for the role and city).
 const PAY_GUIDE = [
     'barmenas' => [6, 9],
+    'barback' => [5, 6.5],
     'padavejas' => [5, 7],
     'runneris' => [5, 6.5],
     'barista' => [5.5, 7.5],
@@ -124,7 +126,7 @@ const PAY_GUIDE = [
 ];
 // For the pay hint: "Vilniuje barmenams dažniausiai siūloma …".
 const ROLES_DATIVE = [
-    'barmenas' => 'barmenams', 'padavejas' => 'padavėjams', 'runneris' => 'runneriams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
+    'barmenas' => 'barmenams', 'barback' => 'barbackams', 'padavejas' => 'padavėjams', 'runneris' => 'runneriams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
     'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
     'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
 ];
