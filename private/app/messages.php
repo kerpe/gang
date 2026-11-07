@@ -82,6 +82,14 @@ function chat_messages(int $contractId): array
     return sql('SELECT * FROM messages WHERE contract_id = ? ORDER BY id', [$contractId])->fetchAll();
 }
 
+// The worker's note sent with the application opens the chat as its first message (id 0, not stored in messages).
+function chat_note(array $c): ?array
+{
+    $s = sql('SELECT note, created_at FROM responses WHERE request_id = ? AND worker_id = ? ORDER BY id DESC LIMIT 1', [$c['request_id'], $c['worker_id']])->fetch();
+    $note = trim((string) ($s['note'] ?? ''));
+    return $note === '' ? null : ['id' => 0, 'sender_id' => $c['worker_id'], 'body' => $note, 'created_at' => $s['created_at'], 'note' => true];
+}
+
 // Messages from the other side the user has not seen yet.
 function chat_unread(int $contractId, int $userId): int
 {
@@ -125,6 +133,10 @@ function chat_day(string $date): string
 // The message list. The newest own message the other side has already seen is marked "Perskaityta".
 function chat_list_html(array $c, int $userId, array $messages): string
 {
+    $note = chat_note($c);
+    if ($note) {
+        array_unshift($messages, $note);
+    }
     $otherId = chat_other_id($c, chat_side($c, ['id' => $userId]));
     $otherLast = (int) (chat_read_row((int) $c['id'], $otherId)['last_id'] ?? 0);
     $readMine = 0;
@@ -149,10 +161,10 @@ function chat_list_html(array $c, int $userId, array $messages): string
         }
         $mine = (int) $m['sender_id'] === $userId;
         $status = '';
-        if ($mine && (int) $m['id'] === $lastMine) {
+        if ($mine && (int) $m['id'] > 0 && (int) $m['id'] === $lastMine) {
             $status = ' · '.((int) $m['id'] <= $readMine ? 'Perskaityta' : 'Išsiųsta');
         }
-        $html .= '<div class="msg'.($mine ? ' mine' : '').'"><p>'.nl2br(e($m['body'])).'</p>'
+        $html .= '<div class="msg'.($mine ? ' mine' : '').'">'.(!empty($m['note']) ? '<span class="msg-tag">Žinutė su kandidatūra</span>' : '').'<p>'.nl2br(e($m['body'])).'</p>'
             .'<span class="msg-time">'.e(substr($m['created_at'], 11, 5)).$status.'</span></div>';
     }
     return $html;
@@ -191,7 +203,7 @@ function chat_box(array $c, array $u): string
     return '<section class="chat" id="pokalbis-'.$id.'" data-chat="'.$id.'" data-state="'.e(chat_state($c, (int) $u['id'], $messages)).'">'
         .'<header class="chat-head"><span class="chat-dot" aria-hidden="true"></span><div><strong>'.e(first_name($other)).'</strong><span class="meta">'.e($sub).'</span></div>'
         .'<span class="chat-label">Pokalbis per GANG</span></header>'
-        .'<div class="chat-list" aria-live="polite">'.($messages ? chat_list_html($c, (int) $u['id'], $messages) : $empty).'</div>'
+        .'<div class="chat-list" aria-live="polite">'.($messages || chat_note($c) ? chat_list_html($c, (int) $u['id'], $messages) : $empty).'</div>'
         .$form.'</section>';
 }
 

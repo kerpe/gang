@@ -1062,7 +1062,7 @@ function owner_panel(array $r, bool $isOpen): string
         }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
-            .($s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
+            .($s['note'] && $chat === '' ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
