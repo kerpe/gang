@@ -850,7 +850,6 @@ table.data td.actions form + form { margin-left: 6px; }
 .perk-list li { padding: 7px 14px; border-radius: 8px; background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.35); font-size: .92rem; }
 .venue-page .venue-actions { margin: 0 0 8px; }
 @media (max-width: 560px) { .venue-head { flex-direction: column; align-items: flex-start; gap: 14px; } }
-.job-venue { display: flex; align-items: center; gap: 10px; }
 .venue-card-head { display: flex; align-items: center; gap: 12px; }
 .avatar.venue-logo.small { font-size: .85rem; border-radius: 8px; }
 
