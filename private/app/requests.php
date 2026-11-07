@@ -821,9 +821,7 @@ function request_page(int $id): never
     $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
     $venueUrl = '/darboviete/'.(int) $r['venue_id'];
-    $venueLink = '<a href="'.$venueUrl.'">'.e($r['venue_name']).'</a>'.(sees_venue_reviews($u, $venue) ? ' · '.stars($avg, $n) : '');
-    $venueSec = venue_section_html($venue, $venueUrl);
-    $venueLogo = $r['venue_logo'] ? venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo']], 'small') : '';
+    $venueSec = venue_section_html($venue, $venueUrl, $city, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
     $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
@@ -862,14 +860,13 @@ function request_page(int $id): never
   <header class="job-head">
     <p class="job-tags">$kindTag$eventTag</p>
     <h1>{$e($role)}</h1>$eventLine
-    <p class="meta job-venue">$venueLogo<span>$venueLink · {$e($city)}</span></p>
   </header>
   <div class="job-grid">
     <aside class="job-side">$payBox$facts</aside>
     <div class="job-main">
+      $venueSec
       $when
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
-      $venueSec
       $event
       $action
     </div>
@@ -883,10 +880,11 @@ HTML, [
     ]);
 }
 
-// "Apie darbovietę" on the job page: what the employer filled in about the venue, visible to everyone.
-function venue_section_html(array $venue, string $url): string
+// "Apie darbovietę" at the top of the job page: what the employer filled in about the venue, visible to everyone.
+// The city and (for members who may see them) the venue's ratings sit under the name.
+function venue_section_html(array $venue, string $url, string $city = '', string $rating = ''): string
 {
-    $type = venue_type_text($venue);
+    $type = implode(' · ', array_filter([venue_type_text($venue), $city], fn ($x) => $x !== ''));
     $facts = array_filter([
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
@@ -894,7 +892,8 @@ function venue_section_html(array $venue, string $url): string
     $factsHtml = $facts ? '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
     return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'
         .'<div class="venue-card-head">'.venue_logo($venue, 'small').'<div><strong><a href="'.$url.'">'.e($venue['name']).'</a></strong>'
-        .($type !== '' ? '<span class="meta">'.e($type).'</span>' : '').'</div></div>'
+        .($type !== '' ? '<span class="meta">'.e($type).'</span>' : '')
+        .($rating !== '' ? '<span class="meta venue-rating">'.$rating.'</span>' : '').'</div></div>'
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$factsHtml
         .venue_perks_html($venue, '<h3>Darbuotojams siūlome</h3>')
