@@ -40,7 +40,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias, o visa komanda kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
             .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
-        'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Salės vadovai', 'Renginiai'],
+        'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Salės vadovai'],
         'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
 ];
