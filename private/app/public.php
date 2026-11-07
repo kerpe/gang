@@ -215,7 +215,7 @@ function jobs_page(): never
     $roles = options(['' => 'Visos pareigos'] + ROLES, $f['role']);
     $kinds = options(['' => 'Visi tipai'] + KINDS, $f['kind']);
     $cityName = $f['city'] ? ' '.CITIES_IN[$f['city']] : '';
-    page('Darbas baruose, restoranuose ir kavinėse'.($f['city'] ? ' – '.CITIES[$f['city']] : ''), <<<HTML
+    page('Darbas restoranuose, kavinėse, baruose ir klubuose'.($f['city'] ? ' – '.CITIES[$f['city']] : ''), <<<HTML
 <section class="wrap list-page">
   <h1>Darbai{$cityName}</h1>
   <form class="filters" method="get" action="/darbai">
@@ -290,7 +290,7 @@ function about_page(): never
             .'<li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių neįsivaizduojama nė viena komanda.</li>'
             .'<li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>'
             .'<li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li></ul>'],
-        ['sprendimas', 'Sprendimai', '<p>GANG tiesiogiai sujungia barus, restoranus ir kavines su hospitality specialistais. Darbdavys paskelbia paiešką, ir apie ją iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
+        ['sprendimas', 'Sprendimai', '<p>GANG tiesiogiai sujungia restoranus, kavines, barus ir klubus su hospitality specialistais. Darbdavys paskelbia paiešką, ir apie ją iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
             .'<p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>'
             .'<p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>'],
         ['kas-mes', 'GANG', '<blockquote><p>HoReCa sektoriuje sukuosi nuo 2008 metų ir dirbti teko visose įmanomose pozicijose: virtuvėje, bare, salėje ir, žinoma, lauke (dažniausiai prie klubo durų).</p>'
