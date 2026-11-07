@@ -358,6 +358,13 @@ function invite_slug_options(array $u): array
     return $options;
 }
 
+// Is the word in use by someone else (current word, old code or an earlier word)?
+function invite_slug_taken(string $slug, int $userId): bool
+{
+    return (bool) sql('SELECT 1 FROM users WHERE (invite_slug = ? OR invite_code = ?) AND id <> ?', [$slug, $slug, $userId])->fetchColumn()
+        || (bool) sql('SELECT 1 FROM invite_aliases WHERE slug = ? AND user_id <> ?', [$slug, $userId])->fetchColumn();
+}
+
 // Free words in random order; if every one is taken, the first one with a number.
 function new_invite_slug(array $u): string
 {
@@ -365,7 +372,7 @@ function new_invite_slug(array $u): string
     if (!$options) {
         return '';
     }
-    $taken = fn ($s) => (bool) sql('SELECT 1 FROM users WHERE invite_slug = ? OR invite_code = ?', [$s, $s])->fetchColumn();
+    $taken = fn ($s) => invite_slug_taken($s, (int) $u['id']);
     shuffle($options);
     foreach ($options as $slug) {
         if (!$taken($slug)) {
@@ -380,15 +387,49 @@ function new_invite_slug(array $u): string
 // The person behind /k/{word}: the readable word, or the older random code, which keeps working.
 function invite_owner(string $code): array|false
 {
-    return sql('SELECT * FROM users WHERE (invite_slug = ? OR invite_code = ?) AND blocked = 0 ORDER BY invite_slug = ? DESC LIMIT 1', [$code, $code, $code])->fetch();
+    $user = sql('SELECT * FROM users WHERE (invite_slug = ? OR invite_code = ?) AND blocked = 0 ORDER BY invite_slug = ? DESC LIMIT 1', [$code, $code, $code])->fetch();
+    if ($user) {
+        return $user;
+    }
+    // A word used before the venue was renamed still leads to the same person.
+    return sql('SELECT u.* FROM invite_aliases a JOIN users u ON u.id = a.user_id WHERE a.slug = ? AND u.blocked = 0 ORDER BY a.id DESC LIMIT 1', [$code])->fetch();
+}
+
+// Does the manager's link word still come from the venue's current name? (Words may end in a number.)
+function invite_slug_fits(array $u, string $slug): bool
+{
+    return $u['kind'] !== 'manager' || in_array(preg_replace('/\d+$/', '', $slug), invite_slug_options($u), true);
+}
+
+// A new link word after the venue was renamed; the earlier word is kept so links already shared keep working.
+function refresh_invite_slug(array $u): void
+{
+    $old = (string) ($u['invite_slug'] ?? '');
+    if ($old === '' || invite_slug_fits($u, $old)) {
+        return;
+    }
+    $slug = new_invite_slug($u);
+    if ($slug === '') {
+        return;
+    }
+    sql('DELETE FROM invite_aliases WHERE user_id = ? AND slug = ?', [$u['id'], $slug]);
+    if (!sql('SELECT 1 FROM invite_aliases WHERE user_id = ? AND slug = ?', [$u['id'], $old])->fetchColumn()) {
+        insert('invite_aliases', ['user_id' => $u['id'], 'slug' => $old, 'created_at' => now()]);
+    }
+    sql('UPDATE users SET invite_slug = ? WHERE id = ?', [$slug, $u['id']]);
 }
 
 // The personal link word (/k/{word}), made on first use and then kept, so shared links stay valid.
+// A manager gets a new word when the venue is renamed; the earlier words keep working (invite_aliases).
 // Until the profile or venue says enough for a word, a random code stands in (and keeps working later).
 function invite_code(array $u): string
 {
     if (!empty($u['invite_slug'])) {
-        return $u['invite_slug'];
+        if (invite_slug_fits($u, $u['invite_slug'])) {
+            return $u['invite_slug'];
+        }
+        refresh_invite_slug($u);
+        return (string) sql('SELECT invite_slug FROM users WHERE id = ?', [$u['id']])->fetchColumn();
     }
     $slug = new_invite_slug($u);
     if ($slug !== '') {
