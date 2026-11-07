@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 function migrate(PDO $db): void
 {
@@ -160,6 +160,9 @@ function migrate(PDO $db): void
             last_id INT NOT NULL DEFAULT 0,
             seen_at DATETIME NULL,
             mailed_at DATETIME NULL",
+        // Version 19: site settings changed from /admin (admin_password = password_hash of the admin password).
+        'settings' => "name VARCHAR(50) NOT NULL PRIMARY KEY,
+            value TEXT NOT NULL",
         // Pre-launch sign-ups. kind: manager (employers wait for launch) | worker (from before
         // workers could build profiles; they are invited to sign up now).
         'waitlist' => "id $id,

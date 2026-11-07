@@ -3,14 +3,57 @@
 declare(strict_types=1);
 
 // gang.lt/admin is reached only by typing the address: no link points to it, robots.txt does not
-// name it, and it is never indexed. It has its own login (ADMIN_USER below + the same password as
-// "GANG komandos prieiga", config preview_password) and works even while the site is locked.
+// name it, and it is never indexed. It works even while the site is locked. Signing in takes two
+// steps: ADMIN_USER + the admin password, then a 6-digit code sent to config admin_email.
+// The admin password is set in Nustatymai (stored as a hash in settings); until then it is the
+// "GANG komandos prieiga" password (config preview_password).
 const ADMIN_USER = 'gangster';
+const ADMIN_PASSWORD_MIN = 12;
+
+function setting(string $name): string
+{
+    return (string) (sql('SELECT value FROM settings WHERE name = ?', [$name])->fetchColumn() ?: '');
+}
+
+function set_setting(string $name, string $value): void
+{
+    sql('DELETE FROM settings WHERE name = ?', [$name]);
+    insert('settings', ['name' => $name, 'value' => $value]);
+}
+
+// The stored password hash, or the team password while no admin password is set.
+function admin_secret(): string
+{
+    return setting('admin_password') ?: (string) (config()['preview_password'] ?? '');
+}
+
+function admin_password_ok(string $password): bool
+{
+    $hash = setting('admin_password');
+    if ($hash !== '') {
+        return password_verify($password, $hash);
+    }
+    $team = (string) (config()['preview_password'] ?? '');
+    return $team !== '' && hash_equals($team, $password);
+}
 
 function admin_token(): string
 {
-    $password = (string) (config()['preview_password'] ?? '');
-    return $password === '' ? '' : hash_hmac('sha256', 'admin', $password);
+    $secret = admin_secret();
+    return $secret === '' ? '' : hash_hmac('sha256', 'admin', $secret);
+}
+
+// Where the second step's code goes; login_codes keeps admin codes apart from members' codes.
+function admin_email(): string
+{
+    $email = mb_strtolower(trim((string) (config()['admin_email'] ?? '')));
+    return filter_var($email, FILTER_VALIDATE_EMAIL) ? $email : '';
+}
+
+function admin_email_hint(string $email): string
+{
+    [$name, $domain] = explode('@', $email, 2);
+    return mb_substr($name, 0, 2).str_repeat('•', max(3, mb_strlen($name) - 2)).'@'.$domain;
 }
 
 // True when this browser signed in at /admin. Changing the password signs everyone out.
@@ -28,35 +71,121 @@ function admin_signed_in(): bool
     return $on;
 }
 
+// Step 1 checked: send the code. Returns an error to show, or '' when the code went out.
+function admin_send_code(): string
+{
+    $email = admin_email();
+    if ($email === '') {
+        return 'Nenustatytas administratoriaus el. paštas (ADMIN_EMAIL), todėl kodo išsiųsti negalime.';
+    }
+    $key = 'admin:'.$email;
+    $recent = (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$key, date('Y-m-d H:i:s', time() - 3600)])->fetchColumn();
+    if ($recent >= 5) {
+        return 'Viršytas bandymų skaičius. Bandykite dar kartą po valandos.';
+    }
+    $code = (string) random_int(100000, 999999);
+    insert('login_codes', ['email' => $key, 'code_hash' => hash('sha256', $key.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 600), 'created_at' => now()]);
+    send_mail($email, "GANG administravimo kodas: $code", [
+        'kicker' => 'Administravimas',
+        'title' => 'Prisijungimo prie administravimo kodas',
+        'lead' => 'kažkas ką tik įvedė teisingą administravimo slaptažodį. Norėdami prisijungti, įveskite šį kodą:',
+        'code' => $code,
+        'after' => 'Kodas galioja 10 minučių. Jei jungėtės ne jūs, kuo greičiau pakeiskite administravimo slaptažodį skiltyje „Nustatymai“.',
+    ]);
+    return '';
+}
+
 function admin_login_page(): never
 {
     header('X-Robots-Tag: noindex, nofollow');
     header('Cache-Control: no-store');
+    start_session();
+    $token = admin_token();
+    $pending = $token !== '' && hash_equals($token, (string) ($_SESSION['admin_pending'] ?? ''))
+        && (int) ($_SESSION['admin_pending_at'] ?? 0) > time() - 600;
     $error = '';
     if (is_post()) {
-        start_session();
         check_csrf();
         usleep(800000);
-        $password = (string) (config()['preview_password'] ?? '');
-        $userOk = hash_equals(ADMIN_USER, mb_strtolower(trim((string) ($_POST['user'] ?? ''))));
-        $passOk = $password !== '' && hash_equals($password, (string) ($_POST['password'] ?? ''));
-        if ($userOk && $passOk) {
-            session_regenerate_id(true);
-            $_SESSION['admin'] = admin_token();
+        if (input('action') === 'restart') {
+            unset($_SESSION['admin_pending'], $_SESSION['admin_pending_at']);
             redirect('/admin');
         }
+        if (!$pending && isset($_POST['code'])) {
+            $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
+        } elseif ($pending) {
+            $key = 'admin:'.admin_email();
+            $code = preg_replace('/\D/', '', input('code'));
+            $row = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? ORDER BY id DESC LIMIT 1', [$key, now()])->fetch();
+            if (!$row || $row['attempts'] >= 5) {
+                $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
+            } elseif (!hash_equals($row['code_hash'], hash('sha256', $key.$code))) {
+                sql('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [$row['id']]);
+                $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';
+            } else {
+                sql('DELETE FROM login_codes WHERE email = ?', [$key]);
+                unset($_SESSION['admin_pending'], $_SESSION['admin_pending_at']);
+                session_regenerate_id(true);
+                $_SESSION['admin'] = $token;
+                redirect('/admin');
+            }
+        } else {
+            $userOk = hash_equals(ADMIN_USER, mb_strtolower(trim((string) ($_POST['user'] ?? ''))));
+            if ($token !== '' && $userOk && admin_password_ok((string) ($_POST['password'] ?? ''))) {
+                $error = admin_send_code();
+                if ($error === '') {
+                    session_regenerate_id(true);
+                    $_SESSION['admin_pending'] = $token;
+                    $_SESSION['admin_pending_at'] = time();
+                    redirect('/admin');
+                }
+            } else {
+                $error = 'Neteisingas vartotojo vardas arba slaptažodis.';
+            }
+        }
         http_response_code(401);
-        $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
     }
+    $error = $error ? '<p class="err">'.e($error).'</p>' : '';
+    $form = $pending
+        ? '<p class="lead">Išsiuntėme 6 skaitmenų kodą adresu <strong>'.e(admin_email_hint(admin_email())).'</strong>. Kodas galioja 10 minučių.</p>'
+            .'<form method="post" action="/admin" class="form">'.csrf_field()
+            .'<label>Kodas <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required autofocus class="code"></label>'
+            .$error.'<button class="btn">Prisijungti</button></form>'
+            .post_button('/admin', 'Siųsti kodą iš naujo', ['action' => 'restart'], 'btn small ghost')
+        : '<form method="post" action="/admin" class="form">'.csrf_field()
+            .'<label>Vartotojas <input name="user" autocomplete="username" autocapitalize="none" required></label>'
+            .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
+            .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
         .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=56"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
-        .'<h1>Administravimas</h1>'
-        .'<form method="post" action="/admin" class="form">'.csrf_field()
-        .'<label>Vartotojas <input name="user" autocomplete="username" autocapitalize="none" required></label>'
-        .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
-        .$error.'<button class="btn">Prisijungti</button></form></section></main></body></html>';
+        .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
+}
+
+// Nustatymai → "Pakeisti slaptažodį". Signs out every other admin browser.
+function admin_change_password(): never
+{
+    $back = '/admin?tab=settings';
+    $new = (string) ($_POST['new_password'] ?? '');
+    $team = (string) (config()['preview_password'] ?? '');
+    $error = match (true) {
+        !admin_password_ok((string) ($_POST['current_password'] ?? '')) => 'Dabartinis slaptažodis neteisingas.',
+        mb_strlen($new) < ADMIN_PASSWORD_MIN => 'Naujas slaptažodis turi būti bent '.ADMIN_PASSWORD_MIN.' simbolių.',
+        $new !== (string) ($_POST['new_password2'] ?? '') => 'Nauji slaptažodžiai nesutampa.',
+        $team !== '' && hash_equals($team, $new) => 'Naujas slaptažodis turi skirtis nuo GANG komandos slaptažodžio.',
+        default => '',
+    };
+    if ($error !== '') {
+        flash($error);
+        redirect($back);
+    }
+    set_setting('admin_password', password_hash($new, PASSWORD_DEFAULT));
+    set_setting('admin_password_at', now());
+    session_regenerate_id(true);
+    $_SESSION['admin'] = admin_token();
+    flash('Slaptažodis pakeistas. Kitose naršyklėse administravimas atjungtas.');
+    redirect($back);
 }
 
 function admin_page(): never
@@ -72,6 +201,9 @@ function admin_page(): never
             unset($_SESSION['admin']);
             session_regenerate_id(true);
             redirect('/admin');
+        }
+        if (input('action') === 'admin_password') {
+            admin_change_password();
         }
         $id = (int) input('id');
         $back = '/admin?'.http_build_query(array_intersect_key($_GET, ['tab' => 1, 'q' => 1, 'kind' => 1, 'status' => 1]));
@@ -458,18 +590,26 @@ function admin_settings(): string
     $c = config();
     $yes = fn (bool $on, string $onText, string $offText) => '<strong>'.($on ? $onText : $offText).'</strong>';
     $mail = !empty($c['resend_key']) ? 'Resend' : 'Hostinger (PHP mail)';
+    $changed = setting('admin_password_at');
     $rows = [
         'Svetainė' => $yes(SITE_OPEN, 'Atverta visiems', 'Užrakinta').' <small>– '.(SITE_OPEN ? 'registracija atvira visiems.' : 'lankytojai be komandos slaptažodžio mato „Netrukus“.').'</small>',
         'Laiškų siuntėjas' => '<strong>'.e((string) $c['mail_from']).'</strong> <small>per '.$mail.'</small>',
         'SMS pranešimai' => $yes(($c['sms_provider'] ?? '') === 'twilio', 'Įjungti (Twilio)', 'Išjungti').' <small>– kol kas siunčiami tik el. laiškai.</small>',
-        'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ GANG komandos prieigos slaptažodis</small>',
+        'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ '.($changed ? 'administravimo slaptažodis (pakeistas '.e(substr($changed, 0, 10)).')' : 'GANG komandos slaptažodis – pakeiskite žemiau').' + kodas el. paštu'.(admin_email() ? ' '.e(admin_email_hint(admin_email())) : '').'</small>',
     ];
     $html = '<dl class="admin-facts">';
     foreach ($rows as $k => $v) {
         $html .= '<dt>'.$k.'</dt><dd>'.$v.'</dd>';
     }
     $test = (int) sql('SELECT COUNT(*) FROM users')->fetchColumn();
-    $html .= '</dl><h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
+    $html .= '</dl><h2>Administravimo slaptažodis</h2><p class="meta">'.($changed ? 'Pakeitus slaptažodį, administravimas atjungiamas visose kitose naršyklėse.' : 'Dabar administravimui naudojamas GANG komandos slaptažodis, kurį žino visi, matantys svetainę iki paleidimo. Susikurkite atskirą.').' Bent '.ADMIN_PASSWORD_MIN.' simbolių.</p>'
+        .'<form method="post" action="/admin?tab=settings" class="form">'.csrf_field().'<input type="hidden" name="action" value="admin_password">'
+        .'<input type="text" name="user" value="'.ADMIN_USER.'" autocomplete="username" hidden>'
+        .'<label>Dabartinis slaptažodis <input type="password" name="current_password" autocomplete="current-password" required></label>'
+        .'<label>Naujas slaptažodis <input type="password" name="new_password" autocomplete="new-password" minlength="'.ADMIN_PASSWORD_MIN.'" required></label>'
+        .'<label>Pakartokite naują slaptažodį <input type="password" name="new_password2" autocomplete="new-password" minlength="'.ADMIN_PASSWORD_MIN.'" required></label>'
+        .'<button class="btn small">Pakeisti slaptažodį</button></form>'
+        .'<h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
         .'<form method="post" action="/admin?tab=settings" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
         .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
     return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Narių dabar: '.$test.'.</p>';
