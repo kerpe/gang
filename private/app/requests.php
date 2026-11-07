@@ -1083,7 +1083,7 @@ function decide_response_action(int $responseId, bool $accept): never
         ],
         'cta' => ['Mano GANG', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
-    ], $u['email']);
+    ]);
     $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
     if ($accepted >= (int) $r['people']) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);

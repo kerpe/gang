@@ -88,7 +88,6 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
     $noteBlock = $note !== '' ? ['label' => 'Komentaras', 'text' => $note] : null;
     if ($side === 'worker') {
         $reopened = reopen_request((int) $c['request_id'], (int) $c['worker_id']);
-        $worker = sql('SELECT email FROM users WHERE id = ?', [$c['worker_id']])->fetch();
         send_mail(sql('SELECT email FROM users WHERE id = ?', [$c['manager_id']])->fetchColumn(), 'Darbuotojas atšaukė darbą: '.first_name($c['worker_name']).' – '.$c['venue_name'], array_filter([
             'kicker' => 'GANG kontraktas atšauktas',
             'title' => 'Darbuotojas neatvyks',
@@ -99,7 +98,7 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
                 ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus. Paieškos puslapyje galite asmeniškai pakviesti savo komandos narius.'
                 : 'Jei reikalingas pakaitinis darbuotojas, paskelbkite naują paiešką. Forma bus užpildyta pagal šį darbą.',
             'cta' => $reopened ? ['Peržiūrėti paiešką', url('/darbas/'.$c['request_id'])] : ['Rasti pakaitinį darbuotoją', url('/poreikis/naujas?pagal='.(int) $c['request_id'])],
-        ]), $worker['email'] ?? '');
+        ]));
         flash('Darbas atšauktas. Darbdavys informuotas el. paštu.');
         return;
     }
