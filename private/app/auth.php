@@ -33,6 +33,12 @@ function require_user(?string $kind = null): array
         flash($kind === 'manager' ? 'Šis veiksmas skirtas darbdaviams.' : 'Šis veiksmas skirtas darbuotojams.');
         redirect('/mano');
     }
+    if (needs_consent($user)) {
+        if (!is_post()) {
+            $_SESSION['after_login'] = $_SERVER['REQUEST_URI'] ?? '/mano';
+        }
+        redirect('/sutikimas');
+    }
     return $user;
 }
 
@@ -50,14 +56,19 @@ function login_page(): never
     if (current_user()) {
         redirect('/mano');
     }
+    $kind = $_SESSION['signup_kind'] ?? '';
     $error = '';
+    $termsError = '';
     $email = '';
     if (is_post()) {
         check_csrf();
         $email = mb_strtolower(input('email'));
+        if ($kind !== '' && !consent_given()) {
+            $termsError = CONSENT_ERROR;
+        }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Patikrinkite el. pašto adresą.';
-        } else {
+        } elseif ($termsError === '') {
             $recent = (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$email, date('Y-m-d H:i:s', time() - 3600)])->fetchColumn();
             if ($recent >= 5) {
                 $error = 'Viršytas bandymų skaičius. Bandykite dar kartą po valandos.';
@@ -72,11 +83,13 @@ function login_page(): never
                     'after' => 'Kodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.',
                 ]);
                 $_SESSION['login_email'] = $email;
+                if ($kind !== '') {
+                    $_SESSION['terms_ok'] = TERMS_VERSION;
+                }
                 redirect('/prisijungti/kodas');
             }
         }
     }
-    $kind = $_SESSION['signup_kind'] ?? '';
     $title = match ($kind) {
         'worker' => 'Registracija darbuotojams',
         'manager' => 'Registracija darbdaviams',
@@ -94,6 +107,7 @@ function login_page(): never
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<label>El. paštas <input type="email" name="email" value="'.e($email).'" autocomplete="email" inputmode="email" required autofocus>'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
+        .($kind !== '' ? consent_field($termsError) : '')
         .'<button class="btn">Siųsti kodą</button></form></section>', ['noindex' => true]);
 }
 
@@ -146,10 +160,14 @@ function choose_kind_page(): never
     if ($email === '') {
         redirect('/prisijungti');
     }
+    $error = '';
     if (is_post()) {
         check_csrf();
         $kind = input('kind');
-        if (in_array($kind, ['worker', 'manager'], true)) {
+        if (!consent_given()) {
+            $error = CONSENT_ERROR;
+        } elseif (in_array($kind, ['worker', 'manager'], true)) {
+            $_SESSION['terms_ok'] = TERMS_VERSION;
             $existing = sql('SELECT id FROM users WHERE email = ?', [$email])->fetchColumn();
             unset($_SESSION['verified_email']);
             finish_login($existing ? (int) $existing : create_user($kind, $email));
@@ -157,6 +175,7 @@ function choose_kind_page(): never
     }
     page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, ko ieškote GANG – vėliau pakeisti nebegalėsite.</p>'
         .'<form method="post" class="pick">'.csrf_field()
+        .'<div class="pick-consent">'.consent_field($error).'</div>'
         .'<button name="kind" value="worker" class="pick-card"><strong>Ieškau darbo</strong><span>Barmenas, padavėjas, virėjas ar kitas hospitality darbuotojas</span></button>'
         .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau darbuotojų</strong><span>Baro, restorano, kavinės ar viešbučio vadovas</span></button>'
         .'</form></section>', ['noindex' => true]);
@@ -175,9 +194,18 @@ function finish_login(int $userId): never
     unset($_SESSION['login_email'], $_SESSION['signup_kind']);
     $new = !sql('SELECT last_login_at FROM users WHERE id = ?', [$userId])->fetchColumn();
     sql('UPDATE users SET last_login_at = ? WHERE id = ?', [now(), $userId]);
+    $user = sql('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
+    // Ticked on the sign-up form before the code was sent; stored once the email is verified.
+    if (($_SESSION['terms_ok'] ?? '') === TERMS_VERSION && needs_consent($user)) {
+        record_consent($userId);
+    }
+    unset($_SESSION['terms_ok']);
     apply_invite($userId, $new);
     $user = sql('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
     team_joined_notice($user);
+    if (needs_consent($user)) {
+        redirect('/sutikimas');
+    }
     if (!profile_complete($user)) {
         redirect('/profilis');
     }

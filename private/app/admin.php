@@ -204,6 +204,7 @@ function admin_delete_user(int $id): bool
     }
     sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
     sql('DELETE FROM invite_aliases WHERE user_id = ?', [$id]);
+    sql('DELETE FROM consents WHERE user_id = ?', [$id]);
     sql('DELETE FROM team_mails WHERE manager_id = ?', [$id]);
     sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
@@ -394,6 +395,7 @@ function admin_user(int $id): string
         'Registruotas' => e(substr($u['created_at'], 0, 16)),
         'Paskutinį kartą prisijungė' => e($u['last_login_at'] ? substr($u['last_login_at'], 0, 16) : '–'),
         'Pranešimai el. paštu' => $u['notify'] ? 'Taip' : 'Ne',
+        'Sutiko su taisyklėmis' => $u['terms_accepted_at'] ? e(substr($u['terms_accepted_at'], 0, 16).' (redakcija '.$u['terms_version'].')').($u['terms_version'] !== TERMS_VERSION ? ' – <strong>senesnė redakcija</strong>' : '') : 'Dar nesutiko',
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
     if ($worker) {
