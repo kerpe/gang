@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 function migrate(PDO $db): void
 {
@@ -33,7 +33,16 @@ function migrate(PDO $db): void
             created_at DATETIME NOT NULL,
             last_login_at DATETIME NULL,
             launch_mail_at DATETIME NULL,
-            durations VARCHAR(100) NOT NULL DEFAULT ''",
+            durations VARCHAR(100) NOT NULL DEFAULT '',
+            terms_version VARCHAR(20) NOT NULL DEFAULT '',
+            terms_accepted_at DATETIME NULL",
+        // Every acceptance of the terms and privacy policy (see legal.php): proof of consent.
+        'consents' => "id $id,
+            user_id INT NOT NULL,
+            version VARCHAR(20) NOT NULL,
+            accepted_at DATETIME NOT NULL,
+            ip VARCHAR(45) NOT NULL DEFAULT '',
+            user_agent VARCHAR(255) NOT NULL DEFAULT ''",
         'login_codes' => "id $id,
             email VARCHAR(190) NOT NULL,
             code_hash CHAR(64) NOT NULL,
@@ -189,6 +198,9 @@ function migrate(PDO $db): void
         'users ADD referred_by INT NULL',
         // Version 13: the readable link word (/k/palangosbarolegenda); invite_code keeps old links working.
         'users ADD invite_slug VARCHAR(80) NULL',
+        // Version 15: the terms version the member last accepted (consents keeps every acceptance).
+        "users ADD terms_version VARCHAR(20) NOT NULL DEFAULT ''",
+        'users ADD terms_accepted_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {
@@ -225,6 +237,7 @@ function migrate(PDO $db): void
         'reviews_contract' => 'reviews (contract_id)',
         'requests_status' => 'requests (status)',
         'login_codes_email' => 'login_codes (email)',
+        'consents_user' => 'consents (user_id)',
         'team_links_manager' => 'team_links (manager_id)',
         'team_mails_manager' => 'team_mails (manager_id, created_at)',
         'requests_event' => 'requests (event_id)',

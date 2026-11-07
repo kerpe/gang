@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team', 'legal'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -44,6 +44,8 @@ match (true) {
     $path === '/aptarnavimas' => team_page('03'),
     $path === '/sale' => (function (): never { header('Location: /aptarnavimas', true, 301); exit; })(),
     $path === '/privatumas' => privacy_page(),
+    $path === '/taisykles' => terms_page(),
+    $path === '/sutikimas' => consent_page(),
     $path === '/sitemap.xml' => sitemap(),
     $path === '/prisijungti' => login_page(),
     $path === '/prisijungti/kodas' => login_code_page(),
