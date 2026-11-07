@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-// GANG is open to everyone since 2026-11-07 (Vilius: launch now, sign-up straight away).
-// SITE_OPEN = false locks the site again: every visitor without the shared team password
-// (preview_password, from the PREVIEW_PASSWORD secret) sees one "Netrukus" page; /admin stays reachable.
-const SITE_OPEN = true;
+// 2026-11-07 Vilius: locked again with the team password until the real launch.
+// SITE_OPEN = false: every visitor without the shared team password (preview_password,
+// from the PREVIEW_PASSWORD secret) sees one "Netrukus" page; /admin stays reachable.
+// SITE_OPEN = true opens the site to everyone (instant sign-up, as in PR #68).
+const SITE_OPEN = false;
 
 function preview_gate(string $path): void
 {

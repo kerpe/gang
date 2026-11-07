@@ -11,7 +11,7 @@
 #   ADMIN_EMAIL   required, kept for config; /admin has its own login (gangster + PREVIEW_PASSWORD)
 #   PREVIEW_PASSWORD  team password: /admin login, and the whole site when SITE_OPEN = false (private/app/preview.php)
 # Optional: RESEND_KEY (sends mail through Resend; PHP mail() stays as the fallback). Needs gang.lt verified in Resend (DNS: resend._domainkey, send MX + TXT).
-# The site is open to everyone (SITE_OPEN in private/app/preview.php); SITE_PUBLIC / LAUNCH_DATE variables are no longer used.
+# Site lock: SITE_OPEN in private/app/preview.php (false = "Netrukus" + team password); SITE_PUBLIC / LAUNCH_DATE variables are no longer used.
 # Optional repository variables: FTP_PROTOCOL (default ftps), SITE_DIR (default domains/gang.lt).
 name: Deploy to Hostinger
 
