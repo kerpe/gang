@@ -12,13 +12,13 @@ const ROLES = [
     'padavejas' => 'Padavėjas',
     'runneris' => 'Runner',
     'barista' => 'Barista',
-    'virejas' => 'Virėjas',
     'sefas' => 'Šefas',
+    'virejas' => 'Virėjas',
+    'pagalbinis' => 'Virtuvės pagalbinis darbuotojas',
     'plovejas' => 'Indų plovėjas',
     'administratorius' => 'Administratorius',
-    'vadovas' => 'Salės ar baro vadovas',
-    'someljee' => 'Someljė',
-    'pagalbinis' => 'Pagalbinis darbuotojas',
+    'vadovas' => 'Baro vadovas',
+    'someljee' => 'Restorano vadovas',
 ];
 const KINDS = [
     'skubu' => 'Skubiai',
@@ -127,8 +127,8 @@ const PAY_GUIDE = [
 // For the pay hint: "Vilniuje barmenams dažniausiai siūloma …".
 const ROLES_DATIVE = [
     'barmenas' => 'barmenams', 'barback' => 'barbackams', 'padavejas' => 'padavėjams', 'runneris' => 'runneriams', 'barista' => 'baristoms', 'virejas' => 'virėjams', 'sefas' => 'šefams',
-    'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'salės ar baro vadovams',
-    'someljee' => 'someljė', 'pagalbinis' => 'pagalbiniams darbuotojams',
+    'plovejas' => 'indų plovėjams', 'administratorius' => 'administratoriams', 'vadovas' => 'baro vadovams',
+    'someljee' => 'restorano vadovams', 'pagalbinis' => 'virtuvės pagalbiniams darbuotojams',
 ];
 const CITIES_IN = ['vilnius' => 'Vilniuje', 'kaunas' => 'Kaune', 'klaipeda' => 'Klaipėdoje', 'palanga' => 'Palangoje', 'siauliai' => 'Šiauliuose', 'panevezys' => 'Panevėžyje'];
 const PAY_GUIDE_MIN = 5;

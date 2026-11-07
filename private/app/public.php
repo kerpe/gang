@@ -5,9 +5,9 @@ declare(strict_types=1);
 // Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
 // A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
-    '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
-    '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
-    '03' => ['Aptarnavimas', 'Padavėjai, runneriai, administratoriai.'],
+    '01' => ['Baras', 'Barmenai, baristos, baro vadovai.'],
+    '02' => ['Virtuvė', 'Šefai, virėjai, virtuvės pagalbiniai darbuotojai, indų plovėjai.'],
+    '03' => ['Aptarnavimas', 'Padavėjai, runneriai, administratoriai, restorano vadovai.'],
 ];
 
 // Section stories behind the home camera tiles: slug, page heading, intro and roles
@@ -17,9 +17,9 @@ const TEAM_PAGES = [
         'about' => 'Apie barą',
         'title' => 'Darbas bare',
         'heading' => 'Baras',
-        'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
+        'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
-        'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
+        'roles' => ['Barmenai', 'Baristos', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '02' => [
@@ -28,8 +28,8 @@ const TEAM_PAGES = [
         'title' => 'Darbas virtuvėje',
         'heading' => 'Virtuvė',
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
-            .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
-        'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
+            .'<p>Šefas, virėjai, virtuvės pagalbiniai darbuotojai ir indų plovėjai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
+        'roles' => ['Šefai', 'Virėjai', 'Virtuvės pagalbiniai darbuotojai', 'Indų plovėjai'],
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '03' => [
@@ -40,7 +40,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias, o visa komanda kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
             .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
-        'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Salės vadovai'],
+        'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Restorano vadovai'],
         'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
 ];
