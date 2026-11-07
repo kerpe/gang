@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 function migrate(PDO $db): void
 {
@@ -142,6 +142,11 @@ function migrate(PDO $db): void
             manager_id INT NOT NULL,
             email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL",
+        // Version 16: job offers already emailed to a worker, so a profile save does not repeat them.
+        'job_mails' => "id $id,
+            request_id INT NOT NULL,
+            worker_id INT NOT NULL,
+            created_at DATETIME NOT NULL",
         // Pre-launch sign-ups. kind: manager (employers wait for launch) | worker (from before
         // workers could build profiles; they are invited to sign up now).
         'waitlist' => "id $id,
@@ -244,6 +249,7 @@ function migrate(PDO $db): void
         'users_invite_code' => 'users (invite_code)',
         'users_invite_slug' => 'users (invite_slug)',
         'invite_aliases_slug' => 'invite_aliases (slug)',
+        'job_mails_worker' => 'job_mails (worker_id, request_id)',
     ];
     foreach ($indexes as $name => $on) {
         try {

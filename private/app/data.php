@@ -203,6 +203,23 @@ function notify_workers(array $r, array $skip = []): int
         ['%,'.$r['city'].',%', '%,'.$r['kind'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
     // Team members invited personally already got their own email.
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
+    [$subject, $mail] = job_offer_mail($r);
+    foreach ($workers as $w) {
+        send_mail($w['email'], $subject, $mail);
+        job_mailed((int) $r['id'], (int) $w['id']);
+    }
+    sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
+    return count($workers);
+}
+
+function job_mailed(int $requestId, int $workerId): void
+{
+    insert('job_mails', ['request_id' => $requestId, 'worker_id' => $workerId, 'created_at' => now()]);
+}
+
+// [subject, mail] for one job offer.
+function job_offer_mail(array $r): array
+{
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
@@ -218,13 +235,70 @@ function notify_workers(array $r, array $skip = []): int
         ], fn ($v) => $v !== ''),
         'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
         'cta' => ['Pateikti kandidatūrą', url('/darbas/'.$r['id'])],
-        'footnote' => 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').',
+        'footnote' => job_mail_footnote(),
     ];
-    foreach ($workers as $w) {
-        send_mail($w['email'], $subject, $mail);
+    return [$subject, $mail];
+}
+
+function job_mail_footnote(): string
+{
+    return 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').';
+}
+
+// Open offers that match a worker's profile (roles, cities, durations, experience): the same
+// rules notify_workers() uses.
+function matching_jobs(array $u): array
+{
+    $xp = role_experience((int) $u['id']);
+    if ($u['kind'] !== 'worker' || !$xp || from_list($u['cities']) === []) {
+        return [];
     }
-    sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
-    return count($workers);
+    $jobs = open_requests(['roles' => array_keys($xp), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 50);
+    return array_values(array_filter($jobs, fn ($r) => (int) $r['min_experience'] <= 1 || ($xp[$r['role']] ?? 0) >= (int) $r['min_experience']));
+}
+
+// After a worker saves the profile: one email about open offers that now match and were not
+// emailed before (e.g. a city was added). Returns how many offers the email named.
+// $before: ids of offers that already matched before the save; only offers the change made
+// matching are emailed, so editing the about text sends nothing.
+function notify_worker_of_open_jobs(array $u, array $before = []): int
+{
+    if ($u['kind'] !== 'worker' || (int) $u['blocked'] || !(int) $u['notify']) {
+        return 0;
+    }
+    $seen = array_map('intval', sql('SELECT request_id FROM job_mails WHERE worker_id = ? UNION SELECT request_id FROM invites WHERE worker_id = ?
+        UNION SELECT request_id FROM responses WHERE worker_id = ?', [$u['id'], $u['id'], $u['id']])->fetchAll(PDO::FETCH_COLUMN));
+    $skip = array_merge($seen, array_map('intval', $before));
+    $jobs = array_values(array_filter(matching_jobs($u), fn ($r) => !in_array((int) $r['id'], $skip, true)));
+    if (!$jobs) {
+        return 0;
+    }
+    if (count($jobs) === 1) {
+        [$subject, $mail] = job_offer_mail($jobs[0]);
+    } else {
+        $shown = array_slice($jobs, 0, 10);
+        $lines = array_map(function ($r) {
+            $role = ROLES[$r['role']] ?? $r['role'];
+            $city = CITIES[$r['city']] ?? '';
+            $pay = $r['pay'] !== '' ? ', '.$r['pay'] : '';
+            return '['.$role.' – '.$r['venue_name'].', '.$city.']('.url('/darbas/'.$r['id']).')'
+                .' · '.(KINDS[$r['kind']] ?? '').', '.period($r).$pay;
+        }, $shown);
+        $subject = 'Jums tinkantys darbo pasiūlymai GANG';
+        $mail = [
+            'kicker' => 'Darbo pasiūlymai',
+            'title' => 'Jums tinkantys darbo pasiūlymai',
+            'lead' => 'Pagal jūsų atnaujintą profilį GANG rado tinkančių darbo pasiūlymų: **'.count($jobs).'**. Jei kuris nors pasiūlymas jums tinka, pateikite kandidatūrą.',
+            'body' => $lines,
+            'cta' => ['Visi tinkantys pasiūlymai', url('/mano')],
+            'footnote' => job_mail_footnote(),
+        ];
+    }
+    send_mail($u['email'], $subject, $mail);
+    foreach ($jobs as $r) {
+        job_mailed((int) $r['id'], (int) $u['id']);
+    }
+    return count($jobs);
 }
 
 // Matching workers, and how many of them marked $date as free.
