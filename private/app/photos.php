@@ -92,9 +92,9 @@ function delete_photo(?string $name): void
 
 function photo_page(int $id): never
 {
-    $u = require_user();
+    $u = is_admin() ? current_user() : require_user();
     $w = sql("SELECT id, photo FROM users WHERE id = ? AND kind = 'worker'", [$id])->fetch();
-    $allowed = $u['kind'] === 'manager' || (int) $u['id'] === $id || is_admin($u);
+    $allowed = sees_worker_profile($u, $id);
     $file = $w && $w['photo'] && preg_match('/^[0-9a-f]{24}\.jpg$/', $w['photo']) ? photo_dir().'/'.$w['photo'] : '';
     if (!$allowed || $file === '' || !is_file($file)) {
         http_response_code(404);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 function migrate(PDO $db): void
 {
@@ -160,6 +160,9 @@ function migrate(PDO $db): void
             last_id INT NOT NULL DEFAULT 0,
             seen_at DATETIME NULL,
             mailed_at DATETIME NULL",
+        // Version 19: site settings changed from /admin (admin_password = password_hash of the admin password).
+        'settings' => "name VARCHAR(50) NOT NULL PRIMARY KEY,
+            value TEXT NOT NULL",
         // Pre-launch sign-ups. kind: manager (employers wait for launch) | worker (from before
         // workers could build profiles; they are invited to sign up now).
         'waitlist' => "id $id,
@@ -225,6 +228,8 @@ function migrate(PDO $db): void
         'contracts ADD start_date DATE NULL',
         'contracts ADD end_date DATE NULL',
         "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        // Version 19: GANG checks every employer before they publish searches or open worker profiles.
+        'users ADD verified_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {
@@ -245,6 +250,11 @@ function migrate(PDO $db): void
                 $insert->execute([$w['id'], $role, $w['experience']]);
             }
         }
+    }
+    // Version 19: employers who signed up before the check existed count as checked (once).
+    if (!$db->query("SELECT 1 FROM settings WHERE name = 'managers_verified'")->fetchColumn()) {
+        $db->exec("UPDATE users SET verified_at = created_at WHERE kind = 'manager' AND verified_at IS NULL");
+        $db->exec("INSERT INTO settings (name, value) VALUES ('managers_verified', '1')");
     }
     // Version 6: a request requires at most one year of experience.
     $db->exec('UPDATE requests SET min_experience = 3 WHERE min_experience > 3');
