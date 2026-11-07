@@ -318,7 +318,7 @@ function join_team(int $managerId, int $workerId): bool
 const INVITE_DOMAINS = [
     'barmenas' => ['baro', 'kokteiliu'], 'barback' => ['baro', 'ledo'], 'padavejas' => ['sales', 'padeklu'], 'runneris' => ['sales', 'padeklu'], 'barista' => ['kavos', 'espreso'],
     'virejas' => ['virtuves', 'keptuves'], 'sefas' => ['virtuves', 'peilio'], 'plovejas' => ['puodu', 'indu'],
-    'administratorius' => ['rezervaciju', 'sales'], 'vadovas' => ['pamainos', 'sales'], 'someljee' => ['vyno', 'taures'],
+    'administratorius' => ['rezervaciju', 'sales'], 'vadovas' => ['pamainos', 'sales'], 'someljee' => ['restorano', 'sales'],
     'pagalbinis' => ['pamainos', 'virtuves'],
 ];
 const INVITE_NOUNS = ['legenda', 'zvaigzde', 'raketa', 'nindze', 'masina', 'viesulas', 'audra', 'greitojipagalba'];
