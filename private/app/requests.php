@@ -106,7 +106,7 @@ function venue_form_page(?int $id = null): never
     $section = fn (string $heading, string $hint, string $body) => '<fieldset class="form-sec"><div class="form-sec-head"><legend>'.$heading.'</legend><p>'.$hint.'</p></div><div class="form-sec-body">'.$body.'</div></fieldset>';
     $remove = !empty($v['logo']) ? '<label class="check"><input type="checkbox" name="remove_logo"> Pašalinti logotipą</label>' : '';
     $logoField = '<div class="photo-row logo-row">'.venue_logo(['id' => $v['id'] ?: ($venue['id'] ?? 0), 'name' => $v['name'] ?: 'GANG', 'logo' => $v['logo']], 'large')
-        .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" data-crop="logo">'
+        .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" aria-label="Darbovietės logotipas" data-crop="logo">'
         .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Rodomas darbo skelbimuose ir darbovietės puslapyje.</p>'.$remove.err($errors, 'logo').'</div></div>';
     $perks = '<div class="choices perk-choices">';
     foreach (VENUE_PERKS as $key => $label) {
@@ -942,6 +942,11 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     if (!$isOpen) {
         return '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
+    // The employer sees the candidate's name, roles and experience, so the profile comes first.
+    if (!profile_complete($u)) {
+        return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite profilį: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
+            .'<p><a class="btn" href="/profilis">Užpildyti profilį</a></p></div>';
+    }
     $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
         ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
         : '';
@@ -1202,6 +1207,10 @@ function respond_action(int $id): never
     }
     if (!empty($r['public_at']) && $r['public_at'] > now() && !in_array((int) $u['id'], invited_ids($id), true)) {
         not_found();
+    }
+    if (!profile_complete($u)) {
+        flash('Prieš teikdami kandidatūrą, užpildykite profilį.');
+        redirect('/profilis');
     }
     if (!sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn()) {
         $note = mb_substr(input('note'), 0, 1000);

@@ -91,7 +91,7 @@ function profile_page(): never
         $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
             .'<div class="photo-row">'.avatar($u, 'large').'<div>'
             .'<p class="hint">Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje. Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
-            .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-crop>'
+            .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
             .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik prisijungę darbdaviai.</p>'
             .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $roleRows = '';

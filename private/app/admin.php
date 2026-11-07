@@ -205,7 +205,8 @@ function admin_delete_user(int $id): bool
     sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
     sql('DELETE FROM invite_aliases WHERE user_id = ?', [$id]);
     sql('DELETE FROM consents WHERE user_id = ?', [$id]);
-    sql('DELETE FROM team_mails WHERE manager_id = ?', [$id]);
+    sql('DELETE FROM team_mails WHERE manager_id = ? OR email = ?', [$id, $u['email']]);
+    sql('DELETE FROM job_mails WHERE worker_id = ?', [$id]);
     sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
     sql('DELETE FROM waitlist WHERE email = ?', [$u['email']]);
