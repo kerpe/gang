@@ -363,6 +363,9 @@ function contract_card(array $c, string $side, bool $reviewed): string
         ? '<div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).' · '.e($c['manager_phone']).'</dd></div>'
         : '<div><dt>Darbuotojas</dt><dd><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a> · '.e($c['worker_phone']).'</dd></div><div><dt>Darbovietė</dt><dd>'.e($c['venue_name']).'</dd></div>';
     $actions = tel_link($worker ? $c['manager_phone'] : $c['worker_phone'], 'Skambinti');
+    $me = (int) ($worker ? $c['worker_id'] : $c['manager_id']);
+    $unread = chat_unread((int) $c['id'], $me);
+    $actions .= '<a class="btn small'.($unread ? '' : ' ghost').'" href="'.e(chat_url($c)).'">Žinutės'.($unread ? ' <span class="count">'.$unread.'</span>' : '').'</a>';
     if ($worker && $place !== '') {
         $query = full_address($c);
         $actions .= '<a class="btn small ghost" href="https://www.google.com/maps/search/?api=1&amp;query='.rawurlencode($query).'" target="_blank" rel="noopener">Maršrutas</a>';

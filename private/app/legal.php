@@ -176,7 +176,7 @@ function privacy_page(): never
                 .'<li><strong>Paskyros duomenys:</strong> el. pašto adresas, paskyros tipas (darbuotojas ar darbdavys), registracijos ir prisijungimų laikas.</li>'
                 .'<li><strong>Darbuotojo profilis:</strong> vardas ir pavardė, telefono numeris, profilio nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, laisvos dienos, informacija apie save.</li>'
                 .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos ir komanda.</li>'
-                .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
+                .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, žinutės tarp darbdavio ir darbuotojo, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
                 .'<li><strong>Techniniai duomenys:</strong> prisijungimo kodai (saugomi tik užšifruoti), sesijos slapukas, IP adresas ir naršyklės informacija, užfiksuoti sutinkant su taisyklėmis, serverio žurnalai.</li></ul>'],
             ['tikslai', 'Kam naudojame duomenis ir kuo remiamės', '<ul>'
                 .'<li><strong>Paskyrai sukurti ir platformai teikti</strong> (sutarties vykdymas, BDAR 6 str. 1 d. b p.): prisijungimas, profilis, paieškos, kandidatūros, kontraktai, pranešimai el. paštu ar SMS apie tinkamus pasiūlymus, kandidatūras ir pamainas.</li>'
@@ -189,6 +189,7 @@ function privacy_page(): never
                 .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, laisvas dienas, įvertinimus) mato prisijungę darbdaviai.</li>'
                 .'<li>Darbovietės puslapis, jos adresas ir paskelbtos paieškos yra vieši.</li>'
                 .'<li>Telefono numeris kitai šaliai parodomas tik po GANG kontrakto.</li>'
+                .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys.</li>'
                 .'<li>El. pašto adresas kitiems nariams nerodomas niekada.</li>'
                 .'<li>Įvertinimai skelbiami nenurodant autoriaus.</li></ul>'],
             ['tvarkytojai', 'Paslaugų teikėjai', '<p>Duomenis patikime tik paslaugų teikėjams, be kurių platforma negalėtų veikti, ir tik tiek, kiek būtina:</p><ul>'
