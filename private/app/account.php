@@ -63,12 +63,15 @@ function profile_page(): never
         }
         if (!$errors) {
             $first = !profile_complete($u);
+            $matchedBefore = $worker ? array_column(matching_jobs($u), 'id') : [];
             sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ? WHERE id = ?', [
                 $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? to_list($v['durations'], KINDS) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $u['id'],
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
-                team_joined_notice(sql('SELECT * FROM users WHERE id = ?', [$u['id']])->fetch());
+                $fresh = sql('SELECT * FROM users WHERE id = ?', [$u['id']])->fetch();
+                team_joined_notice($fresh);
+                $jobsMailed = notify_worker_of_open_jobs($fresh, $matchedBefore);
             }
             if ($photo !== $u['photo']) {
                 delete_photo($u['photo']);
@@ -76,7 +79,8 @@ function profile_page(): never
             if (!$worker && !sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn()) {
                 redirect('/darboviete/nauja');
             }
-            flash(!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.');
+            $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : '';
+            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.').$jobsNote);
             redirect('/mano');
         }
     }
