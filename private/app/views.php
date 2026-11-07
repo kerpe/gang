@@ -11,22 +11,17 @@ function page(string $title, string $body, array $opt = []): never
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
     $head = $opt['head'] ?? '';
     $user = current_user();
-    if (prelaunch()) {
-        $nav = '<a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a>'
-            .($user ? '<a class="btn small" href="/mano">Mano GANG</a>' : '<a class="btn small ghost hide-sm" href="/prisijungti">Prisijungti</a><a class="btn small" href="/registracija">Registruotis</a>');
-    } elseif ($user) {
+    if ($user) {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG</a>';
     } else {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
     }
     // Phones: a guest menu behind one button; signed-in members get a bottom tab bar.
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    $menuLinks = prelaunch()
-        ? '<a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti">Prisijungti</a>')
-        : '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti">Registruotis</a>');
+    $menuLinks = '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti">Registruotis</a>');
     $nav .= '<details class="mnav"><summary aria-label="Meniu"><span></span><span></span><span></span></summary><div class="mnav-links">'.$menuLinks.'</div></details>';
     $tabbar = '';
-    if ($user && !prelaunch() && profile_complete($user)) {
+    if ($user && profile_complete($user)) {
         $tabs = $user['kind'] === 'worker'
             ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#laisvumas', 'Laisvos dienos', 'cal'], ['/profilis', 'Profilis', 'user']]
             : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
@@ -57,10 +52,9 @@ function page(string $title, string $body, array $opt = []): never
         .'<script>setTimeout(function () { var t = document.querySelector(".toast"); if (t) { t.classList.add("out"); setTimeout(function () { t.remove(); }, 400); } }, 9000);</script>' : '';
     $year = date('Y');
     $logoMark = knives();
-    $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
-    $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
+        $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
         .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms.</p>'
-        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>'.$jobsLink.' · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · © '.$year.'</p>'
+        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a> · <a href="/darbai">Darbai</a> · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · © '.$year.'</p>'
         .'</div></footer>';
     echo <<<HTML
 <!doctype html>

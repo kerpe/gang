@@ -96,12 +96,8 @@ function login_page(): never
         default => 'Prisijungti arba užsiregistruoti',
     };
     $lead = match ($kind) {
-        'worker' => prelaunch()
-            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite profilį: pareigas, patirtį ir miestus. Laiką, kada galite dirbti, pažymėsite nuo GANG starto'.(launch_day() !== '' ? ' '.launch_day() : ' dienos').'.'
-            : 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
-        'manager' => prelaunch()
-            ? 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę. Darbuotojų paieškas skelbti galėsite nuo GANG starto'.(launch_day() !== '' ? ' '.launch_day() : ' dienos').'.'
-            : 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų paieškas.',
+        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
+        'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų paieškas.',
         default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'
@@ -184,7 +180,7 @@ function choose_kind_page(): never
 // Accounts made after launch never need the launch-day email.
 function create_user(string $kind, string $email): int
 {
-    return insert('users', ['kind' => $kind, 'email' => $email, 'created_at' => now(), 'launch_mail_at' => prelaunch() ? null : now()]);
+    return insert('users', ['kind' => $kind, 'email' => $email, 'created_at' => now(), 'launch_mail_at' => now()]);
 }
 
 function finish_login(int $userId): never

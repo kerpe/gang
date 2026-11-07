@@ -93,13 +93,12 @@ function venue_form_page(?int $id = null): never
                 redirect('/mano');
             }
             insert('venues', ['manager_id' => $u['id']] + $row + ['created_at' => now()]);
-            flash(prelaunch() ? 'Darbovietė užregistruota.' : 'Darbovietė užregistruota. Dabar galite skelbti darbuotojų paieškas.');
+            flash('Darbovietė užregistruota. Dabar galite skelbti darbuotojų paieškas.');
             redirect('/mano');
         }
         $v['logo'] = $logo;
     }
     $title = $venue ? 'Darbovietės duomenys' : 'Užregistruokite savo barą, restoraną ar kavinę';
-    $soon = prelaunch() && !$venue ? '<p class="notice tip">Darbuotojų paieškas skelbti galėsite nuo GANG starto'.e(launch_day() !== '' ? ' '.launch_day() : ' dienos').'. Užregistravę darbovietę dabar, tą dieną galėsite pradėti iš karto.</p>' : '';
     $field = fn (string $label, string $control, string $name, string $hint = '', string $class = '') => '<label class="field'.($class ? " $class" : '').'"><span class="field-label">'.$label.'</span>'.$control
         .($hint !== '' ? '<span class="field-hint">'.$hint.'</span>' : '').err($errors, $name).'</label>';
     $text = fn (string $name, int $max, string $placeholder = '', string $extra = '') => '<input name="'.$name.'" value="'.e($v[$name]).'" maxlength="'.$max.'"'.($placeholder !== '' ? ' placeholder="'.e($placeholder).'"' : '').$extra.'>';
@@ -134,7 +133,7 @@ function venue_form_page(?int $id = null): never
             .'<div class="row">'.$field('Facebook'.$optional, $text('facebook', 255, 'facebook.com/jusubaras', ' inputmode="url"'), 'facebook')
             .$field('TikTok'.$optional, $text('tiktok', 255, '@jusu_baras'), 'tiktok').'</div>');
     $cancel = '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
-    page($title, '<section class="wrap venue-edit"><h1>'.$title.'</h1>'.$soon
+    page($title, '<section class="wrap venue-edit"><h1>'.$title.'</h1>'
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
         .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
