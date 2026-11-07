@@ -59,6 +59,8 @@ match (true) {
     $is('/darboviete/(\d+)/redaguoti') => venue_form_page((int) $m[1]),
     $is('/darboviete/(\d+)/logotipas') => venue_logo_page((int) $m[1]),
     $is('/darbas/(\d+)') => request_page((int) $m[1]),
+    $is('/kandidatura/(\d+)') => application_link_page((int) $m[1]),
+    $is('/kandidatura/(\d+)/prisijungti') && $post => application_switch_action((int) $m[1]),
     $is('/darbas/(\d+)/atsiliepti') && $post => respond_action((int) $m[1]),
     $is('/darbas/(\d+)/atsaukti') && $post => withdraw_action((int) $m[1]),
     $is('/darbas/(\d+)/kviesti/(\d+)') && $post => invite_action((int) $m[1], (int) $m[2]),

@@ -967,7 +967,7 @@ function owner_panel(array $r, bool $isOpen): string
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
             : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
-        $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
+        $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
             .($s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div></div>';
@@ -981,9 +981,48 @@ function owner_panel(array $r, bool $isOpen): string
     $reach = $teamOnly.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
-    return '<div class="panel owner"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
+    return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
         .'<p class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></p></div>';
+}
+
+// The "Nauja kandidatūra" email links here: the employer signs in if needed and lands on that candidate in the job's list.
+function application_link_page(int $responseId): never
+{
+    $s = sql('SELECT s.id, s.status, s.request_id, v.manager_id FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id WHERE s.id = ?', [$responseId])->fetch();
+    if (!$s) {
+        not_found();
+    }
+    $u = current_user();
+    if (!$u) {
+        require_user();
+    }
+    if ((int) $s['manager_id'] !== (int) $u['id'] && !is_admin($u)) {
+        // Signed in with another account (e.g. a worker one): offer to switch to the employer account.
+        $e = 'e';
+        $button = post_button('/kandidatura/'.$responseId.'/prisijungti', 'Prisijungti darbdavio paskyra', [], 'btn');
+        page('Kandidatūra', <<<HTML
+<section class="wrap narrow">
+  <h1>Kandidatūra skirta darbdaviui</h1>
+  <p>Šią kandidatūrą gali peržiūrėti tik paiešką paskelbęs darbdavys. Dabar esate prisijungę kaip <b>{$e($u['email'])}</b>. Prisijunkite darbdavio paskyra – po prisijungimo iš karto atidarysime kandidatūrą.</p>
+  <p>$button</p>
+</section>
+HTML, ['noindex' => true]);
+    }
+    if (!in_array($s['status'], ['sent', 'accepted'], true)) {
+        flash('Ši kandidatūra jau nebeaktyvi.');
+        redirect('/darbas/'.(int) $s['request_id'].'#kandidatai');
+    }
+    redirect('/darbas/'.(int) $s['request_id'].'#kandidatas-'.$responseId);
+}
+
+function application_switch_action(int $responseId): never
+{
+    check_csrf();
+    $_SESSION = [];
+    session_regenerate_id(true);
+    $_SESSION['after_login'] = '/kandidatura/'.$responseId;
+    redirect('/prisijungti');
 }
 
 // On an open request: the manager's team, each with a one-click personal invitation.
@@ -1037,7 +1076,7 @@ function respond_action(int $id): never
     }
     if (!sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn()) {
         $note = mb_substr(input('note'), 0, 1000);
-        insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'created_at' => now()]);
+        $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'created_at' => now()]);
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
         [$avg, $n] = worker_rating((int) $u['id']);
         $rating = $n ? number_format($avg, 1, ',', '')." iš 5 ($n įvert.)" : 'Įvertinimų dar nėra';
@@ -1048,7 +1087,7 @@ function respond_action(int $id): never
             'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką. Peržiūrėkite kandidato profilį ir, jei kandidatūra tinka, patvirtinkite ją.',
             'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r), 'Įvertinimas' => $rating],
             'note' => ['label' => 'Kandidato žinutė', 'text' => $note],
-            'cta' => ['Peržiūrėti kandidatūrą', url('/darbas/'.$id)],
+            'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $responseId)],
         ]);
     }
     flash('Kandidatūra pateikta. Darbdavys gaus pranešimą el. paštu.');

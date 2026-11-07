@@ -945,3 +945,6 @@ table.data td.actions form + form { margin-left: 6px; }
 .legal-index li { margin-bottom: 4px; break-inside: avoid; }
 @media (max-width: 600px) { .legal-index ol { columns: 1; } }
 .legal h2 { scroll-margin-top: 90px; }
+/* Opened from the "Nauja kandidatūra" email: that candidate stands out in the list. */
+.responder[id], #kandidatai { scroll-margin-top: 90px; }
+.responder:target { border-color: var(--lime); box-shadow: 0 0 0 2px rgba(216,255,54,.35); }
