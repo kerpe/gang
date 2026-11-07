@@ -2,29 +2,15 @@
 
 declare(strict_types=1);
 
-// Until launch the home, how-it-works, about and privacy pages are open to everyone, and both
-// sides may already sign up: workers build their profile, employers register their venues.
-// Everything else (jobs, requests, availability, other people's profiles) sits behind one shared
-// preview password; visitors see the sign-up page instead.
-// 'public' => true in config opens it; without a preview_password nobody gets in.
-// PRELAUNCH_OPEN = false closes even the public pages and sign-up: every visitor without the
-// password sees one "Netrukus" page (Vilius, 2026-11-02: nothing visible until he says so;
-// 2026-11-06: briefly opened to test sign-up, then locked again the same day).
-const PRELAUNCH_OPEN = false;
-const PRELAUNCH_PAGES = ['/', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/sale', '/privatumas', '/taisykles', '/favicon.svg', '/robots.txt'];
-const PRELAUNCH_SIGNUP_PAGES = ['/prisijungti', '/prisijungti/kodas', '/prisijungti/kas', '/sutikimas', '/profilis', '/mano'];
-
-// True for visitors who see the pre-launch site: sign-up and profiles work, the job board does not.
-function prelaunch(?bool $set = null): bool
-{
-    static $on = false;
-    return $set === null ? $on : $on = $set;
-}
+// GANG is open to everyone since 2026-11-07 (Vilius: launch now, sign-up straight away).
+// SITE_OPEN = false locks the site again: every visitor without the shared team password
+// (preview_password, from the PREVIEW_PASSWORD secret) sees one "Netrukus" page; /admin stays reachable.
+const SITE_OPEN = true;
 
 function preview_gate(string $path): void
 {
     $c = config();
-    if (!empty($c['public']) || $path === '/admin' || admin_signed_in()) {
+    if (SITE_OPEN || $path === '/admin' || admin_signed_in()) {
         return;
     }
     $password = (string) ($c['preview_password'] ?? '');
@@ -32,23 +18,8 @@ function preview_gate(string $path): void
     if ($token !== '' && hash_equals($token, (string) ($_COOKIE['gang_preview'] ?? ''))) {
         return;
     }
-    prelaunch(true);
     if (in_array($path, ['/favicon.svg', '/robots.txt'], true)) {
         return;
-    }
-    if (PRELAUNCH_OPEN && (in_array($path, PRELAUNCH_PAGES, true) || in_array($path, PRELAUNCH_SIGNUP_PAGES, true) || $path === '/atsijungti'
-        || preg_match('#^/k/[a-z0-9]{3,80}$#', $path) || $path === '/komanda/kviesti')) {
-        return;
-    }
-    $user = PRELAUNCH_OPEN ? current_user() : null;
-    if ($user !== null) {
-        $own = $user['kind'] === 'worker'
-            ? $path === '/nuotrauka/'.$user['id']
-            : $path === '/darboviete/nauja' || preg_match('#^/darboviete/\d+/redaguoti$#', $path);
-        if ($own) {
-            return;
-        }
-        redirect('/mano');
     }
     header('X-Robots-Tag: noindex, nofollow');
     $error = '';
@@ -72,29 +43,10 @@ function preview_gate(string $path): void
         .'<input type="hidden" name="next" value="'.e($next).'">'
         .'<label>Peržiūros slaptažodis <input type="password" name="password" autocomplete="current-password" required>'.$error.'</label>'
         .'<button class="btn small ghost">Įeiti</button></form></details>';
-    $workerBox = '<div class="join-box worker"><p class="eyebrow">Darbuotojams</p><h2>Susikurkite profilį jau dabar</h2>'
-        .'<p>Nurodykite pareigas, patirtį ir miestus, kuriuose galite dirbti. Starto dieną jūsų profilis jau bus matomas darbdaviams.</p>'
-        .'<p class="later"><strong>'.e(from_launch()).'</strong> kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.</p>'
-        .'<p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a></p></div>';
-    $employerBox = '<div class="join-box employer"><p class="eyebrow">Darbdaviams</p><h2>Užregistruokite savo darbovietę</h2>'
-        .'<p>Užregistruokite savo barą, restoraną ar kavinę: pavadinimą, miestą ir trumpą aprašymą apie komandą ir darbo sąlygas.</p>'
-        .'<p class="later"><strong>'.e(from_launch()).'</strong> skelbsite darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.</p>'
-        .'<p><a class="btn light" href="/prisijungti?kaip=vadovas">Užregistruoti darbovietę</a></p></div>';
-    $employerFirst = ($_GET['kaip'] ?? '') === 'vadovas';
-    if (!PRELAUNCH_OPEN) {
-        echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-            .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=48"></head>'
-            .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
-            .'<h1>Netrukus</h1>'
-            .'<p class="meta">Susisiekti: <a href="mailto:hello@gang.lt">hello@gang.lt</a></p>'.$team.'</section></main></body></html>';
-        exit;
-    }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
         .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=48"></head>'
-        .'<body><main><section class="wrap soon"><a class="logo" href="/" aria-label="GANG.lt">'.knives().'GANG<span>.lt</span></a>'
-        .'<h1>Prisijunkite prie GANG</h1><p class="lead">GANG padės barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus, o hospitality specialistams – papildomų pajamų ir darbo pasiūlymų. '.e(launch_when() !== '' ? str_replace('GANG startuoja', 'Startuojame', launch_headline()).'. Pasiruošti galite jau dabar.' : 'Platforma pradės veikti netrukus, o pasiruošti galite jau dabar.').'</p>'
-        .'<div class="join'.($employerFirst ? ' employer-first' : '').'">'.$workerBox.$employerBox.'</div>'
-        .'<p class="meta">Jau užsiregistravote? <a href="/prisijungti">Prisijunkite</a></p>'
-        .'<p class="back"><a href="/">← Grįžti į pagrindinį puslapį</a></p>'.$team.'</section></main></body></html>';
+        .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
+        .'<h1>Netrukus</h1>'
+        .'<p class="meta">Susisiekti: <a href="mailto:hello@gang.lt">hello@gang.lt</a></p>'.$team.'</section></main></body></html>';
     exit;
 }

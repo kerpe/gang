@@ -76,9 +76,7 @@ function profile_page(): never
             if (!$worker && !sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn()) {
                 redirect('/darboviete/nauja');
             }
-            flash(!$first ? 'Profilio pakeitimai išsaugoti.' : (prelaunch()
-                ? 'Profilis sukurtas.'
-                : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.'));
+            flash(!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.');
             redirect('/mano');
         }
     }
@@ -111,12 +109,7 @@ function profile_page(): never
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
     $phoneNote = $worker ? 'Numerį darbdavys matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
-    $soon = prelaunch() && !profile_complete($u)
-        ? '<p class="notice tip">'.($worker
-            ? launch_headline().'. Dabar susikurkite profilį, o nuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite darbo pasiūlymus.'
-            : launch_headline().'. Dabar užpildykite savo ir darbovietės duomenis, o nuo starto dienos galėsite skelbti darbuotojų paieškas.').'</p>'
-        : '';
-    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'.$soon
+    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
         .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" autocomplete="name" required>'.err($errors, 'name').'</label>'
@@ -308,9 +301,7 @@ function dashboard_page(): never
     if (!profile_complete($u)) {
         redirect('/profilis');
     }
-    $body = prelaunch()
-        ? ($u['kind'] === 'worker' ? prelaunch_worker_dashboard($u) : prelaunch_manager_dashboard($u))
-        : ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u));
+    $body = ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u));
     $kind = $u['kind'] === 'worker' ? 'Darbuotojo paskyra' : 'Darbdavio paskyra';
     page('Mano GANG', '<section class="wrap">'.$body
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
@@ -497,70 +488,6 @@ function worker_dashboard(array $u): string
         .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
         .($hasDays ? $availability : '')
         .referral_box($u);
-}
-
-// Before launch there are no offers or contracts yet: the worker sees their profile as employers
-// will see it, what would make it stronger, and what happens on launch day.
-function prelaunch_worker_dashboard(array $u): string
-{
-    $xp = '';
-    foreach (role_experience((int) $u['id']) as $role => $level) {
-        $xp .= '<li><strong>'.e(ROLES[$role] ?? $role).'</strong><span>'.e(EXPERIENCE[$level] ?? '').'</span></li>';
-    }
-    $about = trim((string) $u['about']);
-    $tips = [];
-    if (!$u['photo']) {
-        $tips[] = 'Įkelkite nuotrauką arba avatarą: profilis su nuotrauka atrodo patikimiau.';
-    }
-    if (mb_strlen($about) < 80) {
-        $tips[] = 'Skiltyje „Apie save“ aprašykite ankstesnes darbovietes ir įgūdžius: tai pirmas dalykas, kurį darbdavys skaito po pareigų.';
-    }
-    if (!$u['notify']) {
-        $tips[] = 'Įjunkite pranešimus el. paštu, kad nepraleistumėte jums tinkančių darbo pasiūlymų.';
-    }
-    $tipHtml = $tips
-        ? '<section class="panel"><h2>Sustiprinkite savo profilį</h2><ul class="tips"><li>'.implode('</li><li>', array_map('e', $tips)).'</li></ul>'
-            .'<p><a class="btn small" href="/profilis">Papildyti profilį</a></p></section>'
-        : '';
-    return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<p class="meta">Profilis paruoštas</p></div></div>'
-        .'<section class="panel ok launch"><h2>'.e(launch_headline()).'</h2>'
-        .'<p>Jūsų profilis išsaugotas. Starto dieną jį matys barai, restoranai ir kavinės jūsų miestuose, o mes jums pranešime el. paštu. Tada galėsite pažymėti laisvas dienas kalendoriuje ir priimti darbo pasiūlymus.</p></section>'
-        .$tipHtml
-        .'<h2>Taip jus matys darbdaviai</h2>'
-        .'<section class="profile-preview"><dl class="contract-info">'
-        .'<div><dt>Pareigos ir patirtis</dt><dd><ul class="xp-list">'.$xp.'</ul></dd></div>'
-        .'<div><dt>Miestai</dt><dd>'.e(labels($u['cities'], CITIES)).'</dd></div>'
-        .'<div><dt>Domina darbas</dt><dd>'.e(durations_text($u)).'</dd></div>'
-        .'<div><dt>Apie save</dt><dd>'.($about !== '' ? nl2br(e($about)) : '<span class="meta">Neužpildyta</span>').'</dd></div>'
-        .'</dl><p class="meta">Telefono numerį darbdavys matys tik patvirtinęs jus darbui.</p></section>'
-        .referral_box($u);
-}
-
-// Before launch an employer registers venues; requests open on launch day.
-function prelaunch_manager_dashboard(array $u): string
-{
-    $venues = sql('SELECT * FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll();
-    if (!$venues) {
-        redirect('/darboviete/nauja');
-    }
-    $venueHtml = '';
-    foreach ($venues as $v) {
-        $venueHtml .= '<div class="venue-card"><div class="venue-card-head">'.venue_logo($v, 'small').'<strong class="venue-name">'.e($v['name']).'</strong></div>'
-            .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'
-            .'<p class="venue-about">'.e(mb_strimwidth((string) $v['about'], 0, 180, '…')).'</p>'
-            .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a></p></div>';
-    }
-    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<section class="panel ok launch"><h2>'.e(launch_headline()).'</h2>'
-        .'<p>Jūsų darbovietės duomenys išsaugoti. Starto dieną pranešime jums el. paštu: nuo tada galėsite skelbti darbuotojų paieškas pavadavimui, sezonui ar nuolatiniam darbui, o tinkami darbuotojai jas gaus iš karto.</p></section>'
-        .'<h2>Ką galėsite daryti nuo '.e(launch_day() ?: 'starto dienos').'</h2><ol class="steps compact">'
-        .'<li><strong>Paskelbti paiešką</strong>Pareigos, datos, darbo laikas ir atlygis.</li>'
-        .'<li><strong>Gauti kandidatūras</strong>Matysite kandidatų patirtį ir įvertinimus.</li>'
-        .'<li><strong>Patvirtinti darbuotoją</strong>Abi šalys gauna viena kitos kontaktus.</li></ol>'
-        .'<h2 id="komanda">Mano komanda</h2><p class="meta">Pakvieskite savo esamus darbuotojus jau dabar: starto dieną jie bus jūsų komandoje, ir galėsite juos kviesti į pamainas pirmiausia.</p>'.team_invite_box($u)
-        .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
-        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
 }
 
 function manager_dashboard(array $u): string
