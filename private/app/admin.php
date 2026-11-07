@@ -49,7 +49,7 @@ function admin_login_page(): never
         $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
     }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=49"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=50"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'
         .'<form method="post" action="/admin" class="form">'.csrf_field()
@@ -456,9 +456,7 @@ function admin_settings(): string
     $yes = fn (bool $on, string $onText, string $offText) => '<strong>'.($on ? $onText : $offText).'</strong>';
     $mail = !empty($c['resend_key']) ? 'Resend' : 'Hostinger (PHP mail)';
     $rows = [
-        'Svetainė' => $yes(!empty($c['public']), 'Atverta visiems', 'Užrakinta').' <small>– lankytojai be komandos slaptažodžio mato „Netrukus“.</small>',
-        'Registracija iki starto' => $yes(PRELAUNCH_OPEN, 'Atidaryta', 'Uždaryta'),
-        'Starto data' => '<strong>'.e(launch_when() !== '' ? launch_when() : 'Nenustatyta').'</strong> <small>– viešai: „'.e(launch_headline()).'“</small>',
+        'Svetainė' => $yes(SITE_OPEN, 'Atverta visiems', 'Užrakinta').' <small>– '.(SITE_OPEN ? 'registracija atvira visiems.' : 'lankytojai be komandos slaptažodžio mato „Netrukus“.').'</small>',
         'Laiškų siuntėjas' => '<strong>'.e((string) $c['mail_from']).'</strong> <small>per '.$mail.'</small>',
         'SMS pranešimai' => $yes(($c['sms_provider'] ?? '') === 'twilio', 'Įjungti (Twilio)', 'Išjungti').' <small>– kol kas siunčiami tik el. laiškai.</small>',
         'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ GANG komandos prieigos slaptažodis</small>',
@@ -469,9 +467,9 @@ function admin_settings(): string
     }
     $test = (int) sql('SELECT COUNT(*) FROM users')->fetchColumn();
     $html .= '</dl><h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
-        .'<form method="post" action="/admin?tab=settings" class="inline">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
+        .'<form method="post" action="/admin?tab=settings" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
         .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
-    return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Prieš paleidimą ištrinkite bandomuosius narius skiltyje „Nariai“ (dabar narių: '.$test.'), kad paleidimo laiškai nenukeliautų netikriems adresams.</p>';
+    return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Narių dabar: '.$test.'.</p>';
 }
 
 function admin_reviews(): string
@@ -490,7 +488,7 @@ function admin_waitlist(): string
 {
     $rows = sql('SELECT w.*, u.id AS user_id FROM waitlist w LEFT JOIN users u ON u.email = w.email ORDER BY w.created_at DESC LIMIT 2000')->fetchAll();
     $profiles = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0 AND roles <> '' AND name <> ''")->fetchColumn();
-    $public = !empty(config()['public']);
+    $public = SITE_OPEN;
     [$invites, $launchMails] = waitlist_pending();
     $pending = $invites + ($public ? $launchMails : 0);
     $label = $public ? 'Siųsti paleidimo laiškus ('.$pending.')' : 'Pakviesti užsiregistruoti ('.$pending.')';
@@ -500,7 +498,7 @@ function admin_waitlist(): string
     $invite = $pending ? post_button('/admin?tab=waitlist', $label, ['action' => 'invite_waitlist', 'id' => 0], 'btn small', $confirm) : '<p class="meta">Visi laiškai išsiųsti.</p>';
     $note = $public
         ? '<p class="meta">Paleidimo laiškai: darbuotojams – kvietimas žymėti laisvas dienas, darbdaviams – kvietimas paskelbti pirmą paiešką; dar neužsiregistravusiems iš sąrašo – kvietimas registruotis. Kiekvienas laiškas siunčiamas tik kartą.</p>'
-        : '<p class="meta">Iki paleidimo darbuotojai jau gali susikurti profilį, o darbdaviai – užregistruoti darbovietę. Senojo sąrašo nariams galite išsiųsti kvietimą užsiregistruoti. Kai svetainė bus atverta visiems (SITE_PUBLIC = true), čia galėsite išsiųsti paleidimo laiškus ('.$launchMails.').</p>';
+        : '<p class="meta">Iki paleidimo darbuotojai jau gali susikurti profilį, o darbdaviai – užregistruoti darbovietę. Senojo sąrašo nariams galite išsiųsti kvietimą užsiregistruoti. Kai svetainė bus atverta visiems, čia galėsite išsiųsti paleidimo laiškus ('.$launchMails.').</p>';
     $venues = (int) sql('SELECT COUNT(DISTINCT manager_id) FROM venues')->fetchColumn();
     $html = '<div class="tiles"><div class="tile"><span>Darbuotojų profilių</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
         .'<div class="tile"><span>Sąraše be paskyros</span><strong>'.count(array_filter($rows, fn ($r) => !$r['user_id'])).'</strong></div></div>'.$note.$invite
@@ -526,7 +524,7 @@ function waitlist_pending(): array
 // Every email is marked as sent first, so a second click never repeats it.
 function invite_waitlist(): int
 {
-    $public = !empty(config()['public']);
+    $public = SITE_OPEN;
     $sent = 0;
     foreach (sql('SELECT w.* FROM waitlist w WHERE w.invited_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.email = w.email) ORDER BY w.id LIMIT 500')->fetchAll() as $r) {
         sql('UPDATE waitlist SET invited_at = ? WHERE id = ?', [now(), $r['id']]);
@@ -543,9 +541,9 @@ function invite_waitlist(): int
                     ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
                     : 'užregistruoti savo barą, restoraną ar kavinę.')),
             'body' => $public ? [] : ($worker
-                ? [(launch_when() !== '' ? launch_headline().'. Starto dieną' : 'Paleidimo dieną').' jūsų profilis jau bus matomas darbdaviams.',
+                ? ['Paleidimo dieną jūsų profilis jau bus matomas darbdaviams.',
                     'Nuo starto dienos kalendoriuje pažymėsite laiką, kada galite dirbti, ir gausite jums tinkančius darbo pasiūlymus.']
-                : [(launch_when() !== '' ? launch_headline().'. Nuo starto dienos' : 'Nuo paleidimo dienos').' galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.']),
+                : ['Nuo paleidimo dienos galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.']),
             'cta' => [$worker ? 'Susikurti profilį' : 'Užregistruoti darbovietę', url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))],
             'after' => 'Registracija trunka kelias minutes.',
             'footnote' => 'Šį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.',

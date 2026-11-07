@@ -30,9 +30,7 @@ $is = function (string $pattern) use ($path, &$m): bool {
     return (bool) preg_match('#^'.$pattern.'$#', $path, $m);
 };
 preview_gate($path);
-if (!prelaunch()) {
-    release_team_requests();
-}
+release_team_requests();
 
 match (true) {
     $path === '/' => home_page(),

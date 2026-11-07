@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
 // A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
-    '01' => ['Baras', 'Barmenai, barbackai, baristos, someljė, baro vadovai.'],
+    '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
     '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
     '03' => ['Aptarnavimas', 'Padavėjai, runneriai, administratoriai.'],
 ];
@@ -19,7 +19,7 @@ const TEAM_PAGES = [
         'heading' => 'Baras',
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
-        'roles' => ['Barmenai', 'Barbackai', 'Baristos', 'Someljė', 'Baro vadovai'],
+        'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '02' => [
@@ -58,20 +58,15 @@ function join_cta(string $workerClass = 'btn', string $employerClass = 'btn ligh
         return '<p class="cta"><a class="'.$workerClass.'" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="'.$employerClass.'" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
     }
     if ($u['kind'] === 'manager') {
-        return prelaunch()
-            ? '<p class="cta"><a class="'.$workerClass.'" href="/mano">Mano GANG</a></p>'
-            : '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+        return '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
     }
-    return prelaunch()
-        ? '<p class="cta"><a class="'.$workerClass.'" href="/mano">Mano GANG</a><a class="'.$employerClass.'" href="/profilis">Mano profilis</a></p>'
-        : '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+    return '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
 }
 
 function home_page(): never
 {
-    // Before launch there are no real listings yet: the team tiles lead to worker sign-up.
     // Urgent listings come first (open_requests orders them so), the rest fills full rows of three.
-    $latest = prelaunch() ? [] : open_requests([], 6);
+    $latest = open_requests([], 6);
     if (count($latest) >= 3) {
         $latest = array_slice($latest, 0, count($latest) >= 6 ? 6 : 3);
     }
@@ -79,7 +74,6 @@ function home_page(): never
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
-    $start = prelaunch() && launch_when() !== '' ? '<li><strong>'.e(str_replace('GANG startuoja', 'Startuojame', launch_headline())).'</strong> registracija jau vyksta</li>' : '';
     $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
 
     // Hero: every camera that has a photo, cross-faded by the script below.
@@ -115,7 +109,7 @@ function home_page(): never
     $workerBtn = !$me ? '<a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>'
         : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Mano profilis</a>' : '');
     $venueBtn = !$me ? '<a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>'
-        : ($me['kind'] === 'manager' ? '<a class="btn light" href="'.(prelaunch() ? '/mano' : '/poreikis/naujas').'">'.(prelaunch() ? 'Mano GANG' : 'Paskelbti paiešką').'</a>' : '');
+        : ($me['kind'] === 'manager' ? '<a class="btn light" href="/poreikis/naujas">Paskelbti paiešką</a>' : '');
     $finalCta = $me ? '' : '<section class="wrap home-block">
   <div class="final-cta">
     <h2>Prisijunkite prie GANG</h2>
@@ -134,7 +128,7 @@ function home_page(): never
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     $heroCta
-    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li>$proof$start</ul>
+    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li>$proof</ul>
   </div>
   $tabs
 </section>

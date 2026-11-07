@@ -261,6 +261,8 @@ legend { font-weight: 500; margin-bottom: 8px; }
 .status.off { color: var(--muted); }
 .quick { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
 .inline { display: inline; margin: 0; }
+.test-mail { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; max-width: 560px; margin: 0 0 8px; }
+.test-mail input[type=email] { flex: 1 1 260px; width: auto; }
 
 /* Availability calendar */
 .quick .meta { align-self: center; margin-right: 4px; }
