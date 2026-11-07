@@ -63,7 +63,7 @@ function mail_text(array $m): string
     if (!empty($m['footnote'])) {
         $out[] = mail_inline_text($m['footnote']);
     }
-    $out[] = "--\nGANG.lt – darbas hospitality komandoms\n".url('/');
+    $out[] = "--\nSuburk savo komandą GANG.LT\n".url('/');
     return implode("\n\n", $out);
 }
 
@@ -148,7 +148,7 @@ function mail_html(array $m, string $subject): string
         .'</td></tr>'
         // Footer.
         .'<tr><td style="padding:22px 40px 0" class="gang-pad">'.$foot
-        .'<p style="margin:0;font-family:'.$font.';font-size:12px;line-height:1.6;color:#8a867d"><a href="'.$e($home).'" style="color:#d8ff36;text-decoration:none;font-weight:700">GANG.lt</a> &nbsp;·&nbsp; darbas hospitality komandoms</p>'
+        .'<p style="margin:0;font-family:'.$font.';font-size:12px;line-height:1.6;color:#8a867d">Suburk savo komandą <a href="'.$e($home).'" style="color:#d8ff36;text-decoration:none;font-weight:700">GANG.LT</a></p>'
         .'</td></tr>'
         .'</table></td></tr></table></body></html>';
 }

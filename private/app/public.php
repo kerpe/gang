@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
 // A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
-    '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
+    '01' => ['Baras', 'Barmenai, barbackai, baristos, someljė, baro vadovai.'],
     '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
     '03' => ['Aptarnavimas', 'Padavėjai, runneriai, administratoriai.'],
 ];
@@ -19,7 +19,7 @@ const TEAM_PAGES = [
         'heading' => 'Baras',
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas ar someljė savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
-        'roles' => ['Barmenai', 'Baristos', 'Someljė', 'Baro vadovai'],
+        'roles' => ['Barmenai', 'Barbackai', 'Baristos', 'Someljė', 'Baro vadovai'],
         'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '02' => [
