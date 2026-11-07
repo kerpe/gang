@@ -49,7 +49,7 @@ function admin_login_page(): never
         $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
     }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=48"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=49"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'
         .'<form method="post" action="/admin" class="form">'.csrf_field()
@@ -467,7 +467,7 @@ function admin_settings(): string
     }
     $test = (int) sql('SELECT COUNT(*) FROM users')->fetchColumn();
     $html .= '</dl><h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
-        .'<form method="post" action="/admin?tab=settings" class="inline">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
+        .'<form method="post" action="/admin?tab=settings" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
         .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
     return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Narių dabar: '.$test.'.</p>';
 }
