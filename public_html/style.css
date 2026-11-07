@@ -31,13 +31,6 @@ html { scroll-behavior: smooth; }
 body { margin: 0; font: 16px/1.6 "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
 a { color: var(--ink); text-decoration-color: var(--line-strong); text-underline-offset: 3px; }
 
-/* Page changes: a short CCTV-style cut between pages (browsers without View Transitions just load the page). */
-@view-transition { navigation: auto; }
-.top { view-transition-name: top; }
-::view-transition-old(root) { animation: vt-out .18s ease-in both; }
-::view-transition-new(root) { animation: vt-in .32s ease-out both; }
-@keyframes vt-out { to { opacity: 0; filter: brightness(1.6) contrast(1.2); transform: scale(.995); } }
-@keyframes vt-in { from { opacity: 0; filter: brightness(1.8) blur(2px); transform: scale(1.005); } }
 /* Sections and cards fade up as they come into view (scroll-driven, no JavaScript). */
 @supports (animation-timeline: view()) {
   .reveal, .cards > .card, .steps > li, .audience > *, .cam-tiles > *, .bento > *, section.sec, .next-step, .sum-tiles > * {
@@ -46,8 +39,6 @@ a { color: var(--ink); text-decoration-color: var(--line-strong); text-underline
   @keyframes reveal { from { opacity: 0; transform: translateY(18px); } }
 }
 @media (prefers-reduced-motion: reduce) {
-  @view-transition { navigation: none; }
-  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
   .reveal, .cards > .card, .steps > li, .audience > *, .cam-tiles > *, .bento > *, section.sec, .next-step, .sum-tiles > * { animation: none; }
 }
 a:hover { text-decoration-color: var(--lime); }
