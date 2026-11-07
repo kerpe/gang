@@ -60,7 +60,7 @@ function page(string $title, string $body, array $opt = []): never
     $jobsLink = prelaunch() ? '' : ' · <a href="/darbai">Darbai</a>';
     $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
         .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms.</p>'
-        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>'.$jobsLink.' · <a href="/privatumas">Privatumas ir taisyklės</a> · © '.$year.'</p>'
+        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a>'.$jobsLink.' · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · © '.$year.'</p>'
         .'</div></footer>';
     echo <<<HTML
 <!doctype html>
@@ -76,7 +76,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=47">
+<link rel="stylesheet" href="/style.css?v=48">
 $head
 </head>
 <body$bodyClass>

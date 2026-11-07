@@ -49,7 +49,7 @@ function admin_login_page(): never
         $error = '<p class="err">Neteisingas vartotojo vardas arba slaptažodis.</p>';
     }
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=47"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=48"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'
         .'<form method="post" action="/admin" class="form">'.csrf_field()
@@ -204,6 +204,7 @@ function admin_delete_user(int $id): bool
     }
     sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
     sql('DELETE FROM invite_aliases WHERE user_id = ?', [$id]);
+    sql('DELETE FROM consents WHERE user_id = ?', [$id]);
     sql('DELETE FROM team_mails WHERE manager_id = ?', [$id]);
     sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
@@ -394,6 +395,7 @@ function admin_user(int $id): string
         'Registruotas' => e(substr($u['created_at'], 0, 16)),
         'Paskutinį kartą prisijungė' => e($u['last_login_at'] ? substr($u['last_login_at'], 0, 16) : '–'),
         'Pranešimai el. paštu' => $u['notify'] ? 'Taip' : 'Ne',
+        'Sutiko su taisyklėmis' => $u['terms_accepted_at'] ? e(substr($u['terms_accepted_at'], 0, 16).' (redakcija '.$u['terms_version'].')').($u['terms_version'] !== TERMS_VERSION ? ' – <strong>senesnė redakcija</strong>' : '') : 'Dar nesutiko',
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
     if ($worker) {

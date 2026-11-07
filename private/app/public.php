@@ -308,32 +308,11 @@ function about_page(): never
     ], '/apie');
 }
 
-function privacy_page(): never
-{
-    // Draft text: to be reviewed before launch.
-    page('Privatumas ir taisyklės', <<<HTML
-<section class="wrap narrow prose">
-  <h1>Privatumas ir taisyklės</h1>
-  <p><em>Preliminari redakcija. Galutinė redakcija bus paskelbta prieš oficialų svetainės paleidimą.</em></p>
-  <h2>Kokius duomenis renkame</h2>
-  <p>Renkame el. pašto adresą, vardą ir pavardę, telefono numerį, profilio nuotrauką (jei ją įkeliate), pareigas, miestus, pažymėtas laisvas dienas ir jūsų pateiktą informaciją apie save ar savo darbovietę. Telefono numeris kitai šaliai rodomas tik po GANG kontrakto. Profilio nuotrauką mato tik prisijungę darbdaviai.</p>
-  <h2>Kam naudojame</h2>
-  <p>Duomenis naudojame tam, kad padėtume darbdaviams ir darbuotojams rasti vieni kitus: siunčiame pranešimus apie tinkamus darbo pasiūlymus ir kandidatūras, rodome įvertinimus. Duomenų neparduodame ir reklamos tikslais neperduodame.</p>
-  <h2>Įvertinimai</h2>
-  <p>Įvertinimai skelbiami nenurodant autoriaus. Jei manote, kad įvertinimas neteisingas, susisiekite su mumis. Netinkamus, įžeidžiančius ar asmeninę informaciją atskleidžiančius komentarus pašaliname.</p>
-  <h2>Paskyros ištrynimas</h2>
-  <p>Norėdami ištrinti paskyrą ir duomenis, parašykite mums iš el. pašto adreso, kuriuo esate užsiregistravę. Duomenis ištrinsime per 30 dienų.</p>
-  <h2>Taisyklės</h2>
-  <p>Skelbiami tik tikri darbo pasiūlymai baruose, restoranuose, kavinėse ir kitose hospitality sektoriaus darbovietėse. Draudžiama diskriminacija, klaidinanti informacija ir piktnaudžiavimas įvertinimais. Taisyklių nesilaikančių narių paskyros blokuojamos.</p>
-</section>
-HTML, ['canonical' => '/privatumas']);
-}
-
 function sitemap(): never
 {
     header('Content-Type: application/xml; charset=utf-8');
     $out = '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">';
-    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/privatumas'];
+    $paths = ['/', '/darbai', '/kaip-veikia', '/apie', '/baras', '/virtuve', '/aptarnavimas', '/privatumas', '/taisykles'];
     foreach (array_keys(CITIES) as $c) {
         $paths[] = '/darbai?miestas='.$c;
     }
