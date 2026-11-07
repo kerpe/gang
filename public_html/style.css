@@ -918,3 +918,16 @@ table.data td.actions form + form { margin-left: 6px; }
 .criteria .bar i { display: block; height: 100%; background: var(--star); }
 .criteria b { color: var(--star); min-width: 2.2em; text-align: right; }
 .review-criteria { font-size: .82rem; margin: 2px 0 6px; }
+
+/* Job page: "Apie darbovietę" (v47) */
+.venue-box { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+.venue-box .venue-card-head strong { display: block; font-size: 1.1rem; }
+.venue-box .venue-card-head strong a { text-decoration: none; }
+.venue-box .venue-card-head .meta { display: block; margin-top: 2px; }
+.venue-box .desc { margin: 16px 0 0; padding: 0; background: none; border: 0; }
+.venue-box .venue-facts { margin: 16px 0 0; }
+.venue-box .venue-facts > div { background: var(--surface-2); }
+.venue-box h3 { margin: 18px 0 8px; font-family: inherit; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.venue-box .perk-list { margin: 0; }
+.venue-more { margin: 16px 0 0; font-size: .92rem; }
+.venue-join { margin-top: 26px; }

@@ -347,24 +347,44 @@ document.querySelectorAll('textarea[data-min]').forEach(function (t) {
 HTML;
 }
 
+// "Darbuotojams siūlome" chips of a venue.
+function venue_perks_html(array $venue, string $heading): string
+{
+    $perks = array_values(array_intersect_key(VENUE_PERKS, array_flip(from_list($venue['perks']))));
+    return $perks ? $heading.'<ul class="perk-list">'.implode('', array_map(fn ($p) => '<li>'.e($p).'</li>', $perks)).'</ul>' : '';
+}
+
+function venue_type_text(array $venue): string
+{
+    return trim(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $venue['concept']])));
+}
+
+// Ratings and reliability of a venue are for workers (and the venue itself), not for other employers.
+function sees_venue_reviews(?array $u, array $venue): bool
+{
+    return $u && ($u['kind'] === 'worker' || (int) $venue['manager_id'] === (int) $u['id'] || is_admin($u));
+}
+
+// The venue's description is public: everyone, signed in or not, sees it. Phone and e-mail are never shown here.
 function venue_page(int $id): never
 {
-    $u = require_user();
+    $u = current_user();
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$id])->fetch();
     if (!$venue) {
         not_found();
     }
-    if ($u['kind'] !== 'worker' && (int) $venue['manager_id'] !== (int) $u['id'] && !is_admin($u)) {
-        flash('Darbdavių įvertinimus gali peržiūrėti tik darbuotojai.');
-        redirect('/mano');
-    }
+    $private = sees_venue_reviews($u, $venue);
     [$avg, $n] = venue_rating($id);
-    $reliable = venue_reliability($id);
-    $reviews = reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas');
+    $reliable = $private ? venue_reliability($id) : null;
+    $reviewsHtml = match (true) {
+        $private => '<h2>Darbuotojų įvertinimai</h2>'.criteria_html('worker', 'venue_id', $id).reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas'),
+        !$u => '<div class="panel venue-join"><h2>Darbuotojų įvertinimai</h2><p>Darbuotojų įvertinimus ir darbdavio patikimumą mato registruoti GANG darbuotojai.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>',
+        default => '',
+    };
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
-    $type = trim(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $venue['concept']])));
+    $type = venue_type_text($venue);
     $facts = array_filter([
         'Adresas' => full_address($venue),
         'Darbo laikas' => $venue['hours'],
@@ -372,16 +392,15 @@ function venue_page(int $id): never
         'Patikimumas' => $reliable !== null ? $reliable.' % sutartų darbų įvyko' : '',
     ]);
     $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>';
-    $perks = array_values(array_intersect_key(VENUE_PERKS, array_flip(from_list($venue['perks']))));
-    $perksHtml = $perks ? '<h2>Darbuotojams siūlome</h2><ul class="perk-list">'.implode('', array_map(fn ($p) => '<li>'.e($p).'</li>', $perks)).'</ul>' : '';
-    $edit = (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
+    $perksHtml = venue_perks_html($venue, '<h2>Darbuotojams siūlome</h2>');
+    $edit = $u && (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
     page($venue['name'], '<section class="wrap narrow venue-page"><header class="venue-head">'.venue_logo($venue, 'large')
-        .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').' · '.stars($avg, $n).'</p>'
+        .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').($private ? ' · '.stars($avg, $n) : '').'</p>'
         .venue_links_html($venue).'</div></header>'.$edit
         .$factsHtml
         .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$perksHtml
-        .$jobsHtml.'<h2>Darbuotojų įvertinimai</h2>'.criteria_html('worker', 'venue_id', $id).$reviews.'</section>', ['noindex' => true]);
+        .$jobsHtml.$reviewsHtml.'</section>', ['noindex' => true]);
 }
 
 function request_form_page(): never
@@ -797,11 +816,14 @@ function request_page(int $id): never
         .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
         .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
         .'<div><dt>Reikia darbuotojų</dt><dd>'.(int) $r['people'].'</dd></div>'
-        .'<div><dt>Darbovietė</dt><dd>'.($u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a>' : e($r['venue_name'])).'</dd></div>'
+        .'<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
         .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>'
         .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '').'</dl>';
     $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
-    $venueLink = $u && $u['kind'] === 'worker' ? '<a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a> · '.stars($avg, $n) : e($r['venue_name']);
+    $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
+    $venueUrl = '/darboviete/'.(int) $r['venue_id'];
+    $venueLink = '<a href="'.$venueUrl.'">'.e($r['venue_name']).'</a>'.(sees_venue_reviews($u, $venue) ? ' · '.stars($avg, $n) : '');
+    $venueSec = venue_section_html($venue, $venueUrl);
     $venueLogo = $r['venue_logo'] ? venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo']], 'small') : '';
     $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
@@ -848,6 +870,7 @@ function request_page(int $id): never
     <div class="job-main">
       $when
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      $venueSec
       $event
       $action
     </div>
@@ -859,6 +882,25 @@ HTML, [
         'head' => $ld,
         'noindex' => !$isOpen || $teamOnly,
     ]);
+}
+
+// "Apie darbovietę" on the job page: what the employer filled in about the venue, visible to everyone.
+function venue_section_html(array $venue, string $url): string
+{
+    $type = venue_type_text($venue);
+    $facts = array_filter([
+        'Darbo laikas' => $venue['hours'],
+        'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
+    ]);
+    $factsHtml = $facts ? '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'
+        .'<div class="venue-card-head">'.venue_logo($venue, 'small').'<div><strong><a href="'.$url.'">'.e($venue['name']).'</a></strong>'
+        .($type !== '' ? '<span class="meta">'.e($type).'</span>' : '').'</div></div>'
+        .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
+        .$factsHtml
+        .venue_perks_html($venue, '<h3>Darbuotojams siūlome</h3>')
+        .venue_links_html($venue)
+        .'<p class="venue-more"><a href="'.$url.'">Visa darbovietės informacija →</a></p></div></section>';
 }
 
 function worker_panel(array $r, ?array $u, bool $isOpen): string
