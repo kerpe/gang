@@ -121,7 +121,7 @@ function terms_page(): never
     legal_page('Naudojimosi taisyklės', '/taisykles',
         '<p>Šios taisyklės nustato, kaip naudotis GANG.lt platforma. Registruodamiesi ir naudodamiesi GANG, patvirtinate, kad su taisyklėmis susipažinote ir jų laikysitės. Kaip tvarkome asmens duomenis, aprašyta <a href="/privatumas">Privatumo politikoje</a>.</p>',
         [
-            ['bendrosios', 'Bendrosios nuostatos', '<p>GANG.lt (toliau – GANG) yra internetinė platforma, padedanti barams, restoranams, kavinėms ir kitoms hospitality sektoriaus darbovietėms (toliau – darbdaviai) rasti darbuotojus, o darbuotojams – darbo pasiūlymus. Platformą valdo '.operator_line().' (toliau – mes).</p>'
+            ['bendrosios', 'Bendrosios nuostatos', '<p>GANG.lt (toliau – GANG) yra internetinė platforma, padedanti restoranams, kavinėms, barams, klubams ir kitoms hospitality sektoriaus darbovietėms (toliau – darbdaviai) rasti darbuotojus, o darbuotojams – darbo pasiūlymus. Platformą valdo '.operator_line().' (toliau – mes).</p>'
                 .'<p>Taisyklės taikomos visiems GANG nariams: darbuotojams ir darbdaviams.</p>'],
             ['vaidmuo', 'GANG vaidmuo', '<p>GANG tik padeda darbdaviams ir darbuotojams rasti vieni kitus ir susisiekti. GANG nėra darbdavys, įdarbinimo agentūra ar laikinojo įdarbinimo įmonė, nesudaro darbo sutarčių, nemoka atlygio ir nėra darbdavio ir darbuotojo susitarimo šalis.</p>'
                 .'<p>Darbo sutartį, atlygį, atsiskaitymą, darbo laiką ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai. Darbdavys yra atsakingas už tai, kad įdarbinimas atitiktų darbo, mokesčių, socialinio draudimo, darbuotojų saugos ir kitus teisės aktus.</p>'],

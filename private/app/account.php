@@ -568,7 +568,7 @@ function manager_dashboard(array $u): string
         .($contractHtml ? '<h2 id="kontraktai">GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
-        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų baras, restoranas ar kavinė</span></a></div>';
+        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų restoranas, kavinė, baras ar klubas</span></a></div>';
 }
 
 // "Kitas žingsnis": the one thing to do now, on top of Mano GANG. $tone: '' | warn | calm.

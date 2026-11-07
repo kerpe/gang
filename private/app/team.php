@@ -42,7 +42,7 @@ function invite_landing_page(string $code): never
         };
     } else {
         $title = $who.' kviečia jus į GANG';
-        $lead = 'GANG padeda barams, restoranams ir kavinėms rasti patikimus darbuotojus, o hospitality specialistams – papildomų pamainų ir darbo pasiūlymų. Jūsų kolega '.e($who).' jau yra GANG narys.';
+        $lead = 'GANG padeda restoranams, kavinėms, barams ir klubams rasti patikimus darbuotojus, o hospitality specialistams – papildomų pamainų ir darbo pasiūlymų. Jūsų kolega '.e($who).' jau yra GANG narys.';
         $action = $u === null
             ? '<p><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a> <a class="btn ghost" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>'
             : ((int) $u['id'] === (int) $from['id'] ? '<p class="notice ok">Taip jūsų kvietimą matys kolegos.</p>' : '<p><a class="btn" href="/mano">Mano GANG</a></p>');
@@ -108,7 +108,7 @@ function referral_box(array $u): string
     $link = url('/k/'.invite_code($u));
     return '<section class="panel invite-box"><h3>Pakvieskite kolegas</h3>'
         .'<p class="meta">Kuo daugiau patikimų žmonių GANG, tuo greičiau darbdaviai randa pamainas, o jūs – darbo pasiūlymus. Pasidalykite savo nuoroda su kolegomis.</p>'
-        .share_link($link, 'Prisijunk prie GANG: darbo pasiūlymai barams, restoranams ir kavinėms').'</section>';
+        .share_link($link, 'Prisijunk prie GANG: darbo pasiūlymai restoranams, kavinėms, barams ir klubams').'</section>';
 }
 
 function share_link(string $link, string $text): string

@@ -5,7 +5,7 @@ declare(strict_types=1);
 function page(string $title, string $body, array $opt = []): never
 {
     $e = 'e';
-    $desc = $opt['description'] ?? 'GANG – platforma, padedanti barams, restoranams ir kavinėms greitai rasti patikimus darbuotojus skubiam pavadavimui, sezonui ar nuolatiniam darbui.';
+    $desc = $opt['description'] ?? 'GANG – platforma, padedanti restoranams, kavinėms, barams ir klubams greitai rasti patikimus darbuotojus skubiam pavadavimui, sezonui ar nuolatiniam darbui.';
     $fullTitle = $title === '' ? 'GANG – darbas hospitality komandoms' : $title.' · GANG';
     $robots = !empty($opt['noindex']) ? '<meta name="robots" content="noindex">' : '';
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
@@ -53,7 +53,7 @@ function page(string $title, string $body, array $opt = []): never
     $year = date('Y');
     $logoMark = knives();
         $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
-        .'<p><strong>GANG.lt</strong> – patikimi kolegos barams, restoranams ir kavinėms.</p>'
+        .'<p><strong>GANG.lt</strong> – patikimi kolegos restoranams, kavinėms, barams ir klubams.</p>'
         .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a> · <a href="/darbai">Darbai</a> · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · © '.$year.'</p>'
         .'</div></footer>';
     echo <<<HTML

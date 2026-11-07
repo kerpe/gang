@@ -535,7 +535,7 @@ function invite_waitlist(): int
             'title' => $worker ? 'Susikurkite profilį' : 'Užregistruokite darbovietę',
             'lead' => $intro.($worker
                 ? ($public
-                    ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš barų, restoranų ir kavinių.'
+                    ? 'susikurti profilį, pažymėti laisvas dienas ir gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.'
                     : 'susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti.')
                 : ($public
                     ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
@@ -563,7 +563,7 @@ function invite_waitlist(): int
             $mail = ['title' => 'Užbaikite registraciją', 'lead' => 'GANG jau veikia. Jūsų registracija dar neužbaigta. Užbaikite ją: tai trunka kelias minutes.',
                 'cta' => ['Užbaigti registraciją', url('/profilis')]];
         } elseif ($u['kind'] === 'worker') {
-            $mail = ['title' => 'Jūsų profilis matomas', 'lead' => 'GANG jau veikia. Jūsų profilis dabar matomas barams, restoranams ir kavinėms jūsų miestuose.',
+            $mail = ['title' => 'Jūsų profilis matomas', 'lead' => 'GANG jau veikia. Jūsų profilis dabar matomas restoranams, kavinėms, barams ir klubams jūsų miestuose.',
                 'body' => 'Kalendoriuje pažymėkite dienas, kuriomis galite dirbti: darbdaviai, ieškantys žmogaus konkrečiai datai, matys, kad esate laisvi, o tinkamus pasiūlymus gausite el. paštu.',
                 'cta' => ['Pažymėti laisvas dienas', url('/mano#laisvumas')]];
         } else {
