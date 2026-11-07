@@ -96,7 +96,7 @@ function login_page(): never
         default => 'Prisijungti arba užsiregistruoti',
     };
     $lead = match ($kind) {
-        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš barų, restoranų ir kavinių.',
+        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.',
         'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų paieškas.',
         default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
@@ -173,7 +173,7 @@ function choose_kind_page(): never
         .'<form method="post" class="pick">'.csrf_field()
         .'<div class="pick-consent">'.consent_field($error).'</div>'
         .'<button name="kind" value="worker" class="pick-card"><strong>Ieškau darbo</strong><span>Barmenas, padavėjas, virėjas ar kitas hospitality darbuotojas</span></button>'
-        .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau darbuotojų</strong><span>Baro, restorano, kavinės ar viešbučio vadovas</span></button>'
+        .'<button name="kind" value="manager" class="pick-card"><strong>Ieškau darbuotojų</strong><span>Restorano, kavinės, baro, klubo ar viešbučio vadovas</span></button>'
         .'</form></section>', ['noindex' => true]);
 }
 
