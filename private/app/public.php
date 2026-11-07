@@ -6,7 +6,7 @@ declare(strict_types=1);
 // A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
     '01' => ['Baras', 'Barmenai, baristos, someljė, baro vadovai.'],
-    '02' => ['Virtuvė', 'Šefai, virėjai, indų plovėjai, pagalbiniai darbuotojai.'],
+    '02' => ['Virtuvė', 'Šefai, virėjai, virtuvės pagalbiniai darbuotojai, indų plovėjai.'],
     '03' => ['Aptarnavimas', 'Padavėjai, runneriai, administratoriai.'],
 ];
 
@@ -28,8 +28,8 @@ const TEAM_PAGES = [
         'title' => 'Darbas virtuvėje',
         'heading' => 'Virtuvė',
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
-            .'<p>Šefas, virėjai, indų plovėjai ir pagalbiniai darbuotojai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
-        'roles' => ['Šefai', 'Virėjai', 'Indų plovėjai', 'Pagalbiniai darbuotojai'],
+            .'<p>Šefas, virėjai, virtuvės pagalbiniai darbuotojai ir indų plovėjai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
+        'roles' => ['Šefai', 'Virėjai', 'Virtuvės pagalbiniai darbuotojai', 'Indų plovėjai'],
         'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '03' => [
