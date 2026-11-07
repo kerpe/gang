@@ -11,8 +11,11 @@ function page(string $title, string $body, array $opt = []): never
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
     $head = $opt['head'] ?? '';
     $user = current_user();
+    // New chat messages: a count on "Mano GANG" (the contract cards there link to each chat).
+    $unread = $user ? unread_messages_total((int) $user['id']) : 0;
+    $badge = $unread ? ' <span class="count" aria-label="Naujos žinutės: '.$unread.'">'.$unread.'</span>' : '';
     if ($user) {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>';
     } else {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
     }
@@ -35,7 +38,7 @@ function page(string $title, string $body, array $opt = []): never
         $tabbar = '<nav class="tabbar" aria-label="Pagrindinis meniu">';
         foreach ($tabs as [$href, $label, $icon]) {
             $current = $href === $path ? ' aria-current="page"' : '';
-            $tabbar .= '<a href="'.$href.'"'.$current.($icon === 'plus' ? ' class="accent"' : '').'><svg viewBox="0 0 24 24" aria-hidden="true">'.$icons[$icon].'</svg>'.e($label).'</a>';
+            $tabbar .= '<a href="'.$href.'"'.$current.($icon === 'plus' ? ' class="accent"' : '').'><svg viewBox="0 0 24 24" aria-hidden="true">'.$icons[$icon].'</svg>'.e($label).($href === '/mano' ? $badge : '').'</a>';
         }
         $tabbar .= '</nav>';
     }
@@ -70,7 +73,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=54">
+<link rel="stylesheet" href="/style.css?v=55">
 $head
 </head>
 <body$bodyClass>

@@ -1003,7 +1003,8 @@ function accepted_panel(array $r, array $u): string
     return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
         .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
         .'<p class="shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
-        .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>';
+        .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>'
+        .($c && !$c['cancelled_at'] ? chat_box($c, $u).chat_script() : '');
 }
 
 function owner_panel(array $r, bool $isOpen): string
@@ -1015,6 +1016,7 @@ function owner_panel(array $r, bool $isOpen): string
     $split = request_splittable($r);
     $allDays = ranges_days(request_ranges($r));
     $need = $split ? request_needs($r) : [];
+    $chats = false;
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
         $badges = [];
@@ -1049,11 +1051,21 @@ function owner_panel(array $r, bool $isOpen): string
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
             : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small'))
                 .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
+        // A confirmed worker: the chat with them right under their card.
+        $chat = '';
+        if ($s['status'] === 'accepted' && ($u = current_user())) {
+            $c = sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.worker_id = ? AND c.cancelled_at IS NULL ORDER BY c.id DESC', [$r['id'], $s['worker_id']])->fetch();
+            if ($c) {
+                $chat = chat_box($c, $u);
+                $chats = true;
+            }
+        }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
             .($s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
-            .'</div><div class="actions">'.$buttons.'</div></div>';
+            .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
+    $list .= $chats ? chat_script() : '';
     $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';
     [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience'], $r['kind']);
     $teamOnly = $isOpen && !empty($r['public_at']) && $r['public_at'] > now()

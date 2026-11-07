@@ -6,7 +6,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') {
     exit;
 }
-foreach (['bootstrap', 'data', 'views', 'account', 'shifts', 'contracts'] as $f) {
+foreach (['bootstrap', 'data', 'views', 'account', 'shifts', 'contracts', 'messages'] as $f) {
     require __DIR__."/app/$f.php";
 }
 

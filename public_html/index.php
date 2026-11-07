@@ -7,7 +7,7 @@ header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team', 'legal'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team', 'legal', 'messages'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
@@ -73,6 +73,9 @@ match (true) {
     $is('/kontraktas/(\d+)/kalendorius') => contract_ics((int) $m[1]),
     $is('/kontraktas/(\d+)/atsaukti') => contract_cancel_page((int) $m[1]),
     $is('/kontraktas/(\d+)/neatvyko') && $post => no_show_action((int) $m[1]),
+    $is('/kontraktas/(\d+)/zinute') && $post => message_send_action((int) $m[1]),
+    $is('/kontraktas/(\d+)/zinutes') => messages_poll((int) $m[1]),
+    $is('/pokalbis/(\d+)') => chat_link_page((int) $m[1]),
     $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
     $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),
     $path === '/komanda/kviesti' && $post => team_mail_action(),
