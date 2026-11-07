@@ -203,6 +203,7 @@ function admin_delete_user(int $id): bool
         sql("DELETE FROM $table WHERE $col = ?", [$id]);
     }
     sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
+    sql('DELETE FROM invite_aliases WHERE user_id = ?', [$id]);
     sql('DELETE FROM team_mails WHERE manager_id = ?', [$id]);
     sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 function migrate(PDO $db): void
 {
@@ -119,6 +119,11 @@ function migrate(PDO $db): void
             declined_at DATETIME NULL,
             alerted_at DATETIME NULL",
         // Version 12: workers who joined a manager's team through the manager's invitation link.
+        // Version 14: earlier link words (/k/{word}) that keep working after a venue is renamed.
+        'invite_aliases' => "id $id,
+            user_id INT NOT NULL,
+            slug VARCHAR(80) NOT NULL,
+            created_at DATETIME NOT NULL",
         'team_links' => "id $id,
             manager_id INT NOT NULL,
             worker_id INT NOT NULL,
@@ -225,6 +230,7 @@ function migrate(PDO $db): void
         'requests_event' => 'requests (event_id)',
         'users_invite_code' => 'users (invite_code)',
         'users_invite_slug' => 'users (invite_slug)',
+        'invite_aliases_slug' => 'invite_aliases (slug)',
     ];
     foreach ($indexes as $name => $on) {
         try {

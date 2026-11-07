@@ -86,6 +86,9 @@ function venue_form_page(?int $id = null): never
                 if ($logo !== $venue['logo']) {
                     delete_photo($venue['logo']);
                 }
+                if ($row['name'] !== $venue['name']) {
+                    refresh_invite_slug($u);
+                }
                 flash('Darbovietės duomenys išsaugoti.');
                 redirect('/mano');
             }
