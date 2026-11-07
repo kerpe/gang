@@ -17,6 +17,111 @@ function find_request(int $id): ?array
     return sql(REQUEST_SELECT.' WHERE r.id = ?', [$id])->fetch() ?: null;
 }
 
+// Version 17: a contract can cover only some of the job's days. Its own dates win; NULL start_date = the request's dates.
+const CONTRACT_FROM = 'COALESCE(c.start_date, r.start_date)';
+const CONTRACT_TO = "(CASE WHEN c.start_date IS NULL THEN (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) ELSE COALESCE(c.end_date, c.start_date) END)";
+const CONTRACT_DATES = 'COALESCE(c.start_date, r.start_date) AS start_date, CASE WHEN c.start_date IS NULL THEN r.end_date ELSE c.end_date END AS end_date, CASE WHEN c.start_date IS NULL THEN r.dates ELSE c.dates END AS dates';
+
+// The work periods of a request or a contract as [from, to] pairs; a permanent job has one, its first day.
+function request_ranges(array $r): array
+{
+    if (!empty($r['dates'])) {
+        return array_map(fn ($p) => explode(':', $p), explode(',', $r['dates']));
+    }
+    return [[$r['start_date'], $r['kind'] === 'nuolat' ? $r['start_date'] : ($r['end_date'] ?: $r['start_date'])]];
+}
+
+// Every day in the ranges, sorted ("2026-12-26", …).
+function ranges_days(array $ranges): array
+{
+    $days = [];
+    foreach ($ranges as [$from, $to]) {
+        for ($t = strtotime($from); $t <= strtotime($to); $t = strtotime('+1 day', $t)) {
+            $days[] = date('Y-m-d', $t);
+        }
+    }
+    $days = array_values(array_unique($days));
+    sort($days);
+    return $days;
+}
+
+// Days back to [from, to] ranges: consecutive days join; with $key, only days with the same key join.
+function days_ranges(array $days, ?callable $key = null): array
+{
+    sort($days);
+    $ranges = [];
+    foreach (array_values(array_unique($days)) as $d) {
+        $last = count($ranges) - 1;
+        if ($last >= 0 && $d === date('Y-m-d', strtotime($ranges[$last][1].' +1 day')) && (!$key || $key($d) === $key($ranges[$last][1]))) {
+            $ranges[$last][1] = $d;
+        } else {
+            $ranges[] = [$d, $d];
+        }
+    }
+    return $ranges;
+}
+
+// "gruodžio 26–27 d., gruodžio 31 d."
+function days_text(array $days): string
+{
+    return implode(', ', array_map(fn ($r) => span_lt($r[0], $r[1]), days_ranges($days)));
+}
+
+// A worker can pick days only on a job of several days; a permanent job is taken as a whole.
+function request_splittable(array $r): bool
+{
+    return $r['kind'] !== 'nuolat' && count(ranges_days(request_ranges($r))) > 1;
+}
+
+// How many more workers the request needs, per day still ahead: [day => n], only days with n > 0.
+// Every confirmed (not cancelled) contract covers its own days.
+function request_needs(array $r): array
+{
+    $need = [];
+    foreach (ranges_days(request_ranges($r)) as $d) {
+        if ($d >= today() || $r['kind'] === 'nuolat') {
+            $need[$d] = (int) $r['people'];
+        }
+    }
+    $contracts = sql('SELECT r.kind, '.CONTRACT_DATES.' FROM contracts c JOIN requests r ON r.id = c.request_id WHERE c.request_id = ? AND c.cancelled_at IS NULL', [$r['id']])->fetchAll();
+    foreach ($contracts as $c) {
+        foreach (ranges_days(request_ranges($c)) as $d) {
+            if (isset($need[$d])) {
+                $need[$d]--;
+            }
+        }
+    }
+    return array_filter($need, fn ($n) => $n > 0);
+}
+
+// The days a worker applied for: the ones they picked, or every day of the job.
+function response_days(array $s, array $r): array
+{
+    return !empty($s['dates']) ? ranges_days(request_ranges(['dates' => $s['dates']] + $r)) : ranges_days(request_ranges($r));
+}
+
+// Contract columns for the days it covers: NULL dates when it is the whole job.
+function contract_dates(array $r, array $days): array
+{
+    if (!$days || $days === ranges_days(request_ranges($r))) {
+        return ['start_date' => null, 'end_date' => null, 'dates' => ''];
+    }
+    $ranges = days_ranges($days);
+    $last = end($ranges)[1];
+    return ['start_date' => $ranges[0][0], 'end_date' => $last !== $ranges[0][0] ? $last : null, 'dates' => count($ranges) > 1 ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], $ranges)) : ''];
+}
+
+// Dates still to fill, for lists and cards: a job with some days already taken shows only the open ones.
+function open_period(array $r): string
+{
+    if ($r['status'] !== 'open' || !request_splittable($r)) {
+        return period($r);
+    }
+    $need = request_needs($r);
+    $all = array_values(array_filter(ranges_days(request_ranges($r)), fn ($d) => $d >= today()));
+    return $need && array_keys($need) !== $all ? days_text(array_keys($need)) : period($r);
+}
+
 function open_requests(array $filters = [], int $limit = 200): array
 {
     [$where, $params] = open_where();
@@ -98,7 +203,7 @@ function completed_count(int $workerId): int
 {
     return (int) sql("SELECT COUNT(*) FROM contracts c JOIN requests r ON r.id = c.request_id
         WHERE c.worker_id = ? AND c.cancelled_at IS NULL AND c.no_show_at IS NULL
-        AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$workerId, today()])->fetchColumn();
+        AND ".CONTRACT_TO.' < ?', [$workerId, today()])->fetchColumn();
 }
 
 // Share of jobs a worker kept: completed jobs against late cancellations and no-shows.
@@ -115,7 +220,7 @@ function venue_reliability(int $venueId): ?int
 {
     $done = (int) sql("SELECT COUNT(*) FROM contracts c JOIN requests r ON r.id = c.request_id
         WHERE c.venue_id = ? AND (c.cancelled_at IS NULL OR c.cancelled_by = 'worker')
-        AND (CASE WHEN r.kind = 'nuolat' THEN r.start_date ELSE COALESCE(r.end_date, r.start_date) END) < ?", [$venueId, today()])->fetchColumn();
+        AND ".CONTRACT_TO.' < ?', [$venueId, today()])->fetchColumn();
     $missed = (int) sql("SELECT COUNT(*) FROM contracts WHERE venue_id = ? AND cancelled_by = 'manager' AND late = 1", [$venueId])->fetchColumn();
     return $done + $missed ? (int) round(100 * $done / ($done + $missed)) : null;
 }

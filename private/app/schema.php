@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 function migrate(PDO $db): void
 {
@@ -206,6 +206,12 @@ function migrate(PDO $db): void
         // Version 15: the terms version the member last accepted (consents keeps every acceptance).
         "users ADD terms_version VARCHAR(20) NOT NULL DEFAULT ''",
         'users ADD terms_accepted_at DATETIME NULL',
+        // Version 17: a worker can apply for only some of the job's days ("from:to,…"; empty = all days),
+        // and a contract can cover only some of them (NULL start_date = the request's dates).
+        "responses ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        'contracts ADD start_date DATE NULL',
+        'contracts ADD end_date DATE NULL',
+        "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
     ];
     foreach ($columns as $column) {
         try {

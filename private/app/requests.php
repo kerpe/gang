@@ -802,6 +802,23 @@ function request_page(int $id): never
     // Dates as separate chips; pay split into the amount and its unit so the amount stands out.
     $dates = !empty($r['dates']) ? array_map(fn ($p) => span_lt(...explode(':', $p)), explode(',', $r['dates'])) : [period($r)];
     $chips = '<ul class="date-chips">'.implode('', array_map(fn ($d) => '<li>'.e($d).'</li>', $dates)).'</ul>';
+    $peopleText = (string) (int) $r['people'];
+    // Some days already taken: everyone sees which days are still open (and how many people each needs),
+    // the owner also sees the filled days.
+    if ($isOpen && request_splittable($r)) {
+        $need = request_needs($r);
+        $ahead = array_values(array_filter(ranges_days(request_ranges($r)), fn ($d) => $d >= today()));
+        if ($need && (array_keys($need) !== $ahead || max($need) < (int) $r['people'])) {
+            $uneven = count(array_unique($need)) > 1;
+            $peopleText = $uneven ? 'iki '.max($need) : (string) max($need);
+            $chipDays = $owner ? $ahead : array_keys($need);
+            $chips = '<ul class="date-chips">'.implode('', array_map(function ($x) use ($need, $uneven) {
+                $n = $need[$x[0]] ?? 0;
+                return $n ? '<li>'.e(span_lt($x[0], $x[1])).($uneven ? ' <small>· reikia '.$n.'</small>' : '').'</li>'
+                    : '<li class="full">'.e(span_lt($x[0], $x[1])).' <small>· užpildyta</small></li>';
+            }, days_ranges($chipDays, fn ($d) => $need[$d] ?? 0))).'</ul>';
+        }
+    }
     // "Geras atlygis" helps someone still choosing; the owner and a worker who already applied or got the job don't need it.
     $mineStatus = $u ? sql('SELECT status FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn() : false;
     $showGood = !$owner && !in_array($mineStatus, ['sent', 'accepted'], true) && good_pay($r);
@@ -814,7 +831,7 @@ function request_page(int $id): never
     $facts = '<dl class="job-facts">'
         .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
         .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
-        .'<div><dt>Reikia darbuotojų</dt><dd>'.(int) $r['people'].'</dd></div>'
+        .'<div><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
         .'<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
         .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>'
         .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '').'</dl>';
@@ -916,7 +933,9 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
             'declined' => '<div class="panel"><p>Dėkojame už susidomėjimą. Šį kartą darbdavys pasirinko kitą kandidatą. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
             'withdrawn' => '<div class="panel"><p>Savo atsiliepimą atšaukėte.</p></div>',
             'cancelled' => '<div class="panel"><p>Šis GANG kontraktas atšauktas. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
-            default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2><p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus.</p>'
+            default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2>'
+                .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
+                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus.</p>'
                 .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Ar tikrai norite atšaukti atsiliepimą?').'</div>',
         };
     }
@@ -931,10 +950,50 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         : '';
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
+        .days_fieldset($r)
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
+}
+
+// Longest list of single days a worker can tick; a longer job is picked by its date ranges.
+const PICK_DAYS_MAX = 31;
+const WEEKDAYS_SHORT = ['', 'Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št', 'Sk'];
+
+// "Kuriomis dienomis galite dirbti?": every day still open, all ticked; the worker unticks the ones they can't work.
+function days_fieldset(array $r): string
+{
+    if (!request_splittable($r)) {
+        return '';
+    }
+    $days = array_keys(request_needs($r));
+    if (count($days) < 2) {
+        return '';
+    }
+    $items = count($days) <= PICK_DAYS_MAX
+        ? array_map(fn ($d) => [$d, date_lt($d).' <small>'.WEEKDAYS_SHORT[(int) date('N', strtotime($d))].'</small>'], $days)
+        : array_map(fn ($x) => [$x[0].':'.$x[1], e(span_lt($x[0], $x[1]))], days_ranges($days));
+    return '<fieldset class="pick-days"><legend>Kuriomis dienomis galite dirbti?</legend>'
+        .'<p class="hint">Pažymėtos visos darbo dienos. Jei kuriomis nors dienomis dirbti negalite, nuimkite žymėjimą – darbdavys galės patvirtinti jūsų kandidatūrą toms dienoms, kurias pasirinkote.</p>'
+        .'<div class="day-checks">'.implode('', array_map(fn ($x) => '<label class="choice"><input type="checkbox" name="days[]" value="'.e($x[0]).'" checked> <span>'.$x[1].'</span></label>', $items)).'</div></fieldset>';
+}
+
+// The days ticked in days_fieldset(), kept to the days the job still needs. [] = none ticked.
+function posted_days(array $r): array
+{
+    $need = array_keys(request_needs($r));
+    if (!request_splittable($r) || count($need) < 2) {
+        return $need;
+    }
+    $picked = [];
+    foreach ((array) ($_POST['days'] ?? []) as $v) {
+        $v = (string) $v;
+        if (preg_match('/^(\d{4}-\d{2}-\d{2})(?::(\d{4}-\d{2}-\d{2}))?$/', $v, $m)) {
+            $picked = [...$picked, ...ranges_days([[$m[1], $m[2] ?? $m[1]]])];
+        }
+    }
+    return array_values(array_intersect($need, $picked));
 }
 
 function accepted_panel(array $r, array $u): string
@@ -953,9 +1012,32 @@ function owner_panel(array $r, bool $isOpen): string
         LEFT JOIN worker_roles wr ON wr.user_id = s.worker_id AND wr.role = ?
         WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['role'], $r['id']])->fetchAll();
     $list = '';
+    $split = request_splittable($r);
+    $allDays = ranges_days(request_ranges($r));
+    $need = $split ? request_needs($r) : [];
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
         $badges = [];
+        // Days: what the worker can do, and what approving now would cover (days already filled drop out).
+        $take = null;
+        if ($split) {
+            $days = response_days($s, $r);
+            if ($s['status'] === 'accepted') {
+                $c = sql('SELECT r.kind, '.CONTRACT_DATES.' FROM contracts c JOIN requests r ON r.id = c.request_id WHERE c.request_id = ? AND c.worker_id = ? AND c.cancelled_at IS NULL', [$r['id'], $s['worker_id']])->fetch();
+                $cDays = $c ? ranges_days(request_ranges($c)) : $days;
+                if ($cDays !== $allDays) {
+                    $badges[] = '<span class="badge picked">Patvirtinta: '.e(days_text($cDays)).'</span>';
+                }
+            } else {
+                $take = array_values(array_intersect($days, array_keys($need)));
+                if ($days !== $allDays) {
+                    $badges[] = '<span class="badge picked">Gali dirbti: '.e(days_text($days)).'</span>';
+                }
+                if ($take && $take !== $days) {
+                    $badges[] = '<span class="badge picked">Patvirtinsite: '.e(days_text($take)).'</span>';
+                }
+            }
+        }
         if (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
             $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
         }
@@ -965,7 +1047,8 @@ function owner_panel(array $r, bool $isOpen): string
         $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
-            : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small').post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
+            : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small'))
+                .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
             .($s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
@@ -977,12 +1060,47 @@ function owner_panel(array $r, bool $isOpen): string
         ? '<div class="notice ok team-only"><p><strong>Šiuo metu paieška matoma tik jūsų komandai.</strong> Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.e(when_lt($r['public_at'])).', jei vietos dar nebus užimtos.</p>'
             .post_button('/darbas/'.(int) $r['id'].'/skelbti', 'Paskelbti visiems dabar', [], 'btn small').'</div>'
         : '';
-    $reach = $teamOnly.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
+    $reach = $teamOnly.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
         .'<p class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></p></div>';
+}
+
+// After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"
+// Shown once, right after the approval (?likusios=1), while other days are still open.
+function leftover_question(array $r, bool $isOpen): string
+{
+    if (!$isOpen || ($_GET['likusios'] ?? '') !== '1' || !request_splittable($r)) {
+        return '';
+    }
+    $need = request_needs($r);
+    $ahead = array_values(array_filter(ranges_days(request_ranges($r)), fn ($d) => $d >= today()));
+    $full = array_values(array_diff($ahead, array_keys($need)));
+    if (!$need || !$full) {
+        return '';
+    }
+    $open = days_text(array_keys($need));
+    $count = max($need);
+    $people = count(array_unique($need)) > 1 ? 'iki '.$count.' darbuotojų' : $count.' '.($count === 1 ? 'darbuotojo' : 'darbuotojų');
+    return '<div class="notice ok leftover" id="likusios"><p><strong>Ar skelbime paliekame tik '.e($open).'?</strong></p>'
+        .'<p>'.e(ucfirst(days_text($full))).' jau '.(count($full) > 1 ? 'užpildytos' : 'užpildyta').'. '.e(ucfirst($open)).' dar reikia '.e($people).'.</p>'
+        .'<p class="owner-actions">'.post_button('/darbas/'.(int) $r['id'].'/palikti', 'Taip, ieškoti toliau', [], 'btn small')
+        .post_button('/darbas/'.(int) $r['id'].'/uzdaryti', 'Ne, uždaryti paiešką', [], 'btn small ghost', 'Uždarius paiešką, darbuotojai jos nebematys, o laukiantiems kandidatams pranešime, kad vietos užpildytos.').'</p></div>';
+}
+
+function keep_open_action(int $id): never
+{
+    $u = require_user('manager');
+    check_csrf();
+    $r = find_request($id);
+    if (!$r || (int) $r['manager_id'] !== (int) $u['id']) {
+        not_found();
+    }
+    $need = request_needs($r);
+    flash($need ? 'Paieška tęsiama. Skelbime liko: '.days_text(array_keys($need)) : 'Paieška tęsiama.');
+    redirect('/darbas/'.$id.'#kandidatai');
 }
 
 // The "Nauja kandidatūra" email links here: the employer signs in if needed and lands on that candidate in the job's list.
@@ -1075,7 +1193,15 @@ function respond_action(int $id): never
     }
     if (!sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn()) {
         $note = mb_substr(input('note'), 0, 1000);
-        $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'created_at' => now()]);
+        $days = posted_days($r);
+        if (!$days) {
+            flash('Pažymėkite bent vieną dieną, kurią galite dirbti.');
+            redirect('/darbas/'.$id.'#atsiliepti');
+        }
+        $all = ranges_days(request_ranges($r));
+        $dates = request_splittable($r) ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], days_ranges($days))) : '';
+        $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
+        $some = $dates !== '' && $days !== $all;
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
         [$avg, $n] = worker_rating((int) $u['id']);
         $rating = $n ? number_format($avg, 1, ',', '')." iš 5 ($n įvert.)" : 'Įvertinimų dar nėra';
@@ -1083,8 +1209,8 @@ function respond_action(int $id): never
         send_mail($manager['email'], 'Nauja kandidatūra: '.$role.' – '.first_name($u['name']), [
             'kicker' => 'Nauja kandidatūra',
             'title' => $role,
-            'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką. Peržiūrėkite kandidato profilį ir, jei kandidatūra tinka, patvirtinkite ją.',
-            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r), 'Įvertinimas' => $rating],
+            'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką'.($some ? ' ir nurodė, kad gali dirbti tik kai kuriomis dienomis' : '').'. Peržiūrėkite kandidato profilį ir, jei kandidatūra tinka, patvirtinkite ją.',
+            'facts' => ['Kandidatas' => first_name($u['name'])] + ($some ? ['Gali dirbti' => days_text($days)] : ['Darbo laikas' => period($r)]) + ['Įvertinimas' => $rating],
             'note' => ['label' => 'Kandidato žinutė', 'text' => $note],
             'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $responseId)],
         ]);
@@ -1151,14 +1277,24 @@ function decide_response_action(int $responseId, bool $accept): never
         send_mail($worker['email'], 'Dėl jūsų kandidatūros: '.$role.' – '.$r['venue_name'], declined_mail($r, 'Šį kartą darbdavys pasirinko kitą kandidatą.'));
         redirect('/darbas/'.$r['id']);
     }
+    // A worker who picked some days (or whose other days are already taken) gets only the days still open.
+    $split = request_splittable($r);
+    $days = $split ? array_values(array_intersect(response_days($s, $r), array_keys(request_needs($r)))) : [];
+    if ($split && !$days) {
+        flash('Šio kandidato nurodytos dienos jau užpildytos.');
+        redirect('/darbas/'.$r['id'].'#kandidatai');
+    }
+    $cDates = $split ? contract_dates($r, $days) : ['start_date' => null, 'end_date' => null, 'dates' => ''];
+    $partial = $cDates['start_date'] !== null;
     sql("UPDATE responses SET status = 'accepted' WHERE id = ?", [$responseId]);
-    insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()]);
+    insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()] + ($partial ? $cDates : []));
+    $when = $partial ? days_text($days) : period($r);
     send_mail($worker['email'], 'Patvirtinta: '.$role.' – '.$r['venue_name'], [
         'kicker' => 'Kandidatūra patvirtinta',
         'title' => $role,
-        'lead' => "**{$r['venue_name']}** patvirtino jūsų kandidatūrą. Sveikiname!",
+        'lead' => "**{$r['venue_name']}** patvirtino jūsų kandidatūrą".($partial ? ' šioms dienoms: **'.$when.'** ' : '. ').'Sveikiname!',
         'facts' => [
-            'Kada' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
+            'Kada' => $when.($r['hours'] !== '' ? ", {$r['hours']}" : ''),
             'Kur' => $r['address'] ?: CITIES[$r['city']],
             'Kontaktas' => "{$u['name']}, {$u['phone']}",
         ],
@@ -1169,15 +1305,27 @@ function decide_response_action(int $responseId, bool $accept): never
         'cta' => ['Mano GANG', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
-    $accepted = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id = ? AND status = 'accepted'", [$r['id']])->fetchColumn();
-    if ($accepted >= (int) $r['people']) {
+    $contact = ' Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.';
+    $need = request_needs($r);
+    if (!$need) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);
         decline_waiting($r);
-        flash('Kandidatūra patvirtinta, visos vietos užpildytos. Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.');
-    } else {
-        flash('Kandidatūra patvirtinta. Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.');
+        flash('Kandidatūra patvirtinta, visos vietos užpildytos.'.$contact);
+        redirect('/darbas/'.$r['id']);
     }
-    redirect('/darbas/'.$r['id']);
+    if (!$split) {
+        flash('Kandidatūra patvirtinta.'.$contact);
+        redirect('/darbas/'.$r['id']);
+    }
+    // Candidates waiting only for days that are now taken hear it straight away.
+    foreach (sql("SELECT s.*, w.email FROM responses s JOIN users w ON w.id = s.worker_id WHERE s.request_id = ? AND s.status = 'sent'", [$r['id']])->fetchAll() as $w) {
+        if (!array_intersect(response_days($w, $r), array_keys($need))) {
+            sql("UPDATE responses SET status = 'declined' WHERE id = ?", [$w['id']]);
+            send_mail($w['email'], 'Dėl jūsų kandidatūros: '.$role.' – '.$r['venue_name'], declined_mail($r, 'Informuojame, kad jūsų nurodytos dienos jau užpildytos.'));
+        }
+    }
+    flash(($partial ? 'Kandidatūra patvirtinta šioms dienoms: '.$when : 'Kandidatūra patvirtinta.').$contact);
+    redirect('/darbas/'.$r['id'].'?likusios=1#likusios');
 }
 
 // Lets everyone still waiting know the place is taken.

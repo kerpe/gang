@@ -938,3 +938,18 @@ table.data td.actions form + form { margin-left: 6px; }
 /* Opened from the "Nauja kandidatūra" email: that candidate stands out in the list. */
 .responder[id], #kandidatai { scroll-margin-top: 90px; }
 .responder:target { border-color: var(--lime); box-shadow: 0 0 0 2px rgba(216,255,54,.35); }
+
+/* Applying for some of the job's days; filled days on the job page */
+.pick-days { display: grid; gap: 8px; }
+.pick-days legend { font-weight: 600; margin-bottom: 4px; }
+.pick-days .hint { margin: 0; color: var(--muted); font-size: .92rem; }
+.day-checks { display: flex; flex-wrap: wrap; gap: 8px; }
+.day-checks .choice { white-space: nowrap; }
+.day-checks .choice small { color: var(--muted); }
+.date-chips li small { color: var(--muted); }
+.date-chips li.full { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.date-chips li.full small { text-decoration: none; display: inline-block; }
+.badge.picked { color: var(--ink); }
+.leftover { margin-bottom: 14px; }
+.leftover p { margin: 0 0 8px; }
+.leftover .owner-actions { margin: 10px 0 0; }
