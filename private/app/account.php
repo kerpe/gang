@@ -314,7 +314,7 @@ function dashboard_page(): never
         .'</div></section>'.date_picker_script(), ['noindex' => true]);
 }
 
-const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, r.start_date, r.end_date, r.dates, r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
+const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, '.CONTRACT_DATES.', r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
         m.name AS manager_name, m.phone AS manager_phone, w.name AS worker_name, w.phone AS worker_phone
     FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users m ON m.id = v.manager_id JOIN users w ON w.id = c.worker_id';
 
@@ -411,9 +411,7 @@ function contract_ics(int $id): never
         not_found();
     }
     $worker = (int) $c['worker_id'] === (int) $u['id'];
-    $ranges = $c['dates'] !== '' && $c['dates'] !== null
-        ? array_map(fn ($p) => explode(':', $p), explode(',', $c['dates']))
-        : [[$c['start_date'], $c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])]];
+    $ranges = request_ranges($c);
     $text = fn (string $s) => str_replace(['\\', ';', ',', "\r", "\n"], ['\\\\', '\;', '\,', '', '\n'], $s);
     $role = ROLES[$c['role']] ?? $c['role'];
     $place = full_address($c);

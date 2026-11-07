@@ -70,7 +70,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=53">
+<link rel="stylesheet" href="/style.css?v=54">
 $head
 </head>
 <body$bodyClass>
@@ -219,7 +219,12 @@ function request_card(array $r, string $extra = '', bool $goodTag = true): strin
         $parts = pay_parts($r['pay']);
         $pay = $parts ? '<p class="card-pay"><strong>'.e($parts[0]).'</strong> <span>'.e($parts[1]).'</span></p>' : '<p class="card-pay text"><strong>'.e($r['pay']).'</strong></p>';
     }
+    $when = open_period($r);
     $first = !empty($r['dates']) ? explode(':', explode(',', $r['dates'])[0])[0] : $r['start_date'];
+    if ($when !== period($r)) {
+        // Some days are already taken: the card starts from the first day still open.
+        $first = array_key_first(request_needs($r)) ?? $first;
+    }
     $soon = $r['kind'] !== 'nuolat' ? starts_in($first) : '';
     $cal = '<span class="cal k-'.e($r['kind']).'" aria-hidden="true"><b>'.MONTHS_SHORT[(int) substr($first, 5, 2)].'</b><span>'.(int) substr($first, 8, 2).'</span></span>';
     return '<div class="card job-card"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
@@ -227,7 +232,7 @@ function request_card(array $r, string $extra = '', bool $goodTag = true): strin
         .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p></div></div>'
         .$pay
         .'<p class="tags">'.kind_tag($r['kind']).$good.'</p>'
-        .'<div class="card-when">'.$cal.'<div><strong>'.e(period($r)).'</strong>'
+        .'<div class="card-when">'.$cal.'<div><strong>'.e($when).'</strong>'
         .($r['hours'] !== '' ? '<span class="meta">'.e($r['hours']).'</span>' : '')
         .($soon !== '' ? '<span class="starts">'.e($soon).'</span>' : '').'</div></div></a>'.$extra.'</div>';
 }
