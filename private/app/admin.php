@@ -98,7 +98,7 @@ function admin_page(): never
         'stats' => ['Rodikliai', null],
         'users' => ['Nariai', $count('SELECT COUNT(*) FROM users')],
         'venues' => ['Darbovietės', $count('SELECT COUNT(*) FROM venues')],
-        'requests' => ['Paieškos', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
+        'requests' => ['Darbo skelbimai', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
         'reviews' => ['Įvertinimai', $count('SELECT COUNT(*) FROM reviews')],
         'waitlist' => ['Laukiantieji', $count('SELECT COUNT(*) FROM waitlist WHERE invited_at IS NULL')],
         'settings' => ['Nustatymai', null],
@@ -302,7 +302,7 @@ function admin_stats(): string
         ['Darbuotojai', $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"), $count("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND created_at > ?", [$week]), admin_spark('users', "kind = 'worker'")],
         ['Laisvi šiandien', $count('SELECT COUNT(DISTINCT user_id) FROM availability WHERE start_date <= ? AND end_date >= ?', [today(), today()]), null, ''],
         ['Darbovietės', $count('SELECT COUNT(*) FROM venues'), $count('SELECT COUNT(*) FROM venues WHERE created_at > ?', [$week]), admin_spark('venues')],
-        ['Paieškos (30 d.)', $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$week]), admin_spark('requests')],
+        ['Darbo skelbimai (30 d.)', $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$week]), admin_spark('requests')],
         ['Kontraktai (30 d.)', $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$week]), admin_spark('contracts')],
         ['Įvertinimai', $count('SELECT COUNT(*) FROM reviews'), $count('SELECT COUNT(*) FROM reviews WHERE created_at > ?', [$week]), admin_spark('reviews')],
     ];
