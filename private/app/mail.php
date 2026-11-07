@@ -14,16 +14,27 @@
 //   cta      [label, url] the main button
 //   after    paragraph(s) after the button
 //   footnote small print: why the email was sent
-// Paragraph text may use **bold** and [label](url).
+// Paragraph text may use **bold** and [label](url) (see MAIL_LINK below).
 
 function mail_paras(string|array|null $p): array
 {
     return array_values(array_filter((array) $p, fn ($s) => trim((string) $s) !== ''));
 }
 
+// [label](url) links: https/http and mailto. Names, venue names and other member text end up in
+// email paragraphs too, so only links to GANG itself (or a mailto to gang.lt) become clickable;
+// any other link stays visible text "label (url)" and cannot hide where it leads.
+const MAIL_LINK = '/\[([^\]]+)\]\(((?:https?:|mailto:)[^)\s]+)\)/u';
+
+function mail_link_trusted(string $url): bool
+{
+    $home = rtrim(config()['public_url'], '/');
+    return $url === $home || str_starts_with($url, $home.'/') || (bool) preg_match('/^mailto:[^@\s]+@gang\.lt$/i', $url);
+}
+
 function mail_inline_text(string $s): string
 {
-    $s = preg_replace('/\[([^\]]+)\]\((https?:[^)\s]+)\)/u', '$1 ($2)', $s);
+    $s = preg_replace_callback(MAIL_LINK, fn ($m) => $m[1].' ('.preg_replace('/^mailto:/i', '', $m[2]).')', $s);
     return str_replace('**', '', $s);
 }
 
@@ -31,7 +42,13 @@ function mail_inline_html(string $s, string $link = '#f3f0e8'): string
 {
     $s = htmlspecialchars($s, ENT_QUOTES, 'UTF-8');
     $s = preg_replace('/\*\*(.+?)\*\*/u', '<strong style="color:#ffffff;font-weight:700">$1</strong>', $s);
-    $s = preg_replace('/\[([^\]]+)\]\((https?:[^)\s]+)\)/u', '<a href="$2" style="color:'.$link.';text-decoration:underline">$1</a>', $s);
+    $s = preg_replace_callback(MAIL_LINK, function ($m) use ($link) {
+        $url = htmlspecialchars_decode($m[2], ENT_QUOTES);
+        if (!mail_link_trusted($url)) {
+            return $m[1].' ('.$m[2].')';
+        }
+        return '<a href="'.$m[2].'" style="color:'.$link.';text-decoration:underline">'.$m[1].'</a>';
+    }, $s);
     return nl2br($s);
 }
 

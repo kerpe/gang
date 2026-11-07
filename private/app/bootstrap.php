@@ -242,6 +242,8 @@ function start_session(): void
     if (session_status() !== PHP_SESSION_ACTIVE) {
         session_set_cookie_params(['lifetime' => 60 * 60 * 24 * 60, 'httponly' => true, 'samesite' => 'Lax', 'secure' => str_starts_with(config()['public_url'], 'https://')]);
         ini_set('session.gc_maxlifetime', (string) (60 * 60 * 24 * 60));
+        // Never adopt a session id the server did not create (session fixation).
+        ini_set('session.use_strict_mode', '1');
         session_start();
     }
 }

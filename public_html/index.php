@@ -6,6 +6,10 @@ ini_set('display_errors', '0');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: DENY');
 header('Referrer-Policy: strict-origin-when-cross-origin');
+// No plugins, no <base> tricks, no framing, forms post only to GANG itself. (Inline scripts and
+// styles are part of the pages, so script-src is not restricted here.)
+header("Content-Security-Policy: base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
+header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
 
 foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team', 'legal', 'messages'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";

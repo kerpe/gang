@@ -91,6 +91,10 @@ $tabbar
 // A field's error disappears as soon as the field is changed.
 document.addEventListener('input', clearErr); document.addEventListener('change', clearErr);
 function clearErr(e) { var box = e.target.closest && (e.target.closest('fieldset') || e.target.closest('label')); if (box && box.closest('form.form')) box.querySelectorAll('.err').forEach(function (x) { x.remove(); }); }
+// A second tap while a form is still being sent (slow mobile network) would post it twice,
+// e.g. two identical job requests. Forms that handle sending themselves (chat) prevent the default and are skipped.
+document.addEventListener('submit', function (e) { var f = e.target; if (e.defaultPrevented || f.method !== 'post') return; if (f.dataset.sending) { e.preventDefault(); return; } f.dataset.sending = '1'; setTimeout(function () { delete f.dataset.sending; }, 8000); });
+window.addEventListener('pageshow', function () { document.querySelectorAll('form[data-sending]').forEach(function (f) { delete f.dataset.sending; }); });
 </script>
 </body>
 </html>
