@@ -213,10 +213,11 @@ function request_card_short(array $r): string
         .'<p class="card-when-short">'.e(KINDS[$r['kind']] ?? $r['kind']).' · '.e($when).'</p></a></div>';
 }
 
-function request_card(array $r, string $extra = ''): string
+// $goodTag: false on cards of jobs the viewer already posted or applied for.
+function request_card(array $r, string $extra = '', bool $goodTag = true): string
 {
     $people = (int) $r['people'] > 1 ? ' · reikia darbuotojų: '.(int) $r['people'] : '';
-    $good = good_pay($r) ? '<span class="tag good">Geras atlygis</span>' : '';
+    $good = $goodTag && good_pay($r) ? '<span class="tag good">Geras atlygis</span>' : '';
     $event = !empty($r['event_title']) ? '<p class="meta event-name">Renginys: '.e($r['event_title']).'</p>' : '';
     $logo = venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo'] ?? null], 'card-logo');
     $pay = '';

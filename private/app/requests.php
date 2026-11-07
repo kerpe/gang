@@ -781,10 +781,13 @@ function request_page(int $id): never
     // Dates as separate chips; pay split into the amount and its unit so the amount stands out.
     $dates = !empty($r['dates']) ? array_map(fn ($p) => span_lt(...explode(':', $p)), explode(',', $r['dates'])) : [period($r)];
     $chips = '<ul class="date-chips">'.implode('', array_map(fn ($d) => '<li>'.e($d).'</li>', $dates)).'</ul>';
+    // "Geras atlygis" helps someone still choosing; the owner and a worker who already applied or got the job don't need it.
+    $mineStatus = $u ? sql('SELECT status FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn() : false;
+    $showGood = !$owner && !in_array($mineStatus, ['sent', 'accepted'], true) && good_pay($r);
     $payBox = '';
     if ($r['pay'] !== '') {
         $payBox = preg_match('/^([\d,]+)\s*€/u', $r['pay'], $m)
-            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).' €</strong><span class="unit">už valandą</span>'.(good_pay($r) ? '<span class="tag good">Geras atlygis</span>' : '').'</div>'
+            ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).' €</strong><span class="unit">už valandą</span>'.($showGood ? '<span class="tag good">Geras atlygis</span>' : '').'</div>'
             : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
     }
     $facts = '<dl class="job-facts">'
