@@ -176,7 +176,7 @@ $list
 <section class="wrap home-block">
   <div class="section-head"><h2>Kaip veikia</h2></div>
   <ol class="steps">
-    <li><strong>Darbdavys paskelbia paiešką</strong>Pavyzdžiui, „virėjas rytoj, 10–22 val.“ arba „padavėjai vasaros sezonui“.</li>
+    <li><strong>Darbdavys paskelbia paiešką</strong>Pavyzdžiui, „virėjas rytoj, <span class="nw">10–22 val.</span>“ arba „padavėjai vasaros sezonui“.</li>
     <li><strong>Tinkami darbuotojai gauna pranešimą</strong>ir pateikia kandidatūrą vienu paspaudimu.</li>
     <li><strong>Darbdavys patvirtina kandidatą</strong>Sudaromas GANG kontraktas: abi šalys gauna viena kitos kontaktus.</li>
     <li><strong>Abi šalys įvertina viena kitą</strong>Įvertinimai paskelbiami tik tada, kai įvertina abi šalys arba praėjus 7 dienoms.</li>

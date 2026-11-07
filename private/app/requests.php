@@ -712,7 +712,7 @@ function request_preview_script(): string
   function showGuide() {
     var role = f.querySelector('select[name=role]').value, city = f.dataset['c' + val('venue_id')] || '', g = guide[role] && guide[role][city];
     if (!g) { guideOut.hidden = true; return; }
-    var text = (g[2] ? g[4] + ' ' + g[3] + ' GANG paieškose' : g[3].charAt(0).toUpperCase() + g[3].slice(1)) + ' dažniausiai siūloma ' + money(g[0]) + '–' + money(g[1]) + ' €/val. į rankas.';
+    var text = (g[2] ? g[4] + ' ' + g[3] + ' GANG paieškose' : g[3].charAt(0).toUpperCase() + g[3].slice(1)) + ' dažniausiai siūloma ' + money(g[0]) + '\u2060–\u2060' + money(g[1]) + '\u00a0€/val. į rankas.';
     var p = payIn.value.trim().replace(',', '.');
     if (payOk(payIn.value.trim())) {
       if (+p < g[0]) text += ' Jūsų siūlomas atlygis mažesnis nei įprasta, todėl darbuotoją rasti gali būti sunkiau.';
