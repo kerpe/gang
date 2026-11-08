@@ -935,7 +935,9 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         return '';
     }
     $mine = sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetch();
-    if ($mine) {
+    // A withdrawn application can be sent again while the request is open.
+    $again = $mine && $mine['status'] === 'withdrawn' && $isOpen;
+    if ($mine && !$again) {
         return match ($mine['status']) {
             'accepted' => accepted_panel($r, $u),
             'declined' => '<div class="panel"><p>Dėkojame už susidomėjimą. Šį kartą darbdavys pasirinko kitą kandidatą. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
@@ -961,7 +963,8 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $invited = sql('SELECT 1 FROM invites WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetchColumn()
         ? '<p class="notice ok invite-note">Darbdavys jus pakvietė asmeniškai, nes esate jo komandos narys.</p>'
         : '';
-    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$invited.$below
+    $again = $again ? '<p class="notice tip">Kandidatūrą buvote atšaukę. Jei vėl galite dirbti, pateikite ją iš naujo.</p>' : '';
+    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .days_fieldset($r)
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
@@ -1220,7 +1223,8 @@ function respond_action(int $id): never
         flash('Prieš teikdami kandidatūrą, užpildykite profilį.');
         redirect('/profilis');
     }
-    if (!sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetchColumn()) {
+    $previous = sql('SELECT id, status FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetch();
+    if (!$previous || $previous['status'] === 'withdrawn') {
         $note = mb_substr(input('note'), 0, 1000);
         $days = posted_days($r);
         if (!$days) {
@@ -1229,11 +1233,20 @@ function respond_action(int $id): never
         }
         $all = ranges_days(request_ranges($r));
         $dates = request_splittable($r) ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], days_ranges($days))) : '';
-        try {
-            $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
-        } catch (PDOException) {
-            // Two tabs sent the same application at once: the unique index kept one.
-            redirect('/darbas/'.$id.'#atsiliepti');
+        if ($previous) {
+            // Applying again after withdrawing: the same row comes back (one row per worker and request).
+            $again = sql("UPDATE responses SET status = 'sent', note = ?, dates = ?, created_at = ? WHERE id = ? AND status = 'withdrawn'", [$note, $dates, now(), $previous['id']]);
+            if (!$again->rowCount()) {
+                redirect('/darbas/'.$id.'#atsiliepti');
+            }
+            $responseId = (int) $previous['id'];
+        } else {
+            try {
+                $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
+            } catch (PDOException) {
+                // Two tabs sent the same application at once: the unique index kept one.
+                redirect('/darbas/'.$id.'#atsiliepti');
+            }
         }
         $some = $dates !== '' && $days !== $all;
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
