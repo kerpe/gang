@@ -539,7 +539,15 @@ function manager_dashboard(array $u): string
         if ($n) {
             $waiting[] = [$r, $n];
         }
-        $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : '<p class="meta wait">Kandidatūrų dar negauta</p>';
+        // Confirmed workers stay on the card: a request with some days (or places) still open keeps showing here.
+        $hired = sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.cancelled_at IS NULL ORDER BY c.created_at', [$r['id']])->fetchAll();
+        $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : ($hired ? '' : '<p class="meta wait">Kandidatūrų dar negauta</p>');
+        foreach ($hired as $c) {
+            $label .= '<p class="meta done">Patvirtinta: '.e(first_name($c['worker_name'])).', '.e(period($c)).'</p>';
+        }
+        if ($hired) {
+            $label .= '<p class="meta wait">Dar ieškome: '.e(open_period($r)).'</p>';
+        }
         $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
     }
     $openIds = array_column($open, 'id') ?: [0];
