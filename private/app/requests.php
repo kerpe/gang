@@ -1485,9 +1485,13 @@ function respond_action(int $id): never
     redirect('/darbas/'.$id);
 }
 
-// Before the employer decides, the worker can add a few messages to the application
+// Before the employer decides, the worker can add messages to the application
 // ("Pamiršau paminėti, kad…"). They show under the application and later open the chat.
-const RESPONSE_NOTES_MAX = 3;
+// No counter is shown: a message written soon after the previous one joins it, so a few quick
+// lines read as one message, and a quiet cap stops flooding. Emails to the employer stay limited.
+const RESPONSE_NOTES_MAX = 10;
+// A message written within this many minutes of the previous one is appended to it.
+const RESPONSE_NOTE_JOIN_MINUTES = 30;
 const RESPONSE_NOTE_MAX = 1000;
 // One email to the employer per application in this many hours; later additions wait on the job page.
 const RESPONSE_NOTE_MAIL_HOURS = 12;
@@ -1516,13 +1520,12 @@ function application_notes_html(array $s): string
 function response_note_form(array $r, array $mine): string
 {
     $sent = application_notes_html($mine);
-    $left = response_notes_left((int) $mine['id']);
     $html = '<div class="app-notes" id="papildyti">'.($sent !== '' ? '<h3>Jūsų žinutės darbdaviui</h3>'.$sent : '');
-    if ($left <= 0) {
-        return $html.'<p class="meta">Kandidatūrą papildėte '.RESPONSE_NOTES_MAX.' kartus. Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.</p></div>';
+    if (response_notes_left((int) $mine['id']) <= 0) {
+        return $html.'<p class="meta">Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.</p></div>';
     }
     return $html.'<form method="post" action="/darbas/'.(int) $r['id'].'/papildyti" class="form">'.csrf_field()
-        .'<label>Papildoma žinutė darbdaviui <small>(galite parašyti dar '.$left.' '.($left === 1 ? 'kartą' : 'kartus').')</small>'
+        .'<label>Papildoma žinutė darbdaviui'
         .'<textarea name="body" rows="3" maxlength="'.RESPONSE_NOTE_MAX.'" required placeholder="Pavyzdžiui: pamiršau paminėti, kad dvejus metus dirbau virėju restorane „…“."></textarea></label>'
         .'<button class="btn small">Siųsti žinutę</button></form></div>';
 }
@@ -1548,14 +1551,22 @@ function response_note_action(int $id): never
         flash('Žinutė per ilga: daugiausia '.RESPONSE_NOTE_MAX.' simbolių.');
         redirect('/darbas/'.$id.'#papildyti');
     }
-    if (response_notes_left((int) $s['id']) <= 0) {
-        flash('Kandidatūrą jau papildėte '.RESPONSE_NOTES_MAX.' kartus.');
+    // Written soon after the previous message: it joins that message instead of becoming a new one.
+    $last = sql('SELECT id, body, created_at FROM response_notes WHERE response_id = ? ORDER BY id DESC LIMIT 1', [$s['id']])->fetch();
+    $join = $last && strtotime($last['created_at']) > strtotime('-'.RESPONSE_NOTE_JOIN_MINUTES.' minutes')
+        && mb_strlen($last['body']) + mb_strlen($body) + 1 <= RESPONSE_NOTE_MAX * 2;
+    if (!$join && response_notes_left((int) $s['id']) <= 0) {
+        flash('Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.');
         redirect('/darbas/'.$id.'#papildyti');
     }
     // An earlier addition already emailed in the last hours: this one waits on the job page.
     $mailed = (bool) sql('SELECT 1 FROM response_notes WHERE response_id = ? AND created_at > ?',
         [$s['id'], date('Y-m-d H:i:s', strtotime('-'.RESPONSE_NOTE_MAIL_HOURS.' hours'))])->fetchColumn();
-    insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
+    if ($join) {
+        sql('UPDATE response_notes SET body = ? WHERE id = ?', [$last['body']."\n".$body, $last['id']]);
+    } else {
+        insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
+    }
     $email = $mailed ? false : sql('SELECT email FROM users WHERE id = ? AND blocked = 0', [$r['manager_id']])->fetchColumn();
     if ($email) {
         $role = ROLES[$r['role']] ?? '';
