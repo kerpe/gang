@@ -59,14 +59,14 @@ function profile_page(): never
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
         $photo = $u['photo'];
-        if ($worker && ($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if (($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
             $stored = store_photo($_FILES['photo']);
             if (str_starts_with($stored, '!')) {
                 $errors['photo'] = substr($stored, 1);
             } else {
                 $photo = $stored;
             }
-        } elseif ($worker && isset($_POST['remove_photo'])) {
+        } elseif (isset($_POST['remove_photo'])) {
             $photo = null;
         }
         if ($errors && $photo !== $u['photo']) {
@@ -97,15 +97,18 @@ function profile_page(): never
         }
     }
     $title = profile_complete($u) ? 'Mano profilis' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
-    $workerFields = $photoField = '';
+    $workerFields = '';
+    $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
+    $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
+        .'<div class="photo-row">'.avatar($u, 'large').'<div>'
+        .'<p class="hint">'.($worker
+            ? 'Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje.'
+            : 'Jei norite, įkelkite savo nuotrauką arba avatarą. Jis bus rodomas pokalbiuose su darbuotojais.')
+        .' Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
+        .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
+        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'prisijungę darbdaviai' : 'jūsų kandidatai ir komandos nariai').'.</p>'
+        .$remove.err($errors, 'photo').'</div></div></fieldset>';
     if ($worker) {
-        $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
-        $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
-            .'<div class="photo-row">'.avatar($u, 'large').'<div>'
-            .'<p class="hint">Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje. Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
-            .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
-            .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik prisijungę darbdaviai.</p>'
-            .$remove.err($errors, 'photo').'</div></div></fieldset>';
         $roleRows = '';
         foreach (ROLES as $role => $label) {
             $roleRows .= '<div class="role-xp"><label class="choice"><input type="checkbox" name="roles[]" value="'.$role.'"'.(in_array($role, $v['roles'], true) ? ' checked' : '').'> '.e($label).'</label>'
@@ -138,7 +141,7 @@ function profile_page(): never
         .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
         .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
         .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
-        .'</section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
+        .'</section>'.phone_check_script().photo_resize_script(), ['noindex' => true]);
 }
 
 // Shows the chosen photo in the circle right away and lets the worker zoom and drag it into place.
@@ -309,7 +312,7 @@ function dashboard_page(): never
 }
 
 const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, '.CONTRACT_DATES.', r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
-        m.name AS manager_name, m.phone AS manager_phone, w.name AS worker_name, w.phone AS worker_phone
+        m.name AS manager_name, m.phone AS manager_phone, m.photo AS manager_photo, w.name AS worker_name, w.phone AS worker_phone, w.photo AS worker_photo
     FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users m ON m.id = v.manager_id JOIN users w ON w.id = c.worker_id';
 
 // Upcoming work first (soonest at the top), then past contracts (latest first).

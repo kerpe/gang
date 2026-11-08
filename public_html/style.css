@@ -973,6 +973,9 @@ table.data td.actions form + form { margin-left: 6px; }
 .chat-head div { display: grid; flex: 1; min-width: 0; }
 .chat-head strong { font-size: 1rem; }
 .chat-head .meta { font-size: .8rem; }
+.chat-who { position: relative; flex-shrink: 0; display: flex; }
+.chat-who .chat-dot { position: absolute; right: -1px; bottom: -1px; border: 2px solid var(--surface); display: none; }
+.chat.here .chat-who .chat-dot { display: block; }
 .chat-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); opacity: .5; flex-shrink: 0; transition: background .3s, opacity .3s; }
 .chat.here .chat-dot { background: var(--lime); opacity: 1; box-shadow: 0 0 0 0 rgba(216,255,54,.6); animation: chat-pulse 2.4s infinite; }
 .chat-presence { display: none; color: var(--lime); }

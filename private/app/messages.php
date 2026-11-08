@@ -130,7 +130,7 @@ function application_chat(int $responseId): ?array
 {
     $c = sql("SELECT s.id AS response_id, s.status AS response_status, s.request_id, s.worker_id, s.created_at,
             r.role, r.kind, r.start_date, r.end_date, COALESCE(NULLIF(s.dates, ''), r.dates) AS dates, r.hours, r.status AS request_status,
-            v.name AS venue_name, v.address, v.city, v.manager_id, m.name AS manager_name, w.name AS worker_name
+            v.name AS venue_name, v.address, v.city, v.manager_id, m.name AS manager_name, m.photo AS manager_photo, w.name AS worker_name, w.photo AS worker_photo
         FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id JOIN users m ON m.id = v.manager_id JOIN users w ON w.id = s.worker_id
         WHERE s.id = ?", [$responseId])->fetch();
     if (!$c) {
@@ -416,7 +416,8 @@ function chat_box(array $c, array $u, bool $hidden = false): string
             .'<button class="chat-send" aria-label="Siųsti"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" fill="currentColor"/></svg></button></form>';
     $here = chat_here($c, (int) $u['id']);
     return '<section class="chat'.($here ? ' here' : '').'" id="pokalbis-'.$id.'" data-chat="'.$id.'"'.($hidden ? ' hidden' : '').' data-state="'.e(chat_state($c, (int) $u['id'], $messages)).'">'
-        .'<header class="chat-head"><span class="chat-dot" aria-hidden="true"></span><div><strong>'.e(first_name($other)).'</strong><span class="meta">'.e($sub)
+        .'<header class="chat-head"><span class="chat-who">'.avatar(['id' => chat_other_id($c, $side), 'name' => $other, 'photo' => $c[$side === 'worker' ? 'manager_photo' : 'worker_photo'] ?? null], 'small')
+        .'<span class="chat-dot" aria-hidden="true"></span></span><div><strong>'.e(first_name($other)).'</strong><span class="meta">'.e($sub)
         .'<span class="chat-presence"> · Dabar pokalbyje</span></span></div>'
         .'<span class="chat-label">Pokalbis per GANG</span></header>'
         .'<div class="chat-list" aria-live="polite">'.($messages || chat_notes($c) ? chat_list_html($c, (int) $u['id'], $messages) : $empty).'</div>'
