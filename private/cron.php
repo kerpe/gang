@@ -41,7 +41,7 @@ foreach ($due as $c) {
 // Team first: requests whose team-only window has passed go to every matching worker.
 release_team_requests();
 
-// Arrival confirmation for tomorrow's shifts (10:00 reminder, 16:00 warning to the employer).
+// Arrival confirmation for tomorrow's shifts (10:00 reminder, 18:00 heads-up to the employer).
 run_shift_checks();
 
 // Bulk email the pages did not finish (normally empty).

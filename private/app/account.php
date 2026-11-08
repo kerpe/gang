@@ -545,7 +545,7 @@ function manager_dashboard(array $u): string
     $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
     $candidates = array_sum(array_column($waiting, 1));
     $next = match (true) {
-        (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Parašykite darbuotojui arba raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
+        (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas dar nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Parašykite darbuotojui, o prireikus raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
         (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. Pirmoji paieška: '.(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
         (bool) $toReview => ['', 'Įvertinkite darbuotoją', $toReview[0]['worker_name'].' · '.(ROLES[$toReview[0]['role']] ?? '').'. Įvertinimas padeda kitiems darbdaviams.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         !$open => ['', 'Aktyvių paieškų nėra', 'Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką.', '/poreikis/naujas', '+ Paskelbti paiešką'],
