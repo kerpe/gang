@@ -93,10 +93,16 @@ function login_page(): never
             } else {
                 $code = (string) random_int(100000, 999999);
                 insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now(), 'ip_hash' => $ipHash]);
+                // Someone used "Registruotis" with an address that already has an account. The page they
+                // see next is the same as for a new address (so nobody can test which emails are members);
+                // only the email itself, which reaches the owner alone, says the account already exists.
+                $member = $kind !== '' && sql('SELECT 1 FROM users WHERE email = ?', [$email])->fetchColumn();
                 send_mail($email, "GANG prisijungimo kodas: $code", [
                     'kicker' => 'Prisijungimas',
-                    'title' => 'Jūsų prisijungimo kodas',
-                    'lead' => 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
+                    'title' => $member ? 'Jūs jau turite GANG paskyrą' : 'Jūsų prisijungimo kodas',
+                    'lead' => $member
+                        ? 'šiuo el. pašto adresu paskyra jau užregistruota, todėl naujos kurti nereikia. Norėdami prisijungti, įveskite šį kodą:'
+                        : 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
                     'code' => $code,
                     'after' => 'Kodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.',
                 ]);
@@ -148,8 +154,14 @@ function login_code_page(): never
             if ($user && $user['blocked']) {
                 $error = 'Ši paskyra užblokuota. Jei manote, kad tai klaida, susisiekite su mumis.';
             } else {
+                $kind = $_SESSION['signup_kind'] ?? '';
+                if ($user && $kind !== '') {
+                    // Came through "Registruotis" but already a member: sign in and say so.
+                    flash($user['kind'] === $kind
+                        ? 'Šiuo el. paštu jau turite GANG paskyrą, todėl prisijungėte prie jos.'
+                        : 'Šiuo el. paštu jau turite '.($user['kind'] === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrą, todėl prisijungėte prie jos. Viena paskyra turi vieną vaidmenį: '.($kind === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrai registruokitės kitu el. pašto adresu.');
+                }
                 if (!$user) {
-                    $kind = $_SESSION['signup_kind'] ?? '';
                     if ($kind === '') {
                         $_SESSION['verified_email'] = $email;
                         redirect('/prisijungti/kas');
