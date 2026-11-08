@@ -959,9 +959,10 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
             'cancelled' => '<div class="panel"><p>Šis GANG kontraktas atšauktas. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
             default => '<div class="panel"><h2>Jūsų kandidatūra išsiųsta</h2>'
                 .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
-                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Kai darbdavys patvirtins jūsų kandidatūrą, šis puslapis atsinaujins ir čia pat galėsite susirašinėti GANG pokalbyje. Pranešimą gausite ir el. paštu.</p>'
-                .($isOpen ? response_note_form($r, $mine) : '')
+                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Kol jis priims sprendimą, galite susirašinėti GANG pokalbyje žemiau. Apie sprendimą pranešime el. paštu.</p>'
                 .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atsiimti kandidatūrą', [], 'btn small ghost', 'Ar tikrai norite atsiimti kandidatūrą? Darbdavys jos nebematys.').'</div>'
+                // Talking with the employer before the decision: the same chat goes on after the approval.
+                .($isOpen ? chat_box(application_chat((int) $mine['id']), $u).chat_script() : '')
                 .application_watch($r, $mine),
         };
     }
@@ -1036,8 +1037,8 @@ function application_watch(array $r, array $mine): string
 (function () {
   var state = $state, done = false;
   function draft() {
-    var t = document.querySelector('#papildyti textarea');
-    return t ? t.value.trim() : '';
+    var t = document.querySelector('[data-chat] .chat-input');
+    return t ? t.textContent.trim() : '';
   }
   function check() {
     if (done || document.hidden) return;
@@ -1200,13 +1201,24 @@ function owner_panel(array $r, bool $isOpen): string
             : ($s['recheck_at'] ? '' : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small')))
                 .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
         $chat = '';
+        $waiting = false;
         if ($c) {
             $chat = chat_box($c, current_user());
+            $chats = true;
+        } elseif ($s['status'] === 'sent' && $isOpen && current_user()) {
+            // Before deciding, the employer can talk with the candidate. Until someone writes, the chat
+            // waits behind "Parašyti" and the candidate's note stays on the card.
+            $a = application_chat((int) $s['id']);
+            $waiting = !sql('SELECT 1 FROM messages WHERE contract_id = ? LIMIT 1', [$a['id']])->fetchColumn();
+            if ($waiting) {
+                $buttons .= '<button type="button" class="btn small ghost" data-chat-open="'.(int) $a['id'].'">Parašyti</button>';
+            }
+            $chat = chat_box($a, current_user(), $waiting);
             $chats = true;
         }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
-            .($chat === '' ? application_notes_html($s) : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
+            .($chat === '' || $waiting ? application_notes_html($s) : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
@@ -1621,21 +1633,8 @@ function application_notes_html(array $s): string
     return $html;
 }
 
-// Under the worker's pending application: what they wrote and a form to add a message.
-function response_note_form(array $r, array $mine): string
-{
-    $sent = application_notes_html($mine);
-    $html = '<div class="app-notes" id="papildyti">'.($sent !== '' ? '<h3>Jūsų žinutės darbdaviui</h3>'.$sent : '');
-    if (response_notes_left((int) $mine['id']) <= 0) {
-        return $html.'<p class="meta">Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.</p></div>';
-    }
-    return $html.'<form method="post" action="/darbas/'.(int) $r['id'].'/papildyti" class="form">'.csrf_field()
-        .'<label>Papildoma žinutė darbdaviui'
-        .'<textarea name="body" rows="3" maxlength="'.RESPONSE_NOTE_MAX.'" required placeholder="Pavyzdžiui: pamiršau paminėti, kad dvejus metus dirbau virėju restorane „…“."></textarea></label>'
-        .'<button class="btn small">Siųsti žinutę</button></form></div>';
-}
-
 // /darbas/{id}/papildyti: the worker adds a message to an application still waiting for the employer.
+// Since 2026-11-08 the two talk in the application's chat instead; this stays for pages opened before that.
 function response_note_action(int $id): never
 {
     $u = require_user('worker');
@@ -1763,7 +1762,8 @@ function decide_response_action(int $responseId, bool $accept): never
     $cDates = $split ? contract_dates($r, $days) : ['start_date' => null, 'end_date' => null, 'dates' => ''];
     $partial = $cDates['start_date'] !== null;
     sql("UPDATE responses SET status = 'accepted' WHERE id = ?", [$responseId]);
-    insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()] + ($partial ? $cDates : []));
+    $contractId = insert('contracts', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'venue_id' => $r['venue_id'], 'created_at' => now()] + ($partial ? $cDates : []));
+    application_chat_to_contract($responseId, $contractId);
     $when = $partial ? days_text($days) : period($r);
     send_mail($worker['email'], 'Patvirtinta: '.$role.' – '.$r['venue_name'], [
         'kicker' => 'Kandidatūra patvirtinta',
