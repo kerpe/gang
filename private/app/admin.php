@@ -336,6 +336,7 @@ function admin_delete_user(int $id): bool
         admin_delete_venue((int) $venueId, false);
     }
     admin_delete_contracts(sql('SELECT id FROM contracts WHERE worker_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN));
+    sql('DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE worker_id = ?)', [$id]);
     foreach (['availability' => 'user_id', 'worker_roles' => 'user_id', 'responses' => 'worker_id', 'invites' => 'worker_id'] as $table => $col) {
         sql("DELETE FROM $table WHERE $col = ?", [$id]);
     }
@@ -378,6 +379,7 @@ function admin_delete_requests(array $ids, bool $own = true): bool
     }
     $own && db()->beginTransaction();
     admin_delete_contracts(sql("SELECT id FROM contracts WHERE request_id IN ($in)")->fetchAll(PDO::FETCH_COLUMN));
+    sql("DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE request_id IN ($in))");
     sql("DELETE FROM responses WHERE request_id IN ($in)");
     sql("DELETE FROM invites WHERE request_id IN ($in)");
     sql("DELETE FROM requests WHERE id IN ($in)");

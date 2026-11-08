@@ -154,6 +154,11 @@ function migrate(PDO $db): void
             sender_id INT NOT NULL,
             body TEXT NOT NULL,
             created_at DATETIME NOT NULL",
+        // Version 21: messages a worker adds to an application while the employer has not decided yet.
+        'response_notes' => "id $id,
+            response_id INT NOT NULL,
+            body TEXT NOT NULL,
+            created_at DATETIME NOT NULL",
         // Version 18: per contract and member – the last message seen, when the chat was open, the last email about it.
         'chat_reads' => "id $id,
             contract_id INT NOT NULL,
@@ -300,6 +305,7 @@ function migrate(PDO $db): void
         'job_mails_worker' => 'job_mails (worker_id, request_id)',
         'messages_contract' => 'messages (contract_id, id)',
         'messages_sender' => 'messages (sender_id, created_at)',
+        'response_notes_response' => 'response_notes (response_id, id)',
         'chat_reads_contract' => 'chat_reads (contract_id, user_id)',
         'mail_queue_pending' => 'mail_queue (sent_at, priority, id)',
     ];

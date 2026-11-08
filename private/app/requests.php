@@ -951,6 +951,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
             default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2>'
                 .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
                 .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus ir galėsite susirašinėti GANG pokalbyje.</p>'
+                .($isOpen ? response_note_form($r, $mine) : '')
                 .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Ar tikrai norite atšaukti atsiliepimą?').'</div>',
         };
     }
@@ -1096,7 +1097,7 @@ function owner_panel(array $r, bool $isOpen): string
         }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
-            .($s['note'] && $chat === '' ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
+            .($chat === '' ? application_notes_html($s) : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
@@ -1447,6 +1448,7 @@ function respond_action(int $id): never
                 redirect('/darbas/'.$id.'#atsiliepti');
             }
             $responseId = (int) $previous['id'];
+            sql('DELETE FROM response_notes WHERE response_id = ?', [$responseId]);
         } else {
             try {
                 $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
@@ -1471,6 +1473,94 @@ function respond_action(int $id): never
     }
     flash('Kandidatūra pateikta. Darbdavys gaus pranešimą el. paštu.');
     redirect('/darbas/'.$id);
+}
+
+// Before the employer decides, the worker can add a few messages to the application
+// ("Pamiršau paminėti, kad…"). They show under the application and later open the chat.
+const RESPONSE_NOTES_MAX = 3;
+const RESPONSE_NOTE_MAX = 1000;
+// One email to the employer per application in this many hours; later additions wait on the job page.
+const RESPONSE_NOTE_MAIL_HOURS = 12;
+
+function response_notes(int $responseId): array
+{
+    return sql('SELECT * FROM response_notes WHERE response_id = ? ORDER BY id', [$responseId])->fetchAll();
+}
+
+function response_notes_left(int $responseId): int
+{
+    return max(0, RESPONSE_NOTES_MAX - (int) sql('SELECT COUNT(*) FROM response_notes WHERE response_id = ?', [$responseId])->fetchColumn());
+}
+
+// The note sent with the application and the messages added later, as the employer sees them.
+function application_notes_html(array $s): string
+{
+    $html = $s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '';
+    foreach (response_notes((int) $s['id']) as $n) {
+        $html .= '<p class="note added"><span class="note-when">Papildyta '.e(when_lt($n['created_at'])).'</span>'.nl2br(e($n['body'])).'</p>';
+    }
+    return $html;
+}
+
+// Under the worker's pending application: what they wrote and a form to add a message.
+function response_note_form(array $r, array $mine): string
+{
+    $sent = application_notes_html($mine);
+    $left = response_notes_left((int) $mine['id']);
+    $html = '<div class="app-notes" id="papildyti">'.($sent !== '' ? '<h3>Jūsų žinutės darbdaviui</h3>'.$sent : '');
+    if ($left <= 0) {
+        return $html.'<p class="meta">Kandidatūrą papildėte '.RESPONSE_NOTES_MAX.' kartus. Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.</p></div>';
+    }
+    return $html.'<form method="post" action="/darbas/'.(int) $r['id'].'/papildyti" class="form">'.csrf_field()
+        .'<label>Papildoma žinutė darbdaviui <small>(galite parašyti dar '.$left.' '.($left === 1 ? 'kartą' : 'kartus').')</small>'
+        .'<textarea name="body" rows="3" maxlength="'.RESPONSE_NOTE_MAX.'" required placeholder="Pavyzdžiui: pamiršau paminėti, kad dvejus metus dirbau virėju restorane „…“."></textarea></label>'
+        .'<button class="btn small">Siųsti žinutę</button></form></div>';
+}
+
+// /darbas/{id}/papildyti: the worker adds a message to an application still waiting for the employer.
+function response_note_action(int $id): never
+{
+    $u = require_user('worker');
+    check_csrf();
+    $r = find_request($id);
+    $s = $r ? sql("SELECT * FROM responses WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']])->fetch() : false;
+    if (!$r || !$s || $r['status'] !== 'open') {
+        flash('Kandidatūros papildyti nebegalima: darbdavys jau priėmė sprendimą arba paieška uždaryta.');
+        redirect('/darbas/'.$id);
+    }
+    $body = trim(str_replace("\r\n", "\n", (string) ($_POST['body'] ?? '')));
+    $body = (string) preg_replace("/\n{3,}/", "\n\n", $body);
+    if ($body === '') {
+        flash('Parašykite žinutę.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    if (mb_strlen($body) > RESPONSE_NOTE_MAX) {
+        flash('Žinutė per ilga: daugiausia '.RESPONSE_NOTE_MAX.' simbolių.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    if (response_notes_left((int) $s['id']) <= 0) {
+        flash('Kandidatūrą jau papildėte '.RESPONSE_NOTES_MAX.' kartus.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    // An earlier addition already emailed in the last hours: this one waits on the job page.
+    $mailed = (bool) sql('SELECT 1 FROM response_notes WHERE response_id = ? AND created_at > ?',
+        [$s['id'], date('Y-m-d H:i:s', strtotime('-'.RESPONSE_NOTE_MAIL_HOURS.' hours'))])->fetchColumn();
+    insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
+    $email = $mailed ? false : sql('SELECT email FROM users WHERE id = ? AND blocked = 0', [$r['manager_id']])->fetchColumn();
+    if ($email) {
+        $role = ROLES[$r['role']] ?? '';
+        $short = mb_strlen($body) > 600 ? rtrim(mb_substr($body, 0, 600)).'…' : $body;
+        send_mail($email, 'Kandidatūra papildyta: '.$role.' – '.first_name($u['name']), [
+            'kicker' => 'Kandidatūra papildyta',
+            'title' => $role,
+            'lead' => '**'.first_name($u['name']).'** papildė savo kandidatūrą žinute. Ji laukia jūsų sprendimo.',
+            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r)],
+            'note' => ['label' => 'Papildoma žinutė', 'text' => $short],
+            'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $s['id'])],
+        ]);
+    }
+    flash('Žinutė išsiųsta. Darbdavys ją matys prie jūsų kandidatūros.');
+    redirect('/darbas/'.$id.'#papildyti');
 }
 
 // Team first: the manager sends the request to everyone before the team-only window ends.
