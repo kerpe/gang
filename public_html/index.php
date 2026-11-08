@@ -62,7 +62,6 @@ match (true) {
     $path === '/profilis' => profile_page(),
     $path === '/profilis/duomenys' => account_export(),
     $path === '/profilis/istrinti' => account_delete_page(),
-    $path === '/laisvas' && $post => availability_action(),
     $path === '/darboviete/nauja' => venue_form_page(),
     $path === '/poreikis/naujas' => request_form_page(),
     $path === '/admin' => admin_page(),

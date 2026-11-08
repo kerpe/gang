@@ -969,12 +969,24 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         ? '<p class="notice ok invite-note">Darbdavys jus pakvietė asmeniškai, nes esate jo komandos narys.</p>'
         : '';
     $again = $again ? '<p class="notice tip">Kandidatūrą buvote atšaukę. Jei vėl galite dirbti, pateikite ją iš naujo.</p>' : '';
-    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below
+    // Days of this job the worker already works through GANG: their own call whether to apply anyway.
+    $busy = array_intersect_key(gang_work_days((int) $u['id'], today()), array_flip(array_keys(request_needs($r))));
+    $other = [];
+    foreach ($busy as $d => $cs) {
+        foreach ($cs as $c) {
+            $other[(int) $c['id']] ??= $c + ['days' => []];
+            $other[(int) $c['id']]['days'][] = $d;
+        }
+    }
+    $overlap = $busy ? '<div class="notice tip overlap"><p><strong>Šiomis dienomis jau turite GANG darbą.</strong></p><ul>'
+        .implode('', array_map(fn ($c) => '<li>'.e(days_text($c['days']).': '.$c['venue_name'].', '.mb_strtolower(ROLES[$c['role']] ?? '')).'</li>', $other)).'</ul>'
+        .'<p>Ar tikrai norite kandidatuoti ir į šį darbą?'.(request_splittable($r) && count(request_needs($r)) > 1 ? ' Jei tomis dienomis dirbti negalėsite, žemiau nuimkite jų žymėjimą.' : '').'</p></div>' : '';
+    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below.$overlap
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
-        .days_fieldset($r)
+        .days_fieldset($r, array_keys($busy))
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
-        .'<button class="btn">Pateikti kandidatūrą</button></form>'
+        .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
 }
 
@@ -994,7 +1006,8 @@ const PICK_DAYS_MAX = 31;
 const WEEKDAYS_SHORT = ['', 'Pr', 'An', 'Tr', 'Kt', 'Pn', 'Št', 'Sk'];
 
 // "Kuriomis dienomis galite dirbti?": every day still open, all ticked; the worker unticks the ones they can't work.
-function days_fieldset(array $r): string
+// $busy: days the worker already works through GANG, marked in the list.
+function days_fieldset(array $r, array $busy = []): string
 {
     if (!request_splittable($r)) {
         return '';
@@ -1004,7 +1017,7 @@ function days_fieldset(array $r): string
         return '';
     }
     $items = count($days) <= PICK_DAYS_MAX
-        ? array_map(fn ($d) => [$d, date_lt($d).' <small>'.WEEKDAYS_SHORT[(int) date('N', strtotime($d))].'</small>'], $days)
+        ? array_map(fn ($d) => [$d, date_lt($d).' <small>'.WEEKDAYS_SHORT[(int) date('N', strtotime($d))].'</small>'.(in_array($d, $busy, true) ? ' <small class="busy">· jau turite GANG darbą</small>' : '')], $days)
         : array_map(fn ($x) => [$x[0].':'.$x[1], e(span_lt($x[0], $x[1]))], days_ranges($days));
     return '<fieldset class="pick-days"><legend>Kuriomis dienomis galite dirbti?</legend>'
         .'<p class="hint">Pažymėtos visos darbo dienos. Jei kuriomis nors dienomis dirbti negalite, nuimkite žymėjimą – darbdavys galės patvirtinti jūsų kandidatūrą toms dienoms, kurias pasirinkote.</p>'
@@ -1074,8 +1087,6 @@ function owner_panel(array $r, bool $isOpen): string
         }
         if ($s['status'] === 'sent' && $s['recheck_at']) {
             $badges[] = '<span class="badge wait">Laukiama, kol patvirtins naujas sąlygas</span>';
-        } elseif (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
-            $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
         }
         if (isset(EXPERIENCE[(int) $s['experience']])) {
             $badges[] = '<span class="badge">Patirtis: '.e(mb_strtolower(EXPERIENCE[(int) $s['experience']])).'</span>';
@@ -1101,7 +1112,7 @@ function owner_panel(array $r, bool $isOpen): string
     }
     $list .= $chats ? chat_script() : '';
     $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';
-    [$total, $freeNow] = matching_workers_count($r['role'], $r['city'], max($r['start_date'], today()), (int) $r['min_experience'], $r['kind']);
+    $total = matching_workers_count($r['role'], $r['city'], (int) $r['min_experience'], $r['kind']);
     $teamOnly = $isOpen && !empty($r['public_at']) && $r['public_at'] > now()
         ? '<div class="notice ok team-only"><p><strong>Šiuo metu paieška matoma tik jūsų komandai.</strong> Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.e(when_lt($r['public_at'])).', jei vietos dar nebus užimtos.</p>'
             .post_button('/darbas/'.(int) $r['id'].'/skelbti', 'Paskelbti visiems dabar', [], 'btn small').'</div>'
@@ -1111,7 +1122,7 @@ function owner_panel(array $r, bool $isOpen): string
         ? '<div class="notice tip invite-nudge"><p><strong>Tinkamų darbuotojų GANG dar nedaug.</strong> Pakvieskite savo darbuotojus ir pažįstamus: prisijungę jie atsiras jūsų komandoje, o tinkantys gaus šį pasiūlymą.</p>'
             .share_link(url('/k/'.invite_code(current_user())), 'Prisijunkite prie mūsų komandos GANG platformoje').'</div>'
         : '';
-    $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
+    $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
@@ -1387,12 +1398,11 @@ function team_panel(array $r, array $responded): string
     $invited = invited_ids((int) $r['id']);
     $rows = '';
     foreach ($team as $w) {
-        $free = is_available((int) $w['id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? '<span class="badge on">Laisvas šiomis dienomis</span>' : '';
         $action = in_array((int) $w['id'], $invited, true)
             ? '<span class="meta done">Pakviesta</span>'
             : post_button('/darbas/'.(int) $r['id'].'/kviesti/'.(int) $w['id'], 'Pakviesti', [], 'btn small');
         $rows .= '<div class="responder">'.avatar($w).'<div class="who"><strong><a href="/darbuotojas/'.(int) $w['id'].'">'.e(first_name($w['name'])).'</a></strong>'
-            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span>'.$free.'</p></div><div class="actions">'.$action.'</div></div>';
+            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span></p></div><div class="actions">'.$action.'</div></div>';
     }
     return '<h3 class="team-head">Mano komanda</h3><p class="meta">Žmonės, su kuriais jau dirbote per GANG. Pakviestas žmogus gaus asmeninį kvietimą el. paštu.</p>'.$rows;
 }
@@ -1644,10 +1654,8 @@ function worker_profile_page(int $id): never
     }
     [$avg, $n] = worker_rating($id);
     $reviews = reviews_html(worker_reviews($id), fn ($r) => 'Darbdavys, '.(CITIES[$r['city']] ?? ''));
-    $ranges = availability_ranges($id);
-    $free = $ranges ? '<p class="status on">● Laisvas darbo pasiūlymams: '.e(implode('; ', array_map('range_lt', array_slice($ranges, 0, 6)))).'</p>' : '';
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'.$free
+        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'
         .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.criteria_html('manager', 'worker_id', $id).$reviews.'</section>', ['noindex' => true]);

@@ -29,7 +29,7 @@ function page(string $title, string $body, array $opt = []): never
     $tabbar = '';
     if ($user && profile_complete($user)) {
         $tabs = $user['kind'] === 'worker'
-            ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#laisvumas', 'Laisvos dienos', 'cal'], ['/profilis', 'Profilis', 'user']]
+            ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#kalendorius', 'Kalendorius', 'cal'], ['/profilis', 'Profilis', 'user']]
             : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
         $icons = [
             'home' => '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -85,7 +85,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=58">
+<link rel="stylesheet" href="/style.css?v=59">
 $head
 </head>
 <body$bodyClass>
