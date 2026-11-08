@@ -52,6 +52,16 @@ function profile_complete(array $u): bool
     return $u['name'] !== '' && $u['phone'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
 }
 
+// One network (IP address) may ask for this many sign-in codes, to any addresses, so the form
+// cannot be used to send GANG mail to strangers. Mobile networks share addresses, so the limits are loose.
+const LOGIN_CODES_PER_IP_HOUR = 10;
+const LOGIN_CODES_PER_IP_DAY = 30;
+
+function login_codes_from_ip(string $ipHash, int $seconds): int
+{
+    return (int) sql('SELECT COUNT(*) FROM login_codes WHERE ip_hash = ? AND created_at > ?', [$ipHash, date('Y-m-d H:i:s', time() - $seconds)])->fetchColumn();
+}
+
 function login_page(): never
 {
     start_session();
@@ -75,11 +85,14 @@ function login_page(): never
             $error = 'Patikrinkite el. pašto adresą.';
         } elseif ($termsError === '') {
             $recent = (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$email, date('Y-m-d H:i:s', time() - 3600)])->fetchColumn();
+            $ipHash = hash_hmac('sha256', client_ip(), mail_secret());
             if ($recent >= 5) {
                 $error = 'Viršytas bandymų skaičius. Bandykite dar kartą po valandos.';
+            } elseif (login_codes_from_ip($ipHash, 3600) >= LOGIN_CODES_PER_IP_HOUR || login_codes_from_ip($ipHash, 86400) >= LOGIN_CODES_PER_IP_DAY) {
+                $error = 'Iš šio tinklo per trumpą laiką paprašyta per daug kodų. Bandykite vėliau arba parašykite '.OPERATOR_EMAIL.'.';
             } else {
                 $code = (string) random_int(100000, 999999);
-                insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now()]);
+                insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now(), 'ip_hash' => $ipHash]);
                 send_mail($email, "GANG prisijungimo kodas: $code", [
                     'kicker' => 'Prisijungimas',
                     'title' => 'Jūsų prisijungimo kodas',

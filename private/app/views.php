@@ -10,6 +10,9 @@ function page(string $title, string $body, array $opt = []): never
     $robots = !empty($opt['noindex']) ? '<meta name="robots" content="noindex">' : '';
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
     $head = $opt['head'] ?? '';
+    // Link previews (Facebook, Messenger, LinkedIn, X): one shared picture for every page.
+    $ogUrl = url($opt['canonical'] ?? (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'));
+    $ogImage = url('/img/og.jpg?v=1');
     $user = current_user();
     // New chat messages: a count on "Mano GANG" (the contract cards there link to each chat).
     $unread = $user ? unread_messages_total((int) $user['id']) : 0;
@@ -69,6 +72,15 @@ function page(string $title, string $body, array $opt = []): never
 <meta name="description" content="{$e($desc)}">
 <meta property="og:title" content="{$e($fullTitle)}">
 <meta property="og:description" content="{$e($desc)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="GANG.lt">
+<meta property="og:locale" content="lt_LT">
+<meta property="og:url" content="{$e($ogUrl)}">
+<meta property="og:image" content="{$e($ogImage)}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="GANG.lt – patikimi žmonės restoranams, kavinėms, barams ir klubams">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#171717">
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
