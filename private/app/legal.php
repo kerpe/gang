@@ -184,8 +184,8 @@ function privacy_page(): never
             ['valdytojas', 'Duomenų valdytojas', '<p>'.operator_line().'. Visais duomenų apsaugos klausimais rašykite šiuo adresu.</p>'],
             ['duomenys', 'Kokius duomenis tvarkome', '<ul>'
                 .'<li><strong>Paskyros duomenys:</strong> el. pašto adresas, paskyros tipas (darbuotojas ar darbdavys), registracijos ir prisijungimų laikas.</li>'
-                .'<li><strong>Darbuotojo profilis:</strong> vardas ir pavardė, telefono numeris, profilio nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, laisvos dienos, informacija apie save.</li>'
-                .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos ir komanda.</li>'
+                .'<li><strong>Darbuotojo profilis:</strong> vardas ir pavardė, telefono numeris, profilio nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, informacija apie save.</li>'
+                .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos.</li>'
                 .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
                 .'<li><strong>Pokalbio duomenys:</strong> žinutės tarp darbdavio ir darbuotojo, jų išsiuntimo laikas ir žyma, ar žinutė perskaityta. Kai gaunate naują žinutę, el. laiške siunčiame jos ištrauką.</li>'
                 .'<li><strong>Laukiančiųjų sąrašas:</strong> iki platformos paleidimo užsiregistravusių asmenų el. pašto adresas, miestas ir užšifruota IP adreso santrauka.</li>'

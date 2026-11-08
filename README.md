@@ -10,7 +10,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 |---|---|
 | `public_html/` | Web root: `index.php` (router), `style.css`, `.htaccess`, icons. |
 | `private/app/` | Server code: `bootstrap.php` (config, db, mail, lists of cities/roles), `schema.php` (tables, created on first request), `auth.php` (email-code login), `public.php`, `account.php` (profile, dashboard, GANG calendar), `requests.php` (venues, requests, responses, contracts), `reviews.php`, `admin.php`, `data.php` (queries, ratings, notifications), `views.php` (layout, helpers). |
-| `private/cron.php` | Hourly job: expires old requests, asks for reviews after the work, cleans login codes. |
+| `private/cron.php` | Job every 10 minutes: expires old requests, asks for reviews after the work, cleans login codes. |
 
 ## Rules worth knowing
 
@@ -33,7 +33,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 
 ## Site lock
 
-GANG is open to everyone and sign-up works straight away (`SITE_OPEN = true` in `private/app/preview.php`, since 2026-11-07). Setting `SITE_OPEN = false` locks the site again: every visitor without the shared team password (`PREVIEW_PASSWORD` secret) sees one "Netrukus" page, while `/admin` stays reachable. Accounts made before launch get a one-time "GANG jau veikia" email from admin → Laukiantieji.
+GANG is open to everyone and sign-up works straight away (`SITE_OPEN = true` in `private/app/preview.php`, since 2026-11-07). Setting `SITE_OPEN = false` locks the site again: every visitor without the shared team password (`PREVIEW_PASSWORD` secret) sees one "Netrukus" page, while `/admin` stays reachable. Nobody gets an automatic "GANG jau veikia" email (accounts made before launch are mostly test accounts); admin → Laukiantieji only invites people from the old email-only list who have no account yet.
 
 ## Deploy
 

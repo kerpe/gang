@@ -560,7 +560,7 @@ function request_form_page(): never
                 $publicAt !== null => $what.$teamNote.' Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.when_lt($publicAt).', jei vietos dar nebus užimtos.',
                 $sent > 0 => "$what Pranešimą siunčiame tinkamiems darbuotojams: $sent.$teamNote Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.",
                 $teamNote !== '' => $what.$teamNote.' Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.',
-                default => $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite savo darbuotojus prisijungti – nuorodą rasite žemiau.',
+                default => $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite darbuotojus prisijungti – kvietimo nuorodą rasite skiltyje „Mano profilis“.',
             });
             redirect('/darbas/'.$id);
         }
@@ -1602,25 +1602,10 @@ function respond_action(int $id): never
     redirect('/darbas/'.$id);
 }
 
-// Before the employer decides, the worker can add messages to the application
-// ("Pamiršau paminėti, kad…"). They show under the application and later open the chat.
-// No counter is shown: a message written soon after the previous one joins it, so a few quick
-// lines read as one message, and a quiet cap stops flooding. Emails to the employer stay limited.
-const RESPONSE_NOTES_MAX = 10;
-// A message written within this many minutes of the previous one is appended to it.
-const RESPONSE_NOTE_JOIN_MINUTES = 30;
-const RESPONSE_NOTE_MAX = 1000;
-// One email to the employer per application in this many hours; later additions wait on the job page.
-const RESPONSE_NOTE_MAIL_HOURS = 12;
-
+// Messages a worker added to an application before 2026-11-08 (since then the two sides talk in the application's chat).
 function response_notes(int $responseId): array
 {
     return sql('SELECT * FROM response_notes WHERE response_id = ? ORDER BY id', [$responseId])->fetchAll();
-}
-
-function response_notes_left(int $responseId): int
-{
-    return max(0, RESPONSE_NOTES_MAX - (int) sql('SELECT COUNT(*) FROM response_notes WHERE response_id = ?', [$responseId])->fetchColumn());
 }
 
 // The note sent with the application and the messages added later, as the employer sees them.
@@ -1631,61 +1616,6 @@ function application_notes_html(array $s): string
         $html .= '<p class="note added"><span class="note-when">Papildyta '.e(when_lt($n['created_at'])).'</span>'.nl2br(e($n['body'])).'</p>';
     }
     return $html;
-}
-
-// /darbas/{id}/papildyti: the worker adds a message to an application still waiting for the employer.
-// Since 2026-11-08 the two talk in the application's chat instead; this stays for pages opened before that.
-function response_note_action(int $id): never
-{
-    $u = require_user('worker');
-    check_csrf();
-    $r = find_request($id);
-    $s = $r ? sql("SELECT * FROM responses WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']])->fetch() : false;
-    if (!$r || !$s || $r['status'] !== 'open') {
-        flash('Kandidatūros papildyti nebegalima: darbdavys jau priėmė sprendimą arba paieška uždaryta.');
-        redirect('/darbas/'.$id);
-    }
-    $body = trim(str_replace("\r\n", "\n", (string) ($_POST['body'] ?? '')));
-    $body = (string) preg_replace("/\n{3,}/", "\n\n", $body);
-    if ($body === '') {
-        flash('Parašykite žinutę.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    if (mb_strlen($body) > RESPONSE_NOTE_MAX) {
-        flash('Žinutė per ilga: daugiausia '.RESPONSE_NOTE_MAX.' simbolių.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    // Written soon after the previous message: it joins that message instead of becoming a new one.
-    $last = sql('SELECT id, body, created_at FROM response_notes WHERE response_id = ? ORDER BY id DESC LIMIT 1', [$s['id']])->fetch();
-    $join = $last && strtotime($last['created_at']) > strtotime('-'.RESPONSE_NOTE_JOIN_MINUTES.' minutes')
-        && mb_strlen($last['body']) + mb_strlen($body) + 1 <= RESPONSE_NOTE_MAX * 2;
-    if (!$join && response_notes_left((int) $s['id']) <= 0) {
-        flash('Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    // An earlier addition already emailed in the last hours: this one waits on the job page.
-    $mailed = (bool) sql('SELECT 1 FROM response_notes WHERE response_id = ? AND created_at > ?',
-        [$s['id'], date('Y-m-d H:i:s', strtotime('-'.RESPONSE_NOTE_MAIL_HOURS.' hours'))])->fetchColumn();
-    if ($join) {
-        sql('UPDATE response_notes SET body = ? WHERE id = ?', [$last['body']."\n".$body, $last['id']]);
-    } else {
-        insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
-    }
-    $email = $mailed ? false : sql('SELECT email FROM users WHERE id = ? AND blocked = 0', [$r['manager_id']])->fetchColumn();
-    if ($email) {
-        $role = ROLES[$r['role']] ?? '';
-        $short = mb_strlen($body) > 600 ? rtrim(mb_substr($body, 0, 600)).'…' : $body;
-        send_mail($email, 'Kandidatūra papildyta: '.$role.' – '.first_name($u['name']), [
-            'kicker' => 'Kandidatūra papildyta',
-            'title' => $role,
-            'lead' => '**'.first_name($u['name']).'** papildė savo kandidatūrą žinute. Ji laukia jūsų sprendimo.',
-            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r)],
-            'note' => ['label' => 'Papildoma žinutė', 'text' => $short],
-            'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $s['id'])],
-        ]);
-    }
-    flash('Žinutė išsiųsta. Darbdavys ją matys prie jūsų kandidatūros.');
-    redirect('/darbas/'.$id.'#papildyti');
 }
 
 // Team first: the manager sends the request to everyone before the team-only window ends.
@@ -1781,7 +1711,7 @@ function decide_response_action(int $responseId, bool $accept): never
         'cta' => ['Mano profilis', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
-    $contact = ' Su '.first_name($worker['name']).' galite susirašinėti GANG žinutėse.';
+    $contact = ' Darbuotojui galite parašyti GANG žinutėse.';
     $need = request_needs($r);
     if (!$need) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);

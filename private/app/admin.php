@@ -153,7 +153,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=74"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=75"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -354,7 +354,8 @@ function admin_delete_user(int $id): bool
 
 function admin_delete_venue(int $id, bool $own = true): bool
 {
-    if (!sql('SELECT 1 FROM venues WHERE id = ?', [$id])->fetchColumn()) {
+    $venue = sql('SELECT id, logo FROM venues WHERE id = ?', [$id])->fetch();
+    if (!$venue) {
         return false;
     }
     $own && db()->beginTransaction();
@@ -362,6 +363,8 @@ function admin_delete_venue(int $id, bool $own = true): bool
     admin_delete_contracts(sql('SELECT id FROM contracts WHERE venue_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN));
     sql('DELETE FROM venues WHERE id = ?', [$id]);
     $own && db()->commit();
+    // The logo file goes too (also when the whole employer account is deleted).
+    delete_photo($venue['logo']);
     return true;
 }
 
@@ -661,17 +664,11 @@ function admin_waitlist(): string
 {
     $rows = sql('SELECT w.*, u.id AS user_id FROM waitlist w LEFT JOIN users u ON u.email = w.email ORDER BY w.created_at DESC LIMIT 2000')->fetchAll();
     $profiles = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0 AND roles <> '' AND name <> ''")->fetchColumn();
-    $public = SITE_OPEN;
-    [$invites, $launchMails] = waitlist_pending();
-    $pending = $invites + ($public ? $launchMails : 0);
-    $label = $public ? 'Siųsti paleidimo laiškus ('.$pending.')' : 'Pakviesti užsiregistruoti ('.$pending.')';
-    $confirm = $public
-        ? 'Pranešti visiems užsiregistravusiems, kad GANG jau veikia?'
-        : 'Išsiųsti kvietimą užsiregistruoti visiems sąraše esantiems, kurie paskyros dar nesusikūrė ir kvietimo negavo?';
-    $invite = $pending ? post_button('/admin?tab=waitlist', $label, ['action' => 'invite_waitlist', 'id' => 0], 'btn small', $confirm) : '<p class="meta">Visi laiškai išsiųsti.</p>';
-    $note = $public
-        ? '<p class="meta">Paleidimo laiškai: darbuotojams – kvietimas peržiūrėti pasiūlymus, darbdaviams – kvietimas paskelbti pirmą paiešką; dar neužsiregistravusiems iš sąrašo – kvietimas registruotis. Kiekvienas laiškas siunčiamas tik kartą.</p>'
-        : '<p class="meta">Iki paleidimo darbuotojai jau gali susikurti profilį, o darbdaviai – užregistruoti darbovietę. Senojo sąrašo nariams galite išsiųsti kvietimą užsiregistruoti. Kai svetainė bus atverta visiems, čia galėsite išsiųsti paleidimo laiškus ('.$launchMails.').</p>';
+    $pending = waitlist_pending();
+    $invite = $pending ? post_button('/admin?tab=waitlist', 'Pakviesti užsiregistruoti ('.$pending.')', ['action' => 'invite_waitlist', 'id' => 0], 'btn small',
+        'Išsiųsti kvietimą užsiregistruoti visiems sąraše esantiems, kurie paskyros dar nesusikūrė ir kvietimo negavo?') : '<p class="meta">Visi kvietimai išsiųsti.</p>';
+    // Accounts made before launch get no automatic "GANG jau veikia" email: most of them are test accounts (Vilius 2026-11-07).
+    $note = '<p class="meta">Senojo laukiančiųjų sąrašo nariams, kurie paskyros dar nesusikūrė, galite išsiųsti kvietimą užsiregistruoti. Kiekvienas kvietimas siunčiamas tik kartą.</p>';
     $venues = (int) sql('SELECT COUNT(DISTINCT manager_id) FROM venues')->fetchColumn();
     $html = '<div class="tiles"><div class="tile"><span>Darbuotojų profilių</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
         .'<div class="tile"><span>Sąraše be paskyros</span><strong>'.count(array_filter($rows, fn ($r) => !$r['user_id'])).'</strong></div></div>'.$note.$invite
@@ -683,17 +680,13 @@ function admin_waitlist(): string
     return '<div class="scroll">'.$html.'</table></div>';
 }
 
-// [invitations to people on the old email-only list, launch emails to accounts made before launch] still to send.
-function waitlist_pending(): array
+// Invitations still to send to people on the old email-only list.
+function waitlist_pending(): int
 {
-    return [
-        (int) sql('SELECT COUNT(*) FROM waitlist w WHERE w.invited_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.email = w.email)')->fetchColumn(),
-        (int) sql('SELECT COUNT(*) FROM users WHERE blocked = 0 AND launch_mail_at IS NULL')->fetchColumn(),
-    ];
+    return (int) sql('SELECT COUNT(*) FROM waitlist w WHERE w.invited_at IS NULL AND NOT EXISTS (SELECT 1 FROM users u WHERE u.email = w.email)')->fetchColumn();
 }
 
 // People on the old email-only list are invited to sign up (before launch: to prepare their profile or venue).
-// Launch day (public): everyone who signed up early hears that GANG is live.
 // Every email is marked as sent first, so a second click never repeats it.
 function invite_waitlist(): int
 {
@@ -723,28 +716,6 @@ function invite_waitlist(): int
         ];
         $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
         if (send_mail($r['email'], $subject, $mail)) {
-            $sent++;
-        }
-    }
-    if (!$public) {
-        return $sent;
-    }
-    foreach (sql('SELECT * FROM users WHERE blocked = 0 AND launch_mail_at IS NULL ORDER BY id LIMIT 2000')->fetchAll() as $u) {
-        sql('UPDATE users SET launch_mail_at = ? WHERE id = ?', [now(), $u['id']]);
-        $ready = profile_complete($u) && ($u['kind'] === 'worker' || sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn());
-        if (!$ready) {
-            $mail = ['title' => 'Užbaikite registraciją', 'lead' => 'GANG jau veikia. Jūsų registracija dar neužbaigta. Užbaikite ją: tai trunka kelias minutes.',
-                'cta' => ['Užbaigti registraciją', url('/profilis')]];
-        } elseif ($u['kind'] === 'worker') {
-            $mail = ['title' => 'Jūsų profilis matomas', 'lead' => 'GANG jau veikia. Jūsų profilis dabar matomas restoranams, kavinėms, barams ir klubams jūsų miestuose.',
-                'body' => 'Jums tinkančius darbo pasiūlymus gausite el. paštu, o patvirtinti darbai automatiškai atsiras jūsų GANG kalendoriuje.',
-                'cta' => ['Peržiūrėti pasiūlymus', url('/mano#pasiulymai')]];
-        } else {
-            $mail = ['title' => 'Paskelbkite pirmą paiešką', 'lead' => 'GANG jau veikia. Nuo šiandien galite skelbti darbuotojų paieškas: pavadavimui, sezonui ar nuolatiniam darbui.',
-                'body' => 'Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste.',
-                'cta' => ['Paskelbti paiešką', url('/poreikis/naujas')]];
-        }
-        if (send_mail($u['email'], 'GANG jau veikia', $mail + ['kicker' => 'GANG jau veikia', 'footnote' => 'Šį laišką gavote, nes užsiregistravote GANG.'])) {
             $sent++;
         }
     }

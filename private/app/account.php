@@ -92,7 +92,7 @@ function profile_page(): never
                 redirect('/darboviete/nauja');
             }
             $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : '';
-            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.').$jobsNote);
+            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.').$jobsNote);
             redirect('/mano');
         }
     }
@@ -106,7 +106,7 @@ function profile_page(): never
             : 'Jei norite, įkelkite savo nuotrauką arba avatarą. Jis bus rodomas pokalbiuose su darbuotojais.')
         .' Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
         .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
-        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'prisijungę darbdaviai' : 'jūsų kandidatai ir komandos nariai').'.</p>'
+        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'darbdaviai, kuriems pateikiate kandidatūrą' : 'jūsų kandidatai ir darbuotojai').'.</p>'
         .$remove.err($errors, 'photo').'</div></div></fieldset>';
     if ($worker) {
         $roleRows = '';
@@ -117,7 +117,7 @@ function profile_page(): never
         $durationChoices = '';
         foreach (KINDS as $kind => $label) {
             $durationChoices .= '<label class="choice"><input type="checkbox" name="durations[]" value="'.$kind.'"'.(in_array($kind, $v['durations'], true) ? ' checked' : '').'>'
-                .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$kind]).'</small></span></label>';
+                .'<span><span class="choice-name">'.e($label).'</span><small><span class="hint-long">'.e(KIND_HINTS[$kind]).'</span><span class="hint-short">'.e(KIND_HINTS_SHORT[$kind]).'</span></small></span></label>';
         }
         $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
@@ -302,7 +302,8 @@ function dashboard_page(): never
     $rating = '';
     if ($u['kind'] === 'worker') {
         [$avg, $n] = worker_rating((int) $u['id']);
-        $rating = '<span class="meta account-rating">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</span>';
+        // A newcomer sees just "GANG naujokas", not "Įvertinimų dar nėra" next to it.
+        $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>';
     }
     page('Mano profilis', '<section class="wrap">'
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
@@ -946,8 +947,8 @@ function account_delete_page(): never
     }
     $worker = $u['kind'] === 'worker';
     $what = $worker
-        ? '<li>profilis, nuotrauka, pareigos, miestai ir laisvos dienos;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
-        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai, komandos nariai ir kvietimai;</li>';
+        ? '<li>profilis, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
+        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>';
     if ($upcoming) {
         $list = '';
         foreach ($upcoming as $c) {
