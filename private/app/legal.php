@@ -151,7 +151,7 @@ function terms_page(): never
                 .'<li>Teikti kandidatūrą tik tiems pasiūlymams, kuriems tikrai galite dirbti nurodytu laiku.</li>'
                 .'<li>Atvykti į patvirtintą darbą laiku arba, jei negalite, kuo anksčiau jį atšaukti per GANG.</li>'
                 .'<li>Darbdavių kontaktus naudoti tik su darbo pasiūlymu susijusiam bendravimui.</li></ul>'],
-            ['kontraktas', 'GANG kontraktas, atšaukimai ir patikimumas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. Tai GANG įrašas apie šalių susitarimą dirbti kartu, o ne darbo sutartis. Po patvirtinimo šalys mato viena kitos vardą ir telefono numerį; el. pašto adresai kitai šaliai nerodomi.</p>'
+            ['kontraktas', 'GANG kontraktas, atšaukimai ir patikimumas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. Tai GANG įrašas apie šalių susitarimą dirbti kartu, o ne darbo sutartis. Po patvirtinimo šalys mato viena kitos vardą; telefono numeriai ir el. pašto adresai kitai šaliai nerodomi.</p>'
                 .'<p>Bet kuri šalis gali atšaukti kontraktą, nurodydama priežastį. Vėlyvi atšaukimai ir darbdavio pažymėti neatvykimai matomi kitiems nariams kaip patikimumo rodiklis. Jei manote, kad žyma neteisinga, parašykite mums '.$mail.'.</p>'],
             ['ivertinimai', 'Įvertinimai', '<ul>'
                 .'<li>Įvertinti vienas kitą darbdavys ir darbuotojas gali tik po GANG kontrakto.</li>'
@@ -202,7 +202,7 @@ function privacy_page(): never
             ['kas-mato', 'Kas mato jūsų duomenis', '<ul>'
                 .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, įvertinimus) mato tik GANG patvirtinti darbdaviai, kuriems darbuotojas pateikė kandidatūrą, su kuriais dirbo per GANG arba prie kurių komandos prisijungė.</li>'
                 .'<li>Darbovietės puslapis, jos adresas ir paskelbtos paieškos yra vieši.</li>'
-                .'<li>Telefono numeris kitiems nariams nerodomas. GANG kontrakto šalys bendrauja GANG žinutėmis ir, jei nori, numeriais apsikeičia pačios.</li>'
+                .'<li>Telefono numeris kitiems nariams nerodomas. Jį naudojame sisteminiams pranešimams siųsti.</li>'
                 .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys. Naujos žinutės ištrauka siunčiama gavėjui el. paštu.</li>'
                 .'<li>El. pašto adresas kitiems nariams nerodomas niekada.</li>'
                 .'<li>Įvertinimai skelbiami nenurodant autoriaus.</li></ul>'],

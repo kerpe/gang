@@ -124,7 +124,7 @@ function profile_page(): never
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
-    $phoneNote = 'Kitiems nariams nerodomas. Su '.($worker ? 'darbdaviu' : 'darbuotoju').' bendrausite GANG žinutėmis.';
+    $phoneNote = 'Naudojamas tik sisteminiams pranešimams siųsti.';
     $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
     page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()

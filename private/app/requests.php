@@ -123,7 +123,7 @@ function venue_form_page(?int $id = null): never
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
             .$field('Koncepcija ar virtuvė'.$optional, $text('concept', 120, 'Pavyzdžiui: itališka virtuvė'), 'concept').'</div>'
             .$logoField)
-        .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje. Telefono numeris darbuotojams nerodomas.',
+        .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje.',
             '<div class="row">'.$field('Miestas', '<select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>', 'city')
             .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
             .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
@@ -999,7 +999,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
-        .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numeris nerodomas: patvirtinus kandidatūrą bendrausite GANG žinutėse.</p></div>';
+        .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus.</p></div>';
 }
 
 // What the worker's waiting application looks like right now: a change (confirmed, declined, new terms, search closed) reloads the page.
