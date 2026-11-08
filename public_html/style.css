@@ -957,7 +957,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .date-chips li.full { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-strong); }
 .date-chips li.full small { text-decoration: none; display: inline-block; }
 .badge.picked { color: var(--ink); }
-.leftover { margin-bottom: 14px; }
+.leftover { margin: 14px 0; }
 .leftover p { margin: 0 0 8px; }
 .leftover .owner-actions { margin: 10px 0 0; }
 /* Chat between the employer and the worker of a GANG contract. */
