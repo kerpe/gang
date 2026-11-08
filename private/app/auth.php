@@ -311,7 +311,6 @@ function finish_login(int $userId): never
     unset($_SESSION['terms_ok']);
     apply_invite($userId, $new);
     $user = sql('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
-    team_joined_notice($user);
     if (needs_consent($user)) {
         redirect('/sutikimas');
     }

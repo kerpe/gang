@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 24;
+const SCHEMA_VERSION = 25;
 
 function migrate(PDO $db): void
 {
@@ -104,21 +104,11 @@ function migrate(PDO $db): void
             rating INT NOT NULL,
             text TEXT NULL,
             created_at DATETIME NOT NULL",
-        // Days a worker is open to offers, as inclusive date ranges.
-        'availability' => "id $id,
-            user_id INT NOT NULL,
-            start_date DATE NOT NULL,
-            end_date DATE NOT NULL",
         // Experience per role a worker can take on (users.roles lists the same roles).
         'worker_roles' => "id $id,
             user_id INT NOT NULL,
             role VARCHAR(30) NOT NULL,
             experience TINYINT NOT NULL DEFAULT 0",
-        // Version 7: a manager's personal invitation to a worker they already worked with ("Mano komanda").
-        'invites' => "id $id,
-            request_id INT NOT NULL,
-            worker_id INT NOT NULL,
-            created_at DATETIME NOT NULL",
         // Version 9: arrival confirmation the day before a work period starts (one row per contract and day).
         'shift_checks' => "id $id,
             contract_id INT NOT NULL,
@@ -128,20 +118,10 @@ function migrate(PDO $db): void
             confirmed_at DATETIME NULL,
             declined_at DATETIME NULL,
             alerted_at DATETIME NULL",
-        // Version 12: workers who joined a manager's team through the manager's invitation link.
         // Version 14: earlier link words (/k/{word}) that keep working after a venue is renamed.
         'invite_aliases' => "id $id,
             user_id INT NOT NULL,
             slug VARCHAR(80) NOT NULL,
-            created_at DATETIME NOT NULL",
-        'team_links' => "id $id,
-            manager_id INT NOT NULL,
-            worker_id INT NOT NULL,
-            created_at DATETIME NOT NULL",
-        // Version 12: team invitations a manager sent by email (duplicates and daily limit).
-        'team_mails' => "id $id,
-            manager_id INT NOT NULL,
-            email VARCHAR(190) NOT NULL,
             created_at DATETIME NOT NULL",
         // Version 16: job offers already emailed to a worker, so a profile save does not repeat them.
         'job_mails' => "id $id,
@@ -270,10 +250,11 @@ function migrate(PDO $db): void
             // Already there.
         }
     }
-    if (!$db->query('SELECT 1 FROM availability LIMIT 1')->fetchColumn()) {
-        $db->prepare('INSERT INTO availability (user_id, start_date, end_date) SELECT id, ?, available_until FROM users WHERE available_until >= ?')
-            ->execute([date('Y-m-d'), date('Y-m-d')]);
+    // Version 25: "Mano komanda" and the free-days calendar removed (Vilius 2026-11-08); requests.public_at stays, unused.
+    foreach (['team_links', 'team_mails', 'invites', 'availability'] as $table) {
+        $db->exec("DROP TABLE IF EXISTS $table");
     }
+    $db->exec('UPDATE requests SET public_at = NULL WHERE public_at IS NOT NULL');
     // Version 5: experience moved from one value per worker to one per role.
     if (!$db->query('SELECT 1 FROM worker_roles LIMIT 1')->fetchColumn()) {
         $insert = $db->prepare('INSERT INTO worker_roles (user_id, role, experience) VALUES (?, ?, ?)');
@@ -297,11 +278,8 @@ function migrate(PDO $db): void
     $indexes = [
         'worker_roles_user' => 'worker_roles (user_id)',
         'worker_roles_role' => 'worker_roles (role, experience)',
-        'availability_user' => 'availability (user_id)',
         'responses_request' => 'responses (request_id)',
         'contracts_worker' => 'contracts (worker_id)',
-        'invites_request' => 'invites (request_id, worker_id)',
-        'invites_worker' => 'invites (worker_id)',
         'shift_checks_contract' => 'shift_checks (contract_id, shift_date)',
         'shift_checks_token' => 'shift_checks (token)',
         'reviews_contract' => 'reviews (contract_id)',
@@ -309,8 +287,6 @@ function migrate(PDO $db): void
         'login_codes_email' => 'login_codes (email)',
         'login_codes_ip' => 'login_codes (ip_hash, created_at)',
         'consents_user' => 'consents (user_id)',
-        'team_links_manager' => 'team_links (manager_id)',
-        'team_mails_manager' => 'team_mails (manager_id, created_at)',
         'requests_event' => 'requests (event_id)',
         'users_invite_code' => 'users (invite_code)',
         'users_invite_slug' => 'users (invite_slug)',

@@ -153,7 +153,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=75"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=76"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -319,7 +319,7 @@ function admin_like(): string
     return '%'.trim((string) ($_GET['q'] ?? '')).'%';
 }
 
-// Everything a member left behind: profile, availability, responses, contracts with their reviews
+// Everything a member left behind: profile, responses, contracts with their reviews
 // and arrival checks; for an employer also their venues and every request posted there.
 function admin_delete_user(int $id): bool
 {
@@ -335,13 +335,11 @@ function admin_delete_user(int $id): bool
     // Chats on applications use the application's id made negative (messages.php application_chat()).
     admin_delete_contracts(array_map(fn ($x) => -(int) $x, sql('SELECT id FROM responses WHERE worker_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN)));
     sql('DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE worker_id = ?)', [$id]);
-    foreach (['availability' => 'user_id', 'worker_roles' => 'user_id', 'responses' => 'worker_id', 'invites' => 'worker_id'] as $table => $col) {
+    foreach (['worker_roles' => 'user_id', 'responses' => 'worker_id'] as $table => $col) {
         sql("DELETE FROM $table WHERE $col = ?", [$id]);
     }
-    sql('DELETE FROM team_links WHERE manager_id = ? OR worker_id = ?', [$id, $id]);
     sql('DELETE FROM invite_aliases WHERE user_id = ?', [$id]);
     sql('DELETE FROM consents WHERE user_id = ?', [$id]);
-    sql('DELETE FROM team_mails WHERE manager_id = ? OR email = ?', [$id, $u['email']]);
     sql('DELETE FROM job_mails WHERE worker_id = ?', [$id]);
     sql('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [$id]);
     sql('DELETE FROM login_codes WHERE email = ?', [$u['email']]);
@@ -383,7 +381,6 @@ function admin_delete_requests(array $ids, bool $own = true): bool
     admin_delete_contracts(array_map(fn ($x) => -(int) $x, sql("SELECT id FROM responses WHERE request_id IN ($in)")->fetchAll(PDO::FETCH_COLUMN)));
     sql("DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE request_id IN ($in))");
     sql("DELETE FROM responses WHERE request_id IN ($in)");
-    sql("DELETE FROM invites WHERE request_id IN ($in)");
     sql("DELETE FROM requests WHERE id IN ($in)");
     $own && db()->commit();
     return true;

@@ -38,7 +38,6 @@ preview_gate($path);
 if (!str_starts_with($path, '/nuotrauka/') && mail_queue_pending()) {
     mail_queue_after_response(20);
 }
-release_team_requests();
 
 match (true) {
     $path === '/' => home_page(),
@@ -76,7 +75,6 @@ match (true) {
     $is('/darbas/(\d+)/atsiliepti') && $post => respond_action((int) $m[1]),
     $is('/darbas/(\d+)/busena') => application_state_poll((int) $m[1]),
     $is('/darbas/(\d+)/atsaukti') && $post => withdraw_action((int) $m[1]),
-    $is('/darbas/(\d+)/kviesti/(\d+)') && $post => invite_action((int) $m[1], (int) $m[2]),
     $is('/darbas/(\d+)/uzdaryti') && $post => close_request_action((int) $m[1]),
     $is('/darbas/(\d+)/palikti') && $post => keep_open_action((int) $m[1]),
     $is('/darbas/(\d+)/redaguoti') => request_edit_page((int) $m[1]),
@@ -92,7 +90,6 @@ match (true) {
     $is('/kontraktas/(-?\d+)/zinutes') => messages_poll((int) $m[1]),
     $is('/kontraktas/(-?\d+)/reakcija') && $post => message_react_action((int) $m[1]),
     $is('/pokalbis/(-?\d+)') => chat_link_page((int) $m[1]),
-    $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
     $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),

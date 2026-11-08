@@ -152,9 +152,6 @@ function open_requests(array $filters = [], int $limit = 200): array
         $where .= " AND v.city IN ($in)";
         array_push($params, ...$filters['cities']);
     }
-    // Team first: until public_at only the invited team sees the request.
-    $where .= ' AND (r.public_at IS NULL OR r.public_at <= ?)';
-    $params[] = now();
     $order = "CASE WHEN r.kind <> 'nuolat' AND r.start_date <= ? THEN 0 ELSE 1 END, r.created_at DESC";
     $params[] = urgent_until();
     return sql(REQUEST_SELECT." WHERE $where ORDER BY $order LIMIT $limit", $params)->fetchAll();
@@ -269,7 +266,7 @@ function notify_workers(array $r, array $skip = []): int
         AND (durations = '' OR durations LIKE ?)
         AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = users.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1)) LIMIT 500",
         ['%,'.$r['city'].',%', '%,'.$r['kind'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
-    // Team members invited personally already got their own email.
+    // Workers who already applied or were told about the job.
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     [$subject, $mail] = job_offer_mail($r);
     foreach ($workers as $w) {
@@ -367,8 +364,8 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
     if ($u['kind'] !== 'worker' || (int) $u['blocked'] || !(int) $u['notify']) {
         return 0;
     }
-    $seen = array_map('intval', sql('SELECT request_id FROM job_mails WHERE worker_id = ? UNION SELECT request_id FROM invites WHERE worker_id = ?
-        UNION SELECT request_id FROM responses WHERE worker_id = ?', [$u['id'], $u['id'], $u['id']])->fetchAll(PDO::FETCH_COLUMN));
+    $seen = array_map('intval', sql('SELECT request_id FROM job_mails WHERE worker_id = ?
+        UNION SELECT request_id FROM responses WHERE worker_id = ?', [$u['id'], $u['id']])->fetchAll(PDO::FETCH_COLUMN));
     $skip = array_merge($seen, array_map('intval', $before));
     $jobs = array_values(array_filter(matching_jobs($u), fn ($r) => !in_array((int) $r['id'], $skip, true)));
     if (!$jobs) {
@@ -468,9 +465,6 @@ function roles_with_experience(int $userId): string
     return implode(', ', $out);
 }
 
-// "Mano komanda": workers who already had a GANG contract with one of the manager's venues,
-// most frequent first, then people who joined through the manager's invitation link.
-// jobs = contracts together, last = date of the latest one.
 // GANG checks every employer (admin -> Nariai -> Patvirtinti) before they can publish searches
 // or open worker profiles.
 function manager_verified(array $u): bool
@@ -478,57 +472,17 @@ function manager_verified(array $u): bool
     return $u['kind'] === 'manager' && !empty($u['verified_at']);
 }
 
-// A worker who applied to one of the employer's searches, worked for them or joined their team.
+// A worker who applied to one of the employer's searches or worked for them.
 function manager_knows_worker(int $managerId, int $workerId): bool
 {
     return (bool) sql('SELECT 1 FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? AND s.worker_id = ?
-        UNION SELECT 1 FROM contracts c JOIN venues v ON v.id = c.venue_id WHERE v.manager_id = ? AND c.worker_id = ?
-        UNION SELECT 1 FROM team_links t WHERE t.manager_id = ? AND t.worker_id = ?', [$managerId, $workerId, $managerId, $workerId, $managerId, $workerId])->fetchColumn();
+        UNION SELECT 1 FROM contracts c JOIN venues v ON v.id = c.venue_id WHERE v.manager_id = ? AND c.worker_id = ?', [$managerId, $workerId, $managerId, $workerId])->fetchColumn();
 }
 
-// Worker profiles and photos: the worker, GANG, and employers the worker applied to, worked for
-// or joined the team of. Only checked employers can publish searches, so only they get applicants.
+// Worker profiles and photos: the worker, GANG, and employers the worker applied to or worked for. Only checked employers can publish searches, so only they get applicants.
 function sees_worker_profile(?array $u, int $workerId): bool
 {
     return is_admin() || ($u && (int) $u['id'] === $workerId) || ($u && $u['kind'] === 'manager' && manager_knows_worker((int) $u['id'], $workerId));
-}
-
-function team_members(int $managerId): array
-{
-    if (!TEAM_ENABLED) {
-        return [];
-    }
-    $worked = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last
-        FROM contracts c JOIN venues v ON v.id = c.venue_id JOIN requests r ON r.id = c.request_id JOIN users u ON u.id = c.worker_id
-        WHERE v.manager_id = ? AND u.blocked = 0 AND c.cancelled_at IS NULL
-        GROUP BY u.id, u.name, u.photo, u.roles, u.email, u.notify ORDER BY jobs DESC, last DESC LIMIT 60", [$managerId])->fetchAll();
-    $joined = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, 0 AS jobs, NULL AS last
-        FROM team_links t JOIN users u ON u.id = t.worker_id
-        WHERE t.manager_id = ? AND u.blocked = 0 AND u.kind = 'worker' AND u.roles <> '' ORDER BY t.created_at DESC LIMIT 100", [$managerId])->fetchAll();
-    $ids = array_column($worked, 'id');
-    return [...$worked, ...array_values(array_filter($joined, fn ($w) => !in_array($w['id'], $ids)))];
-}
-
-// A worker joins a manager's team (invitation link). Returns false when already in it.
-function join_team(int $managerId, int $workerId): bool
-{
-    if (sql('SELECT 1 FROM team_links WHERE manager_id = ? AND worker_id = ?', [$managerId, $workerId])->fetchColumn()) {
-        return false;
-    }
-    insert('team_links', ['manager_id' => $managerId, 'worker_id' => $workerId, 'created_at' => now()]);
-    $manager = sql("SELECT * FROM users WHERE id = ? AND kind = 'manager'", [$managerId])->fetch();
-    $worker = sql('SELECT * FROM users WHERE id = ?', [$workerId])->fetch();
-    if ($manager && $worker) {
-        send_mail($manager['email'], 'Prie jūsų komandos prisijungė '.first_name($worker['name']), [
-            'kicker' => 'Mano komanda',
-            'title' => 'Naujas komandos narys',
-            'lead' => '**'.first_name($worker['name']).'** priėmė jūsų kvietimą ir prisijungė prie jūsų komandos GANG.',
-            'facts' => array_filter(['Pareigos' => labels($worker['roles'], ROLES), 'Miestai' => labels($worker['cities'], CITIES)]),
-            'body' => 'Skelbdami paiešką, šį žmogų galėsite pakviesti asmeniškai, o pažymėję „Pirmiausia pasiūlyti komandai“ pasiūlymą jūsų komanda gaus anksčiau nei kiti darbuotojai.',
-            'cta' => ['Mano profilis', url('/mano')],
-        ]);
-    }
-    return true;
 }
 
 // Words for the personal link /k/{word}: what the person does, a noun of honour with a wink.
@@ -674,25 +628,6 @@ function invite_code(array $u): string
     return $code;
 }
 
-// Team first: once public_at has passed, the request goes to every matching worker.
-// Runs from cron and on page views, so the hour-long window is not stretched by the hourly cron.
-function release_team_requests(): void
-{
-    $due = sql("SELECT id FROM requests WHERE public_at IS NOT NULL AND public_at <= ? LIMIT 20", [now()])->fetchAll(PDO::FETCH_COLUMN);
-    foreach ($due as $id) {
-        // Only the call that clears public_at sends the emails.
-        if (sql('UPDATE requests SET public_at = NULL WHERE id = ? AND public_at IS NOT NULL', [$id])->rowCount() !== 1) {
-            continue;
-        }
-        $r = find_request((int) $id);
-        [$where, $params] = open_where();
-        if ($r && sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchColumn()) {
-            $skip = array_map('intval', sql('SELECT worker_id FROM invites WHERE request_id = ? UNION SELECT worker_id FROM responses WHERE request_id = ?', [$id, $id])->fetchAll(PDO::FETCH_COLUMN));
-            notify_workers($r, $skip);
-        }
-    }
-}
-
 // Usual pay for a role in a city: [low, high, number of GANG requests it is based on (0 = PAY_GUIDE)].
 function pay_guide(string $role, string $city): ?array
 {
@@ -735,35 +670,3 @@ function criteria_averages(string $author, string $column, int $id): array
     return [array_map(fn ($v) => $v !== null ? (float) $v : null, ['c1' => $row['c1'], 'c2' => $row['c2'], 'c3' => $row['c3']]), (int) $row['n']];
 }
 
-// Worker ids already invited to a request.
-function invited_ids(int $requestId): array
-{
-    return array_map('intval', sql('SELECT worker_id FROM invites WHERE request_id = ?', [$requestId])->fetchAll(PDO::FETCH_COLUMN));
-}
-
-// Personal invitation from the manager to a team member; one per request and worker.
-// The email respects the worker's notification setting; the invitation always shows in their account.
-function invite_worker(array $r, array $worker): bool
-{
-    if (sql('SELECT 1 FROM invites WHERE request_id = ? AND worker_id = ?', [$r['id'], $worker['id']])->fetchColumn()
-        || sql('SELECT 1 FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $worker['id']])->fetchColumn()) {
-        return false;
-    }
-    insert('invites', ['request_id' => $r['id'], 'worker_id' => $worker['id'], 'created_at' => now()]);
-    if ((int) $worker['notify'] === 1) {
-        $role = ROLES[$r['role']] ?? $r['role'];
-        send_mail($worker['email'], 'Asmeninis kvietimas: '.$role.' – '.$r['venue_name'], [
-            'kicker' => 'Asmeninis kvietimas',
-            'title' => $role,
-            'lead' => "**{$r['venue_name']}** (".(CITIES[$r['city']] ?? '').') kviečia jus, kaip savo komandos narį, į darbą.',
-            'facts' => array_filter([
-                'Laikas' => period($r).($r['hours'] !== '' ? ", {$r['hours']}" : ''),
-                'Atlygis' => $r['pay'],
-            ], fn ($v) => $v !== ''),
-            'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
-            'cta' => ['Peržiūrėti kvietimą', url('/darbas/'.$r['id'])],
-            'footnote' => 'Šį asmeninį kvietimą gavote, nes esate šio darbdavio komandos narys GANG platformoje. [Atsisakyti darbo pasiūlymų laiškų]('.unsubscribe_url((int) $worker['id']).').',
-        ], '', job_mail_headers($worker));
-    }
-    return true;
-}
