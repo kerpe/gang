@@ -16,7 +16,7 @@ const CHAT_MAIL_HOURS = 12;
 // "Dabar pokalbyje": the other side's open chat polled within this many seconds (it polls every 8 s).
 const CHAT_HERE_SECONDS = 25;
 
-// GANG's own emoji: sent as a sticker (message body "[gang:kava]") or put on a message as a reaction.
+// GANG's own emoji: put into a message as "[gang:kava]" (alone it shows as a sticker) or on a message as a reaction.
 // Icons are 24×24 line drawings in currentColor; "chef" is the GANG knives.
 const GANG_EMOJI = [
     'chef' => ['Yes, chef!', ''],
@@ -49,11 +49,33 @@ function sticker_code(string $body): ?string
     return preg_match('/^\[gang:([a-z0-9]+)\]$/', $body, $m) && isset(GANG_EMOJI[$m[1]]) ? $m[1] : null;
 }
 
-// The message as plain text (emails): a sticker becomes its caption.
+// The message as plain text (emails): a sticker becomes its caption, an emoji in the text "(caption)".
 function chat_plain(string $body): string
 {
     $code = sticker_code($body);
-    return $code ? GANG_EMOJI[$code][0] : $body;
+    if ($code) {
+        return GANG_EMOJI[$code][0];
+    }
+    return preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => isset(GANG_EMOJI[$m[1]]) ? '('.GANG_EMOJI[$m[1]][0].')' : $m[0], $body);
+}
+
+// One GANG emoji inside the text of a message or in the field.
+function gang_emoji_inline(string $code): string
+{
+    return '<span class="ge-in" data-emoji="'.e($code).'" role="img" aria-label="'.e(GANG_EMOJI[$code][0]).'" title="'.e(GANG_EMOJI[$code][0]).'">'.gang_emoji_icon($code).'</span>';
+}
+
+// The message text as HTML: GANG emoji drawn where they were put, line breaks kept.
+function chat_body_html(string $body): string
+{
+    $html = preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => isset(GANG_EMOJI[$m[1]]) ? gang_emoji_inline($m[1]) : $m[0], e($body));
+    return nl2br($html);
+}
+
+// A message of GANG emoji only (two or more): drawn bigger, without a bubble.
+function chat_emoji_only(string $body): bool
+{
+    return preg_match('/^(\s*\[gang:[a-z0-9]+\]\s*){2,}$/', $body) === 1;
 }
 
 // Lithuanian vocative of a first name for a friendly greeting: Vilius → Viliau, Jonas → Jonai,
@@ -245,7 +267,8 @@ function chat_list_html(array $c, int $userId, array $messages): string
         $code = sticker_code((string) $m['body']);
         $body = $code
             ? '<span class="sticker-art">'.gang_emoji_icon($code).'</span><p>'.e(GANG_EMOJI[$code][0]).'</p>'
-            : '<p>'.nl2br(e($m['body'])).'</p>';
+            : '<p>'.chat_body_html((string) $m['body']).'</p>';
+        $only = !$code && chat_emoji_only((string) $m['body']);
         $chips = '';
         foreach ($reactions[$id] ?? [] as $rc => $users) {
             if (!isset(GANG_EMOJI[$rc])) {
@@ -255,7 +278,7 @@ function chat_list_html(array $c, int $userId, array $messages): string
             $chips .= '<button type="button" class="react-chip'.($by ? ' by-me' : '').'" data-react="'.e($rc).'" title="'.e(GANG_EMOJI[$rc][0]).($by ? ' (paspauskite, kad nuimtumėte)' : '').'"'.($open ? '' : ' disabled').'>'
                 .gang_emoji_icon($rc).(count($users) > 1 ? '<small>'.count($users).'</small>' : '').'</button>';
         }
-        $html .= '<div class="msg'.($mine ? ' mine' : '').($code ? ' sticker' : '').'"'.($id > 0 ? ' data-id="'.$id.'"' : '').'>'
+        $html .= '<div class="msg'.($mine ? ' mine' : '').($code ? ' sticker' : '').($only ? ' emoji-only' : '').'"'.($id > 0 ? ' data-id="'.$id.'"' : '').'>'
             .(!empty($m['note']) ? '<span class="msg-tag">'.e($m['note']).'</span>' : '').$body
             .'<span class="msg-time">'.e(substr($m['created_at'], 11, 5)).$status.'</span>'
             .($chips !== '' ? '<span class="msg-reacts">'.$chips.'</span>' : '')
@@ -282,7 +305,7 @@ function chat_state(array $c, int $userId, array $messages): string
     return $last.'-'.min($other, $last).'-'.$r[0].'.'.$r[1].'-'.(chat_here($c, $userId) ? 1 : 0).'-'.substr(today(), 8);
 }
 
-// The panel of GANG emoji (one per chat): a sticker from the field's button, a reaction from a message's.
+// The panel of GANG emoji (one per chat): into the message from the field's button, a reaction from a message's.
 function chat_emoji_panel(): string
 {
     $out = '';
@@ -333,7 +356,6 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
   var id = box.dataset.chat, list = box.querySelector('.chat-list'), form = box.querySelector('.chat-form');
   var text = form && form.querySelector('textarea'), send = form && form.querySelector('.chat-send'), busy = false;
   function bottom() { list.scrollTop = list.scrollHeight; }
-  function grow() { if (!text) return; text.style.height = 'auto'; text.style.height = Math.min(text.scrollHeight, 160) + 'px'; }
   function apply(d) {
     if (!d || !d.state) return;
     if (d.html !== undefined && d.state !== box.dataset.state) {
@@ -344,45 +366,104 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     if (d.here !== undefined) box.classList.toggle('here', !!d.here);
   }
   bottom();
-  if (text && text.dataset.suggest) { text.value = text.dataset.suggest; grow(); text.value = ''; }
+  // The field: text with GANG emoji inside it. It is written to the hidden textarea as "[gang:kava]" when sent.
+  var ed = null, saved = null, uid = 0;
+  if (text) {
+    ed = document.createElement('div');
+    ed.className = 'chat-input is-empty'; ed.contentEditable = 'true'; ed.spellcheck = true;
+    ed.setAttribute('role', 'textbox'); ed.setAttribute('aria-multiline', 'true'); ed.setAttribute('aria-label', 'Žinutė');
+    ed.dataset.placeholder = text.placeholder;
+    if (text.title) ed.title = text.title;
+    text.required = false; text.hidden = true; text.tabIndex = -1;
+    text.parentNode.insertBefore(ed, text);
+  }
+  function value(node) {
+    var s = '';
+    node.childNodes.forEach(function (n) {
+      if (n.nodeType === 3) { s += n.nodeValue; return; }
+      if (n.nodeType !== 1) return;
+      if (n.dataset && n.dataset.emoji) { s += '[gang:' + n.dataset.emoji + ']'; return; }
+      if (n.tagName === 'BR') { s += '\n'; return; }
+      if (/^(DIV|P)$/.test(n.tagName) && s && s.slice(-1) !== '\n') s += '\n';
+      s += value(n);
+    });
+    return s;
+  }
+  function body() { return value(ed).replace(/ /g, ' ').replace(/[​]/g, ''); }
+  function changed() { var empty = !body().trim(); if (empty && ed.innerHTML !== '') ed.innerHTML = ''; ed.classList.toggle('is-empty', empty); }
+  function caretEnd() { var r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); saved = r.cloneRange(); }
   // The suggested first message is the field's grey placeholder: Tab puts it in for editing, sending an empty field sends it as is.
-  function useTip() { text.value = text.dataset.suggest; grow(); text.setSelectionRange(text.value.length, text.value.length); }
-  function dropTip() { if (!text.dataset.suggest) return; delete text.dataset.suggest; text.removeAttribute('title'); text.placeholder = 'Rašykite žinutę…'; text.required = true; }
+  function useTip() { ed.textContent = text.dataset.suggest; changed(); ed.focus(); caretEnd(); }
+  function dropTip() { if (!text.dataset.suggest) return; delete text.dataset.suggest; ed.removeAttribute('title'); ed.dataset.placeholder = 'Rašykite žinutę…'; }
+  function putEmoji(code, btn) {
+    var node = document.createElement('span');
+    node.className = 'ge-in'; node.contentEditable = 'false'; node.dataset.emoji = code;
+    node.title = btn.title; node.setAttribute('role', 'img'); node.setAttribute('aria-label', btn.title);
+    var svg = btn.querySelector('svg').cloneNode(true), mask = svg.querySelector('mask');
+    if (mask) { var mid = 'gk-in-' + id + '-' + (++uid); mask.id = mid; svg.querySelectorAll('[mask]').forEach(function (g) { g.setAttribute('mask', 'url(#' + mid + ')'); }); }
+    node.appendChild(svg);
+    ed.focus();
+    var r = saved && ed.contains(saved.startContainer) ? saved : null;
+    if (!r) { r = document.createRange(); r.selectNodeContents(ed); r.collapse(false); }
+    r.deleteContents();
+    var gap = document.createTextNode('\u00a0');
+    r.insertNode(gap); r.insertNode(node);
+    r = document.createRange(); r.setStartAfter(gap); r.collapse(true);
+    var sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); saved = r.cloneRange();
+    dropTip(); changed();
+  }
   if (form) {
-    text.addEventListener('input', grow);
-    text.addEventListener('keydown', function (e) {
-      if (e.key === 'Tab' && !e.shiftKey && text.dataset.suggest && !text.value.trim()) { e.preventDefault(); useTip(); return; }
-      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); form.requestSubmit(); }
+    document.addEventListener('selectionchange', function () {
+      var sel = getSelection();
+      if (sel.rangeCount && ed.contains(sel.getRangeAt(0).startContainer)) saved = sel.getRangeAt(0).cloneRange();
+    });
+    ed.addEventListener('input', changed);
+    ed.addEventListener('paste', function (e) {
+      e.preventDefault();
+      var t = (e.clipboardData || window.clipboardData).getData('text/plain');
+      if (!document.execCommand('insertText', false, t)) { ed.appendChild(document.createTextNode(t)); caretEnd(); }
+      changed();
+    });
+    ed.addEventListener('drop', function (e) { e.preventDefault(); });
+    ed.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && !e.shiftKey && text.dataset.suggest && !body().trim()) { e.preventDefault(); useTip(); return; }
+      if (e.key !== 'Enter' || e.isComposing) return;
+      if (!e.shiftKey && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); form.requestSubmit(); return; }
+      e.preventDefault();
+      if (!document.execCommand('insertLineBreak')) document.execCommand('insertHTML', false, '<br>');
+      changed();
     });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
-      if (!busy && !text.value.trim() && text.dataset.suggest) useTip();
-      if (busy || !text.value.trim()) return;
+      if (!busy && !body().trim() && text.dataset.suggest) useTip();
+      var v = body().trim();
+      if (busy || !v) { if (!busy) ed.focus(); return; }
+      text.value = v;
       busy = true; send.disabled = true;
       fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.error) { alert(d.error); return; }
-          text.value = ''; grow(); dropTip(); d.mine = true; apply(d);
+          ed.innerHTML = ''; text.value = ''; saved = null; changed(); dropTip(); d.mine = true; apply(d);
         })
         .catch(function () { alert('Žinutės išsiųsti nepavyko. Patikrinkite interneto ryšį ir bandykite dar kartą.'); })
-        .finally(function () { busy = false; send.disabled = false; text.focus(); });
+        .finally(function () { busy = false; send.disabled = false; ed.focus(); });
     });
   }
-  // GANG emoji: the field's button sends one as a sticker, a message's button puts one on it as a reaction.
+  // GANG emoji: the field's button puts one into the message, a message's button puts one on it as a reaction.
   var panel = box.querySelector('.emoji-panel'), target = null, opener = null;
   function closePanel() { if (!panel || panel.hidden) return; panel.hidden = true; target = null; if (opener) opener.setAttribute('aria-expanded', 'false'); }
   function openPanel(btn, msg) {
     if (!panel) return;
     if (!panel.hidden && opener === btn) { closePanel(); return; }
     target = msg; opener = btn; btn.setAttribute('aria-expanded', 'true');
-    panel.querySelector('.emoji-for').textContent = msg ? 'Reakcija į žinutę' : 'Siųsti GANG emoji';
+    panel.querySelector('.emoji-for').textContent = msg ? 'Reakcija į žinutę' : 'GANG emoji į žinutę';
     panel.hidden = false;
     var b = box.getBoundingClientRect(), r = btn.getBoundingClientRect();
     var top = msg ? r.bottom - b.top + 6 : r.top - b.top - panel.offsetHeight - 8;
     if (msg && top + panel.offsetHeight > box.clientHeight) top = Math.max(8, r.top - b.top - panel.offsetHeight - 6);
     panel.style.top = top + 'px';
-    panel.querySelector('[data-emoji]').focus({ preventScroll: true });
+    if (msg || !matchMedia('(pointer: coarse)').matches) panel.querySelector('[data-emoji]').focus({ preventScroll: true });
   }
   function post(url, data) {
     data.append('csrf', form.querySelector('[name=csrf]').value);
@@ -396,7 +477,9 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     post('/kontraktas/' + id + '/reakcija', f).then(apply);
   }
   if (panel && form) {
+    form.querySelector('.chat-emoji').addEventListener('mousedown', function (e) { e.preventDefault(); });
     form.querySelector('.chat-emoji').addEventListener('click', function () { openPanel(this, null); });
+    panel.addEventListener('mousedown', function (e) { if (!target && e.target.closest('[data-emoji]')) e.preventDefault(); });
     list.addEventListener('click', function (e) {
       var add = e.target.closest('.react-add'), chip = e.target.closest('.react-chip');
       if (add) openPanel(add, add.closest('.msg'));
@@ -407,8 +490,7 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
       var b = e.target.closest('[data-emoji]'); if (!b) return;
       var code = b.dataset.emoji, msg = target; closePanel();
       if (msg) { react(msg.dataset.id, code); return; }
-      var f = new FormData(); f.append('sticker', code); f.append('body', '');
-      post(form.action, f).then(function (d) { if (d) { dropTip(); d.mine = true; apply(d); } });
+      putEmoji(code, b);
     });
     document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && e.target !== opener && !opener.contains(e.target)) closePanel(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) { var o = opener; closePanel(); o.focus(); } });
