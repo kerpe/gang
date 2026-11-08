@@ -95,7 +95,7 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
             'facts' => $facts,
             'note' => $noteBlock,
             'body' => $reopened
-                ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus.'.(TEAM_ENABLED ? ' Paieškos puslapyje galite asmeniškai pakviesti savo komandos narius.' : '')
+                ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus.'
                 : 'Jei reikalingas pakaitinis darbuotojas, paskelbkite naują paiešką. Forma bus užpildyta pagal šį darbą.',
             'cta' => $reopened ? ['Peržiūrėti paiešką', url('/darbas/'.$c['request_id'])] : ['Rasti pakaitinį darbuotoją', url('/poreikis/naujas?pagal='.(int) $c['request_id'])],
         ]));
@@ -127,7 +127,7 @@ function reopen_request(int $requestId, int $cancelledWorker): bool
     }
     $wasFilled = $r['status'] === 'filled';
     sql("UPDATE requests SET status = 'open', filled_at = NULL WHERE id = ?", [$requestId]);
-    if ($wasFilled && empty($r['public_at'])) {
+    if ($wasFilled) {
         // A new request date window: the posting date restarts the "nuolat" visibility period.
         if ($r['kind'] === 'nuolat') {
             sql('UPDATE requests SET created_at = ? WHERE id = ?', [now(), $requestId]);

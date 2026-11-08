@@ -38,9 +38,6 @@ foreach ($due as $c) {
     sql('UPDATE contracts SET review_mail_at = ? WHERE id = ?', [now(), $c['id']]);
 }
 
-// Team first: requests whose team-only window has passed go to every matching worker.
-release_team_requests();
-
 // Arrival confirmation for tomorrow's shifts (10:00 reminder, 18:00 heads-up to the employer).
 run_shift_checks();
 

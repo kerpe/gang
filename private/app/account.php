@@ -82,7 +82,6 @@ function profile_page(): never
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
                 $fresh = sql('SELECT * FROM users WHERE id = ?', [$u['id']])->fetch();
-                team_joined_notice($fresh);
                 $jobsMailed = notify_worker_of_open_jobs($fresh, $matchedBefore);
             }
             if ($photo !== $u['photo']) {
@@ -92,7 +91,7 @@ function profile_page(): never
                 redirect('/darboviete/nauja');
             }
             $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : '';
-            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Pažymėkite dienas, kuriomis galite priimti darbo pasiūlymus.').$jobsNote);
+            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.').$jobsNote);
             redirect('/mano');
         }
     }
@@ -106,18 +105,22 @@ function profile_page(): never
             : 'Jei norite, įkelkite savo nuotrauką arba avatarą. Jis bus rodomas pokalbiuose su darbuotojais.')
         .' Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
         .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
-        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'prisijungę darbdaviai' : 'jūsų kandidatai ir komandos nariai').'.</p>'
+        .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'darbdaviai, kuriems pateikiate kandidatūrą' : 'jūsų kandidatai ir darbuotojai').'.</p>'
         .$remove.err($errors, 'photo').'</div></div></fieldset>';
     if ($worker) {
         $roleRows = '';
-        foreach (ROLES as $role => $label) {
-            $roleRows .= '<div class="role-xp"><label class="choice"><input type="checkbox" name="roles[]" value="'.$role.'"'.(in_array($role, $v['roles'], true) ? ' checked' : '').'> '.e($label).'</label>'
-                .'<select name="xp['.$role.']" aria-label="'.e($label).': patirtis">'.options(['' => 'Nurodykite patirtį'] + EXPERIENCE, $v['xp'][$role] ?? '').'</select></div>';
+        foreach (ROLE_GROUPS as $group => $roles) {
+            $roleRows .= '<p class="role-group">'.e($group).'</p>';
+            foreach ($roles as $role) {
+                $label = ROLES[$role];
+                $roleRows .= '<div class="role-xp"><label class="choice"><input type="checkbox" name="roles[]" value="'.$role.'"'.(in_array($role, $v['roles'], true) ? ' checked' : '').'> '.e($label).'</label>'
+                    .'<select name="xp['.$role.']" aria-label="'.e($label).': patirtis">'.options(['' => 'Nurodykite patirtį'] + EXPERIENCE, $v['xp'][$role] ?? '').'</select></div>';
+            }
         }
         $durationChoices = '';
         foreach (KINDS as $kind => $label) {
             $durationChoices .= '<label class="choice"><input type="checkbox" name="durations[]" value="'.$kind.'"'.(in_array($kind, $v['durations'], true) ? ' checked' : '').'>'
-                .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$kind]).'</small></span></label>';
+                .'<span><span class="choice-name">'.e($label).'</span><small><span class="hint-long">'.e(KIND_HINTS[$kind]).'</span><span class="hint-short">'.e(KIND_HINTS_SHORT[$kind]).'</span></small></span></label>';
         }
         $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
@@ -302,7 +305,8 @@ function dashboard_page(): never
     $rating = '';
     if ($u['kind'] === 'worker') {
         [$avg, $n] = worker_rating((int) $u['id']);
-        $rating = '<span class="meta account-rating">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</span>';
+        // A newcomer sees just "GANG naujokas", not "Įvertinimų dar nėra" next to it.
+        $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>';
     }
     page('Mano profilis', '<section class="wrap">'
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
@@ -335,7 +339,8 @@ function full_address(array $c): string
 }
 
 // One GANG contract with what each side needs next: the chat, where to go, the dates in a calendar.
-function contract_card(array $c, string $side, bool $reviewed): string
+// The employer's card is one line, "Jonas J. · Barmenas"; the venue is named only when they have several.
+function contract_card(array $c, string $side, bool $reviewed, bool $venueName = false): string
 {
     $worker = $side === 'worker';
     $end = contract_end($c);
@@ -352,9 +357,7 @@ function contract_card(array $c, string $side, bool $reviewed): string
     $stepper .= '</ol>';
     // Phone numbers stay hidden: the two sides talk in the GANG chat and swap numbers there if they want to.
     $place = full_address($c);
-    $info = $worker
-        ? '<div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).'</dd></div>'
-        : '<div><dt>Darbuotojas</dt><dd><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a></dd></div><div><dt>Darbovietė</dt><dd>'.e($c['venue_name']).'</dd></div>';
+    $info = $worker ? '<dl class="contract-info"><div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).'</dd></div></dl>' : '';
     $actions = '';
     $me = (int) ($worker ? $c['worker_id'] : $c['manager_id']);
     $unread = chat_unread((int) $c['id'], $me);
@@ -379,11 +382,11 @@ function contract_card(array $c, string $side, bool $reviewed): string
     } elseif ($worker && $c['no_show_at']) {
         $attendance = '<p class="shift-status warn">Darbdavys pažymėjo, kad neatvykote</p>';
     }
-    $title = $worker ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e($c['worker_name']).' · '.e(ROLES[$c['role']] ?? '');
+    $title = $worker ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e(first_name($c['worker_name'])).' · '.e(ROLES[$c['role']] ?? '');
     return '<article class="contract'.($over ? ' past' : '').'">'.$stepper
         .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
-        .'<p class="meta">'.e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
-        .'<dl class="contract-info">'.$info.'</dl>'.shift_status($c, $side).$attendance
+        .'<p class="meta">'.($venueName ? e($c['venue_name']).' · ' : '').e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
+        .$info.shift_status($c, $side).$attendance
         .'<p class="contract-actions">'.$actions.'</p></article>';
 }
 
@@ -391,7 +394,7 @@ function cancelled_contract_card(array $c, string $side): string
 {
     $by = $c['cancelled_by'] === $side ? 'Atšaukėte jūs' : ($c['cancelled_by'] === 'worker' ? 'Atšaukė darbuotojas' : 'Atšaukė darbdavys');
     $why = CANCEL_REASONS[$c['cancelled_by']][$c['cancel_reason']] ?? '';
-    $title = $side === 'worker' ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e($c['worker_name']).' · '.e(ROLES[$c['role']] ?? '');
+    $title = $side === 'worker' ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e(first_name($c['worker_name'])).' · '.e(ROLES[$c['role']] ?? '');
     return '<article class="contract past cancelled"><p class="tags"><span class="tag">Atšaukta</span></p>'
         .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
         .'<p class="meta">'.e(period($c)).'</p>'
@@ -432,14 +435,7 @@ function worker_open_offers(array $u): array
 {
     $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
-    $jobs = array_filter($jobs, fn ($r) => !isset($responded[$r['id']]));
-    // Personal invitations from employers the worker already worked with come first.
-    [$where, $params] = open_where();
-    $invites = sql(REQUEST_SELECT." JOIN invites i ON i.request_id = r.id WHERE i.worker_id = ? AND $where
-        AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id AND s.worker_id = i.worker_id) ORDER BY r.start_date", array_merge([$u['id']], $params))->fetchAll();
-    $inviteIds = array_column($invites, 'id');
-    $jobs = array_filter($jobs, fn ($r) => !in_array($r['id'], $inviteIds));
-    return [$invites, array_values($jobs)];
+    return array_values(array_filter($jobs, fn ($r) => !isset($responded[$r['id']])));
 }
 
 // "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano profilis.
@@ -449,7 +445,7 @@ function worker_offers_page(): never
     if ($u['kind'] !== 'worker') {
         redirect('/mano');
     }
-    [, $jobs] = worker_open_offers($u);
+    $jobs = worker_open_offers($u);
     $cards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
         .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik čia. Juos galite įjungti profilio nustatymuose.').'</p>'
@@ -463,8 +459,7 @@ function worker_dashboard(array $u): string
     [$avg, $n] = worker_rating((int) $u['id']);
     $calendar = gang_calendar_panel($u);
 
-    [$invites, $jobs] = worker_open_offers($u);
-    $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: esate šio darbdavio komandoje</p>'), $invites));
+    $jobs = worker_open_offers($u);
 
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed FROM contracts c', CONTRACT_SELECT)
         .' WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll());
@@ -484,7 +479,6 @@ function worker_dashboard(array $u): string
     $what = fn ($r) => (ROLES[$r['role']] ?? $r['role']).' · '.$r['venue_name'];
     $next = match (true) {
         (bool) $check => ['warn', ($check['shift_date'] === today() ? 'Šiandien' : 'Rytoj').' dirbate', $what($check).'. Patvirtinkite, kad atvyksite.', '/pamaina/'.$check['token'], 'Patvirtinti atvykimą'],
-        (bool) $invites => ['', 'Asmeninis kvietimas', $what($invites[0]).', '.rtrim(period($invites[0]), '.').'. Su šiuo darbdaviu jau dirbote kartu.', '/darbas/'.(int) $invites[0]['id'], 'Peržiūrėti kvietimą'],
         (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
         (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '/mano/pasiulymai', 'Peržiūrėti'],
@@ -499,7 +493,6 @@ function worker_dashboard(array $u): string
     ]);
     // Name, rating and GANG jobs are on the account card at the top of the page (dashboard_page).
     return ($next ? next_step(...$next) : '').$tiles
-        .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .$calendar
@@ -587,8 +580,7 @@ function manager_dashboard(array $u): string
     }
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'manager\') AS reviewed FROM contracts c', CONTRACT_SELECT)
         .' WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll());
-    $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'manager', (bool) $c['reviewed']), $contracts));
-    // No "Mano komanda" section here: the team is shown where it is used, in the new search form (Vilius 2026-11-08: redundant on /mano).
+    $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'manager', (bool) $c['reviewed'], count($venues) > 1), $contracts));
     $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
     $toReview = array_values(array_filter($contracts, fn ($c) => !$c['reviewed'] && $c['start_date'] <= today()));
     $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
@@ -899,7 +891,6 @@ function account_export(): never
         'eksportuota' => date('c'),
         'profilis' => $profile,
         'pareigos_ir_patirtis' => $rows('SELECT role, experience FROM worker_roles WHERE user_id = ?'),
-        'laisvos_dienos' => $rows('SELECT start_date, end_date FROM availability WHERE user_id = ?'),
         'darbovietes' => $venues,
         'paieskos' => $rows("SELECT id, venue_id, role, kind, people, start_date, end_date, dates, pay, description, status, created_at FROM requests WHERE venue_id IN ($in)", []),
         'kandidaturos' => $rows('SELECT request_id, note, dates, status, created_at FROM responses WHERE worker_id = ?'),
@@ -946,8 +937,8 @@ function account_delete_page(): never
     }
     $worker = $u['kind'] === 'worker';
     $what = $worker
-        ? '<li>profilis, nuotrauka, pareigos, miestai ir laisvos dienos;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
-        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai, komandos nariai ir kvietimai;</li>';
+        ? '<li>profilis, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
+        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>';
     if ($upcoming) {
         $list = '';
         foreach ($upcoming as $c) {

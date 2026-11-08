@@ -20,6 +20,12 @@ const ROLES = [
     'vadovas' => 'Baro vadovas',
     'someljee' => 'Restorano vadovas',
 ];
+// Roles by team, as on the home page (Baras / Virtuvė / Aptarnavimas); the worker's profile form groups them so.
+const ROLE_GROUPS = [
+    'Baras' => ['barmenas', 'barback', 'barista', 'vadovas'],
+    'Virtuvė' => ['sefas', 'virejas', 'pagalbinis', 'plovejas'],
+    'Aptarnavimas' => ['padavejas', 'runneris', 'administratorius', 'someljee'],
+];
 const KINDS = [
     'trumpai' => 'Trumpam',
     'sezonas' => 'Sezonui',
@@ -108,15 +114,8 @@ const CANCEL_REASONS = [
 ];
 // After the work ends, the employer can mark a no-show for this many days.
 const NO_SHOW_DAYS = 7;
-// "Mano komanda" (team links, personal invitations to the team, "Pirmiausia pasiūlyti komandai"):
-// switched off for the first version (Vilius 2026-11-08). The data stays; true brings it all back.
-const TEAM_ENABLED = false;
-// Team first: other workers get the request this many hours after the team, unless it is filled by then.
-const TEAM_FIRST_HOURS = ['trumpai' => 12, 'sezonas' => 24, 'nuolat' => 24];
-// A job that starts within this many days counts as urgent: listed and emailed first,
-// and "Pirmiausia pasiūlyti komandai" holds it back for one hour only.
+// A job that starts within this many days counts as urgent: listed and emailed first.
 const URGENT_DAYS = 2;
-const URGENT_TEAM_HOURS = 1;
 // Review criteria by author: the employer rates the worker, the worker rates the employer.
 const REVIEW_CRITERIA = [
     'manager' => ['c1' => 'Punktualumas', 'c2' => 'Darbo kokybė', 'c3' => 'Bendradarbiavimas'],

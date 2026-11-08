@@ -134,7 +134,7 @@ function alert_manager(array $s, bool $declined): void
         'facts' => ['Darbuotojas' => "$who, $role", 'Darbovietė' => $s['venue_name']],
         'body' => [
             $declined ? '' : 'Tai nebūtinai reiškia, kad darbuotojas neatvyks, galbūt šiuo metu dirba ir patvirtins vėliau. Rekomenduojame parašyti GANG žinutėse. Kai darbuotojas atvykimą patvirtins, apie tai jus informuosime.',
-            ($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas').' pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą'.(TEAM_ENABLED ? ', o jūsų komandos nariai gaus asmeninį kvietimą.' : '.'),
+            ($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas').' pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą.',
         ],
         'cta' => ['Rasti pakaitinį darbuotoją', $link],
     ]);

@@ -419,7 +419,7 @@ function request_form_page(): never
         page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į profilį</a></p></section>', ['noindex' => true]);
     }
     $venueOptions = array_column($venues, 'name', 'id');
-    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => '', 'team_first' => ''];
+    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => ''];
     // Events: more roles on the same dates, each [role, people, pay]; every role becomes its own request.
     $extras = [];
     // "Pakartoti": the form comes filled in from an earlier request; only the dates are picked again.
@@ -429,7 +429,7 @@ function request_form_page(): never
         // Older requests kept the working hours in a separate field; they now go at the top of the description.
         $description = ($from['hours'] !== '' ? 'Darbo laikas: '.$from['hours']."\n\n" : '').$from['description'];
         $v = ['venue_id' => (string) $from['venue_id'], 'role' => $from['role'], 'kind' => $from['kind'], 'people' => (string) $from['people'], 'dates' => '',
-            'pay' => valid_pay($pay[0] ?? '') ? $pay[0] : '', 'min_experience' => (string) $from['min_experience'], 'description' => $description, 'event_title' => $from['event_title'], 'team_first' => ''];
+            'pay' => valid_pay($pay[0] ?? '') ? $pay[0] : '', 'min_experience' => (string) $from['min_experience'], 'description' => $description, 'event_title' => $from['event_title']];
         if ($from['event_id'] && !ctype_digit($_GET['pakeisti'] ?? '')) {
             foreach (sql('SELECT role, people, pay FROM requests WHERE event_id = ? AND id <> ? ORDER BY id', [$from['event_id'], $from['id']])->fetchAll() as $x) {
                 preg_match('/^\d+(?:,\d+)?/', (string) $x['pay'], $xp);
@@ -437,25 +437,15 @@ function request_form_page(): never
             }
         }
     }
-    // "Mano komanda": people the manager already worked with can be invited personally.
-    $team = array_column(team_members((int) $u['id']), null, 'id');
-    $invite = [];
-    if (ctype_digit($_GET['kviesti'] ?? '')) {
-        $invite = [(int) $_GET['kviesti']];
-    } elseif ($from && (int) $from['manager_id'] === (int) $u['id']) {
-        $invite = array_map('intval', sql('SELECT worker_id FROM contracts WHERE request_id = ? AND cancelled_at IS NULL', [$from['id']])->fetchAll(PDO::FETCH_COLUMN));
-    }
-    // "Rasti pakaitinį": a worker will not come tomorrow. Urgent request for tomorrow, the rest of the team invited.
-    $replacing = $from && (int) $from['manager_id'] === (int) $u['id'] && ctype_digit($_GET['pakeisti'] ?? '') ? (int) $_GET['pakeisti'] : 0;
+    // "Rasti pakaitinį": a worker will not come tomorrow, so a search for tomorrow filled in from this job.
+    $replacing = $from && (int) $from['manager_id'] === (int) $u['id'] && ctype_digit($_GET['pakeisti'] ?? '');
     if ($replacing) {
         $v['kind'] = 'trumpai';
         $v['dates'] = tomorrow().':'.tomorrow();
-        $invite = array_values(array_diff(array_keys($team), [$replacing]));
     }
     $errors = [];
     if (is_post()) {
         check_csrf();
-        $invite = array_map('intval', array_filter((array) ($_POST['invite'] ?? []), 'is_string'));
         foreach ($v as $k => $_) {
             $v[$k] = input($k);
         }
@@ -516,52 +506,29 @@ function request_form_page(): never
         if ($extras && (mb_strlen($v['event_title']) < 3 || mb_strlen($v['event_title']) > 120)) {
             $errors['event_title'] = 'Įrašykite renginio pavadinimą, pavyzdžiui, „Įmonės kalėdinis vakarėlis“.';
         }
-        $teamFirst = $v['team_first'] === '1';
-        if ($teamFirst && !array_intersect($invite, array_keys($team))) {
-            $errors['team_first'] = 'Pažymėkite bent vieną komandos narį arba atžymėkite „Pirmiausia pasiūlyti komandai“.';
-        }
         if (!$errors) {
             $lines = [['role' => $v['role'], 'people' => $people, 'pay' => $v['pay']], ...$extras];
-            $publicAt = $teamFirst ? date('Y-m-d H:i:s', time() + team_first_hours($v['kind'], $ranges[0][0]) * 3600) : null;
             $ids = [];
             foreach ($lines as $line) {
                 $ids[] = insert('requests', [
                     'venue_id' => (int) $v['venue_id'], 'role' => $line['role'], 'kind' => $v['kind'], 'people' => (int) $line['people'],
                     'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => '',
                     'pay' => pay_label(str_replace(',', '.', $line['pay'])), 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
-                    'public_at' => $publicAt, 'event_title' => $extras ? $v['event_title'] : '',
+                    'event_title' => $extras ? $v['event_title'] : '',
                 ]);
             }
             if (count($ids) > 1) {
                 sql('UPDATE requests SET event_id = ? WHERE id IN ('.implode(',', $ids).')', [$ids[0]]);
             }
             $id = $ids[0];
-            $requests = array_map('find_request', $ids);
-            // A team member is invited to the role they do; for an event, the first matching one.
-            $invited = [];
-            foreach (array_unique($invite) as $wid) {
-                if (!isset($team[$wid])) {
-                    continue;
-                }
-                $fits = array_values(array_filter($requests, fn ($r) => in_array($r['role'], from_list($team[$wid]['roles']), true)));
-                if (invite_worker($fits[0] ?? $requests[0], $team[$wid])) {
-                    $invited[] = $wid;
-                }
-            }
             $sent = 0;
-            if (!$publicAt) {
-                foreach ($requests as $r) {
-                    $sent += notify_workers($r, $invited);
-                }
+            foreach ($ids as $rid) {
+                $sent += notify_workers(find_request($rid));
             }
             $what = count($ids) > 1 ? 'Renginio paieška paskelbta: '.count($ids).' pareigos.' : 'Paieška paskelbta.';
-            $teamNote = $invited ? ' Asmeninį kvietimą gavo jūsų komandos narių: '.count($invited).'.' : '';
-            flash(match (true) {
-                $publicAt !== null => $what.$teamNote.' Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.when_lt($publicAt).', jei vietos dar nebus užimtos.',
-                $sent > 0 => "$what Pranešimą siunčiame tinkamiems darbuotojams: $sent.$teamNote Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.",
-                $teamNote !== '' => $what.$teamNote.' Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.',
-                default => $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite savo darbuotojus prisijungti – nuorodą rasite žemiau.',
-            });
+            flash($sent > 0
+                ? "$what Pranešimą siunčiame tinkamiems darbuotojams: $sent. Atsiliepimus matysite šiame puslapyje ir gausite el. paštu."
+                : $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite darbuotojus prisijungti – kvietimo nuorodą rasite skiltyje „Mano profilis“.');
             redirect('/darbas/'.$id);
         }
     }
@@ -585,7 +552,7 @@ function request_form_page(): never
         }
     }
     $venueData .= " data-guide='".e(json_encode($guide, JSON_UNESCAPED_UNICODE))."'";
-    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką'.(TEAM_ENABLED ? ', pažymėti jūsų komandos nariai gaus asmeninį kvietimą' : '').'. Patikrinkite duomenis ir paskelbkite.</p>'
+    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką. Patikrinkite duomenis ir paskelbkite.</p>'
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     $step = !sql('SELECT 1 FROM requests r JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? LIMIT 1', [$u['id']])->fetchColumn() ? onboarding_step(3) : '';
     page('Nauja paieška', '<section class="wrap request-wrap">'.$step.'<h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
@@ -606,35 +573,7 @@ function request_form_page(): never
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span><span class="hint pay-guide" id="pay-guide" hidden></span></label>'
         .event_roles_fieldset($extras, $v['event_title'], $errors, in_array($v['kind'], EVENT_KINDS, true))
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'" placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
-        .team_invite_fieldset($team, $invite, $v['team_first'] === '1', $errors)
         .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script().counter_script(), ['noindex' => true]);
-}
-
-// Team members to invite personally along with the new request; nothing when the team is empty.
-// "Pirmiausia pasiūlyti komandai" holds the request back from everyone else for TEAM_FIRST_HOURS.
-function team_invite_fieldset(array $team, array $checked, bool $teamFirst = false, array $errors = []): string
-{
-    if (!$team) {
-        return '';
-    }
-    $items = '';
-    foreach ($team as $w) {
-        $together = (int) $w['jobs'] ? 'kartu dirbta: '.(int) $w['jobs'] : 'prisijungė pagal jūsų kvietimą';
-        $items .= '<label class="choice team-choice"><input type="checkbox" name="invite[]" value="'.(int) $w['id'].'"'.(in_array((int) $w['id'], $checked, true) ? ' checked' : '').'>'
-            .avatar($w, 'small').'<span><span class="choice-name">'.e(first_name($w['name'])).'</span><small>'.e(labels($w['roles'], ROLES)).' · '.$together.'</small></span></label>';
-    }
-    return '<fieldset class="team-invite"><legend>Pakviesti savo komandą</legend>'
-        .'<p class="hint">Pažymėti jūsų komandos nariai gaus asmeninį kvietimą el. paštu ir matys jį savo paskyroje.</p>'
-        .'<div class="choices">'.$items.'</div>'
-        .'<label class="choice team-first"><input type="checkbox" name="team_first" value="1"'.($teamFirst ? ' checked' : '').'>'
-        .'<span><span class="choice-name">Pirmiausia pasiūlyti komandai</span><small>Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime tik po '.TEAM_FIRST_HOURS['trumpai'].' val. trumpam darbui (po '.URGENT_TEAM_HOURS.' val., jei darbas prasideda per '.URGENT_DAYS.' d.) ir po '.TEAM_FIRST_HOURS['sezonas'].' val. sezoniniam ar nuolatiniam darbui, jei vietos dar nebus užimtos. Neprivaloma.</small></span></label>'
-        .err($errors, 'team_first').'</fieldset>';
-}
-
-// Hours "Pirmiausia pasiūlyti komandai" keeps a request for the team: one hour when the job starts within URGENT_DAYS.
-function team_first_hours(string $kind, string $start): int
-{
-    return $kind !== 'nuolat' && $start <= urgent_until() ? URGENT_TEAM_HOURS : TEAM_FIRST_HOURS[$kind];
 }
 
 const EVENT_MAX_ROLES = 6;
@@ -805,11 +744,6 @@ function request_page(int $id): never
     if (!$isOpen && !$owner && !$responded && !is_admin($u)) {
         not_found();
     }
-    // Team first: until public_at only the owner and the invited team see the request.
-    $teamOnly = !empty($r['public_at']) && $r['public_at'] > now();
-    if ($teamOnly && !$owner && !$responded && !is_admin($u) && !($u && in_array((int) $u['id'], invited_ids($id), true))) {
-        not_found();
-    }
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
     $place = full_address($r);
@@ -861,6 +795,14 @@ function request_page(int $id): never
     $venueSec = $owner ? '' : venue_section_html($venue, $venueUrl, $city, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
     $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
+    // On a phone the apply form is screens below the pay and description: a bar at the bottom jumps to it
+    // and hides while the form itself is on screen.
+    if (str_contains($action, 'apply-panel')) {
+        $action .= '<div class="apply-bar" hidden><a class="btn" href="#atsiliepti">Pateikti kandidatūrą</a></div>'
+            .'<script>(function () { var bar = document.querySelector(".apply-bar"), panel = document.getElementById("atsiliepti");'
+            .' if (!bar || !panel || !("IntersectionObserver" in window)) return; bar.hidden = false;'
+            .' new IntersectionObserver(function (e) { bar.classList.toggle("off", e[0].isIntersecting || e[0].boundingClientRect.top < 0); }).observe(panel); })();</script>';
+    }
     $desc = nl2br(e($r['description']));
     $e = 'e';
     $ld = '';
@@ -868,15 +810,12 @@ function request_page(int $id): never
     $event = '';
     if ($r['event_id']) {
         $siblings = sql(REQUEST_SELECT." WHERE r.event_id = ? AND r.id <> ? AND $where ORDER BY r.id", array_merge([$r['event_id'], $id], $params))->fetchAll();
-        if (!$teamOnly) {
-            $siblings = array_filter($siblings, fn ($x) => empty($x['public_at']) || $x['public_at'] <= now() || $owner);
-        }
         $event = $siblings ? '<section class="job-sec"><h2>Kitos šio renginio pareigos</h2><ul class="event-links">'
             .implode('', array_map(fn ($x) => '<li><a href="/darbas/'.(int) $x['id'].'">'.e(ROLES[$x['role']] ?? '').'</a><span class="meta">'.e($x['pay']).' · reikia: '.(int) $x['people'].'</span></li>', $siblings)).'</ul></section>' : '';
     }
     $eventTag = $r['event_title'] !== '' ? '<span class="tag event">Renginys</span>' : '';
     $eventLine = $r['event_title'] !== '' ? '<p class="event-name">'.e($r['event_title']).'</p>' : '';
-    if ($isOpen && !$teamOnly) {
+    if ($isOpen) {
         $ld = '<script type="application/ld+json">'.json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'JobPosting',
@@ -912,7 +851,7 @@ HTML, [
         'description' => mb_substr("$role, {$r['venue_name']}, $city: ".preg_replace('/\s+/', ' ', $r['description']), 0, 155),
         'canonical' => '/darbas/'.$id,
         'head' => $ld,
-        'noindex' => !$isOpen || $teamOnly,
+        'noindex' => !$isOpen,
     ]);
 }
 
@@ -940,7 +879,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
 function worker_panel(array $r, ?array $u, bool $isOpen): string
 {
     if (!$u) {
-        return $isOpen ? '<div class="panel"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
+        return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
     if ($u['kind'] !== 'worker') {
         return '';
@@ -971,14 +910,11 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     }
     // The employer sees the candidate's name, roles and experience, so the profile comes first.
     if (!profile_complete($u)) {
-        return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite profilį: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
+        return '<div class="panel apply-panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite profilį: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
             .'<p><a class="btn" href="/profilis">Užpildyti profilį</a></p></div>';
     }
     $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
         ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
-        : '';
-    $invited = sql('SELECT 1 FROM invites WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetchColumn()
-        ? '<p class="notice ok invite-note">Darbdavys jus pakvietė asmeniškai, nes esate jo komandos narys.</p>'
         : '';
     $again = $again ? '<p class="notice tip">Kandidatūrą buvote atšaukę. Jei vėl galite dirbti, pateikite ją iš naujo.</p>' : '';
     // Days of this job the worker already works through GANG: their own call whether to apply anyway.
@@ -993,11 +929,10 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $overlap = $busy ? '<div class="notice tip overlap"><p><strong>Šiomis dienomis jau turite GANG darbą.</strong></p><ul>'
         .implode('', array_map(fn ($c) => '<li>'.e(days_text($c['days']).': '.$c['venue_name'].', '.mb_strtolower(ROLES[$c['role']] ?? '')).'</li>', $other)).'</ul>'
         .'<p>Ar tikrai norite kandidatuoti ir į šį darbą?'.(request_splittable($r) && count(request_needs($r)) > 1 ? ' Jei tomis dienomis dirbti negalėsite, žemiau nuimkite jų žymėjimą.' : '').'</p></div>' : '';
-    return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below.$overlap
+    return '<div class="panel apply-panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$below.$overlap
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .days_fieldset($r, array_keys($busy))
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
-        .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus.</p></div>';
 }
@@ -1222,14 +1157,9 @@ function owner_panel(array $r, bool $isOpen): string
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
-    $teamHtml = $isOpen ? team_panel($r, array_map('intval', array_column($responses, 'worker_id'))) : '';
     $total = matching_workers_count($r['role'], $r['city'], (int) $r['min_experience'], $r['kind']);
-    $teamOnly = $isOpen && !empty($r['public_at']) && $r['public_at'] > now()
-        ? '<div class="notice ok team-only"><p><strong>Šiuo metu paieška matoma tik jūsų komandai.</strong> Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.e(when_lt($r['public_at'])).', jei vietos dar nebus užimtos.</p>'
-            .post_button('/darbas/'.(int) $r['id'].'/skelbti', 'Paskelbti visiems dabar', [], 'btn small').'</div>'
-        : '';
     $leftover = leftover_question($r, $isOpen);
-    $reach = $teamOnly.$leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
+    $reach = $leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     // Once a worker is confirmed the search is settled: dates and pay are agreed, the talk is in the chat.
     // No "Redaguoti", "Uždaryti paiešką" or "Pakartoti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
@@ -1244,7 +1174,7 @@ function owner_panel(array $r, bool $isOpen): string
     }
     $close = $isOpen && !$confirmed ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
-        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
+        .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>')
         .$still.($isOpen && !$confirmed ? '<div class="owner-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>'.$close.'</div>' : '').'</div>';
 }
 
@@ -1506,42 +1436,6 @@ function application_switch_action(int $responseId): never
     redirect('/prisijungti');
 }
 
-// On an open request: the manager's team, each with a one-click personal invitation.
-function team_panel(array $r, array $responded): string
-{
-    $team = array_filter(team_members((int) $r['manager_id']), fn ($w) => !in_array((int) $w['id'], $responded, true));
-    if (!$team) {
-        return '';
-    }
-    $invited = invited_ids((int) $r['id']);
-    $rows = '';
-    foreach ($team as $w) {
-        $action = in_array((int) $w['id'], $invited, true)
-            ? '<span class="meta done">Pakviesta</span>'
-            : post_button('/darbas/'.(int) $r['id'].'/kviesti/'.(int) $w['id'], 'Pakviesti', [], 'btn small');
-        $rows .= '<div class="responder">'.avatar($w).'<div class="who"><strong><a href="/darbuotojas/'.(int) $w['id'].'">'.e(first_name($w['name'])).'</a></strong>'
-            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span></p></div><div class="actions">'.$action.'</div></div>';
-    }
-    return '<h3 class="team-head">Mano komanda</h3><p class="meta">Žmonės, su kuriais jau dirbote per GANG. Pakviestas žmogus gaus asmeninį kvietimą el. paštu.</p>'.$rows;
-}
-
-function invite_action(int $requestId, int $workerId): never
-{
-    $u = require_user('manager');
-    check_csrf();
-    $r = find_request($requestId);
-    if (!$r || (int) $r['manager_id'] !== (int) $u['id']) {
-        not_found();
-    }
-    $team = array_column(team_members((int) $u['id']), null, 'id');
-    [$where, $params] = open_where();
-    $open = (bool) sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$requestId], $params))->fetchColumn();
-    if ($open && isset($team[$workerId]) && invite_worker($r, $team[$workerId])) {
-        flash(first_name($team[$workerId]['name']).' gavo asmeninį kvietimą.');
-    }
-    redirect('/darbas/'.$requestId);
-}
-
 function respond_action(int $id): never
 {
     $u = require_user('worker');
@@ -1549,9 +1443,6 @@ function respond_action(int $id): never
     $r = find_request($id);
     [$where, $params] = open_where();
     if (!$r || !sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchColumn()) {
-        not_found();
-    }
-    if (!empty($r['public_at']) && $r['public_at'] > now() && !in_array((int) $u['id'], invited_ids($id), true)) {
         not_found();
     }
     if (!profile_complete($u)) {
@@ -1602,25 +1493,10 @@ function respond_action(int $id): never
     redirect('/darbas/'.$id);
 }
 
-// Before the employer decides, the worker can add messages to the application
-// ("Pamiršau paminėti, kad…"). They show under the application and later open the chat.
-// No counter is shown: a message written soon after the previous one joins it, so a few quick
-// lines read as one message, and a quiet cap stops flooding. Emails to the employer stay limited.
-const RESPONSE_NOTES_MAX = 10;
-// A message written within this many minutes of the previous one is appended to it.
-const RESPONSE_NOTE_JOIN_MINUTES = 30;
-const RESPONSE_NOTE_MAX = 1000;
-// One email to the employer per application in this many hours; later additions wait on the job page.
-const RESPONSE_NOTE_MAIL_HOURS = 12;
-
+// Messages a worker added to an application before 2026-11-08 (since then the two sides talk in the application's chat).
 function response_notes(int $responseId): array
 {
     return sql('SELECT * FROM response_notes WHERE response_id = ? ORDER BY id', [$responseId])->fetchAll();
-}
-
-function response_notes_left(int $responseId): int
-{
-    return max(0, RESPONSE_NOTES_MAX - (int) sql('SELECT COUNT(*) FROM response_notes WHERE response_id = ?', [$responseId])->fetchColumn());
 }
 
 // The note sent with the application and the messages added later, as the employer sees them.
@@ -1631,77 +1507,6 @@ function application_notes_html(array $s): string
         $html .= '<p class="note added"><span class="note-when">Papildyta '.e(when_lt($n['created_at'])).'</span>'.nl2br(e($n['body'])).'</p>';
     }
     return $html;
-}
-
-// /darbas/{id}/papildyti: the worker adds a message to an application still waiting for the employer.
-// Since 2026-11-08 the two talk in the application's chat instead; this stays for pages opened before that.
-function response_note_action(int $id): never
-{
-    $u = require_user('worker');
-    check_csrf();
-    $r = find_request($id);
-    $s = $r ? sql("SELECT * FROM responses WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']])->fetch() : false;
-    if (!$r || !$s || $r['status'] !== 'open') {
-        flash('Kandidatūros papildyti nebegalima: darbdavys jau priėmė sprendimą arba paieška uždaryta.');
-        redirect('/darbas/'.$id);
-    }
-    $body = trim(str_replace("\r\n", "\n", (string) ($_POST['body'] ?? '')));
-    $body = (string) preg_replace("/\n{3,}/", "\n\n", $body);
-    if ($body === '') {
-        flash('Parašykite žinutę.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    if (mb_strlen($body) > RESPONSE_NOTE_MAX) {
-        flash('Žinutė per ilga: daugiausia '.RESPONSE_NOTE_MAX.' simbolių.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    // Written soon after the previous message: it joins that message instead of becoming a new one.
-    $last = sql('SELECT id, body, created_at FROM response_notes WHERE response_id = ? ORDER BY id DESC LIMIT 1', [$s['id']])->fetch();
-    $join = $last && strtotime($last['created_at']) > strtotime('-'.RESPONSE_NOTE_JOIN_MINUTES.' minutes')
-        && mb_strlen($last['body']) + mb_strlen($body) + 1 <= RESPONSE_NOTE_MAX * 2;
-    if (!$join && response_notes_left((int) $s['id']) <= 0) {
-        flash('Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.');
-        redirect('/darbas/'.$id.'#papildyti');
-    }
-    // An earlier addition already emailed in the last hours: this one waits on the job page.
-    $mailed = (bool) sql('SELECT 1 FROM response_notes WHERE response_id = ? AND created_at > ?',
-        [$s['id'], date('Y-m-d H:i:s', strtotime('-'.RESPONSE_NOTE_MAIL_HOURS.' hours'))])->fetchColumn();
-    if ($join) {
-        sql('UPDATE response_notes SET body = ? WHERE id = ?', [$last['body']."\n".$body, $last['id']]);
-    } else {
-        insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
-    }
-    $email = $mailed ? false : sql('SELECT email FROM users WHERE id = ? AND blocked = 0', [$r['manager_id']])->fetchColumn();
-    if ($email) {
-        $role = ROLES[$r['role']] ?? '';
-        $short = mb_strlen($body) > 600 ? rtrim(mb_substr($body, 0, 600)).'…' : $body;
-        send_mail($email, 'Kandidatūra papildyta: '.$role.' – '.first_name($u['name']), [
-            'kicker' => 'Kandidatūra papildyta',
-            'title' => $role,
-            'lead' => '**'.first_name($u['name']).'** papildė savo kandidatūrą žinute. Ji laukia jūsų sprendimo.',
-            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r)],
-            'note' => ['label' => 'Papildoma žinutė', 'text' => $short],
-            'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $s['id'])],
-        ]);
-    }
-    flash('Žinutė išsiųsta. Darbdavys ją matys prie jūsų kandidatūros.');
-    redirect('/darbas/'.$id.'#papildyti');
-}
-
-// Team first: the manager sends the request to everyone before the team-only window ends.
-function release_now_action(int $id): never
-{
-    $u = require_user('manager');
-    check_csrf();
-    $r = find_request($id);
-    if (!$r || (int) $r['manager_id'] !== (int) $u['id']) {
-        not_found();
-    }
-    $ids = $r['event_id'] ? array_map('intval', sql('SELECT id FROM requests WHERE event_id = ?', [$r['event_id']])->fetchAll(PDO::FETCH_COLUMN)) : [$id];
-    sql('UPDATE requests SET public_at = ? WHERE id IN ('.implode(',', $ids).') AND public_at IS NOT NULL', [now()]);
-    release_team_requests();
-    flash('Paieška paskelbta visiems tinkamiems darbuotojams.');
-    redirect('/darbas/'.$id);
 }
 
 function withdraw_action(int $id): never
@@ -1781,7 +1586,7 @@ function decide_response_action(int $responseId, bool $accept): never
         'cta' => ['Mano profilis', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
-    $contact = ' Su '.first_name($worker['name']).' galite susirašinėti GANG žinutėse.';
+    $contact = ' Darbuotojui galite parašyti GANG žinutėse.';
     $need = request_needs($r);
     if (!$need) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);
@@ -1856,7 +1661,7 @@ function worker_profile_page(int $id): never
     if (!sees_worker_profile($u, $id)) {
         flash(match (true) {
             $u['kind'] !== 'manager' => 'Darbuotojų profilius gali peržiūrėti tik darbdaviai.',
-            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką'.(TEAM_ENABLED ? ' arba prisijungs prie jūsų komandos.' : '.'),
+            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką.',
         });
         redirect('/mano');
     }
