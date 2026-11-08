@@ -168,7 +168,7 @@ function terms_page(): never
             ['atsakomybe', 'Atsakomybė', '<p>Stengiamės, kad GANG veiktų patikimai, tačiau negalime užtikrinti, kad platforma veiks be trikdžių. Narių pateiktos informacijos (patirties, darbo sąlygų, įvertinimų) iš anksto netikriname ir už jos tikslumą atsako ją pateikęs narys.</p>'
                 .'<p>Neatsakome už darbdavių ir darbuotojų tarpusavio susitarimus, jų vykdymą, atsiskaitymą ar žalą, kilusią dėl šių santykių. Ši nuostata neriboja atsakomybės tais atvejais, kai jos riboti neleidžia teisės aktai.</p>'],
             ['sustabdymas', 'Paskyros sustabdymas ir ištrynimas', '<p>Taisyklių nesilaikančių narių paskyras galime laikinai sustabdyti arba užblokuoti, o jų turinį pašalinti. Apie tai, išskyrus akivaizdaus piktnaudžiavimo atvejus, informuosime el. paštu.</p>'
-                .'<p>Paskyrą bet kada galite ištrinti parašę mums '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę.</p>'],
+                .'<p>Paskyrą bet kada galite ištrinti patys savo profilio puslapyje („Mano duomenys“ → „Ištrinti paskyrą“). Jei to padaryti nepavyksta, parašykite mums '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę.</p>'],
             ['pakeitimai', 'Taisyklių pakeitimai', '<p>Taisykles galime keisti, pavyzdžiui, atsiradus naujoms funkcijoms ar pasikeitus teisės aktams. Apie esminius pakeitimus informuosime iš anksto, o kitą kartą prisijungus paprašysime patvirtinti, kad sutinkate su nauja redakcija.</p>'],
             ['teise', 'Taikoma teisė ir ginčai', '<p>Taisyklėms taikoma Lietuvos Respublikos teisė. Ginčus pirmiausia stengiamės išspręsti derybomis, todėl su pretenzijomis kreipkitės '.$mail.'. Vartotojai taip pat gali kreiptis į Valstybinę vartotojų teisių apsaugos tarnybą (<a href="https://vvtat.lt" rel="noopener" target="_blank">vvtat.lt</a>). Neišspręsti ginčai sprendžiami Lietuvos Respublikos teismuose.</p>'],
             ['kontaktai', 'Kontaktai', '<p>'.operator_line().'.</p>'],
@@ -186,20 +186,24 @@ function privacy_page(): never
                 .'<li><strong>Paskyros duomenys:</strong> el. pašto adresas, paskyros tipas (darbuotojas ar darbdavys), registracijos ir prisijungimų laikas.</li>'
                 .'<li><strong>Darbuotojo profilis:</strong> vardas ir pavardė, telefono numeris, profilio nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, laisvos dienos, informacija apie save.</li>'
                 .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos ir komanda.</li>'
-                .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, žinutės tarp darbdavio ir darbuotojo, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
-                .'<li><strong>Techniniai duomenys:</strong> prisijungimo kodai (saugomi tik užšifruoti), sesijos slapukas, IP adresas ir naršyklės informacija, užfiksuoti sutinkant su taisyklėmis, serverio žurnalai.</li></ul>'],
+                .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
+                .'<li><strong>Pokalbio duomenys:</strong> žinutės tarp darbdavio ir darbuotojo, jų išsiuntimo laikas ir žyma, ar žinutė perskaityta. Kai gaunate naują žinutę, el. laiške siunčiame jos ištrauką.</li>'
+                .'<li><strong>Kitų asmenų kontaktai:</strong> jei darbdavys pakviečia savo darbuotojus el. paštu, tvarkome jo įvestus el. pašto adresus, kad išsiųstume vieną kvietimą ir jo nesiųstume pakartotinai.</li>'
+                .'<li><strong>Laukiančiųjų sąrašas:</strong> iki platformos paleidimo užsiregistravusių asmenų el. pašto adresas, miestas ir užšifruota IP adreso santrauka.</li>'
+                .'<li><strong>Techniniai duomenys:</strong> prisijungimo kodai (saugomi tik užšifruoti) ir užšifruota IP adreso santrauka, pagal kurią ribojame kodų siuntimą, sesijos slapukas, IP adresas ir naršyklės informacija, užfiksuoti sutinkant su taisyklėmis, serverio žurnalai.</li></ul>'],
             ['tikslai', 'Kam naudojame duomenis ir kuo remiamės', '<ul>'
                 .'<li><strong>Paskyrai sukurti ir platformai teikti</strong> (sutarties vykdymas, BDAR 6 str. 1 d. b p.): prisijungimas, profilis, paieškos, kandidatūros, kontraktai, pranešimai el. paštu ar SMS apie tinkamus pasiūlymus, kandidatūras ir pamainas.</li>'
                 .'<li><strong>Pasitikėjimui ir saugumui užtikrinti</strong> (teisėtas interesas, 6 str. 1 d. f p.): įvertinimai, patikimumo rodikliai, piktnaudžiavimo prevencija, paskyrų blokavimas, sistemos apsauga.</li>'
                 .'<li><strong>Sutikimui su taisyklėmis įrodyti</strong> (teisėtas interesas): taisyklių redakcija, sutikimo laikas, IP adresas ir naršyklės informacija.</li>'
+                .'<li><strong>Darbdavio kvietimams darbuotojams išsiųsti</strong> (teisėtas interesas, 6 str. 1 d. f p.): darbdavio įvestu adresu išsiunčiame vieną kvietimą prisijungti prie jo komandos. Daugiau laiškų šiuo adresu nesiunčiame, nebent asmuo pats užsiregistruoja. Darbdavys patvirtina, kad turi teisę šiuo adresu susisiekti.</li>'
                 .'<li><strong>Teisės aktų reikalavimams vykdyti</strong> (teisinė prievolė, 6 str. 1 d. c p.), pavyzdžiui, atsakant į kompetentingų institucijų užklausas.</li>'
                 .'<li><strong>Naujienoms siųsti</strong> – tik jei tam atskirai sutiksite (sutikimas, 6 str. 1 d. a p.). Sutikimą galėsite bet kada atšaukti.</li></ul>'
                 .'<p>Duomenų neparduodame ir reklamos tikslais tretiesiems asmenims neperduodame.</p>'],
             ['kas-mato', 'Kas mato jūsų duomenis', '<ul>'
-                .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, laisvas dienas, įvertinimus) mato prisijungę darbdaviai.</li>'
+                .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, laisvas dienas, įvertinimus) mato tik GANG patvirtinti darbdaviai, kuriems darbuotojas pateikė kandidatūrą, su kuriais dirbo per GANG arba prie kurių komandos prisijungė.</li>'
                 .'<li>Darbovietės puslapis, jos adresas ir paskelbtos paieškos yra vieši.</li>'
                 .'<li>Telefono numeris kitai šaliai parodomas tik po GANG kontrakto.</li>'
-                .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys.</li>'
+                .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys. Naujos žinutės ištrauka siunčiama gavėjui el. paštu.</li>'
                 .'<li>El. pašto adresas kitiems nariams nerodomas niekada.</li>'
                 .'<li>Įvertinimai skelbiami nenurodant autoriaus.</li></ul>'],
             ['tvarkytojai', 'Paslaugų teikėjai', '<p>Duomenis patikime tik paslaugų teikėjams, be kurių platforma negalėtų veikti, ir tik tiek, kiek būtina:</p><ul>'
@@ -209,7 +213,9 @@ function privacy_page(): never
                 .'<p>Jei duomenys perduodami už Europos ekonominės erdvės ribų, tai daroma taikant BDAR numatytas apsaugos priemones: Europos Komisijos patvirtintas standartines sutarčių sąlygas arba sprendimą dėl tinkamumo.</p>'],
             ['terminai', 'Kiek laiko saugome', '<ul>'
                 .'<li>Paskyros, profilio ir veiklos duomenis – kol turite paskyrą. Paskyrą ištrynus, duomenys ištrinami per 30 dienų.</li>'
-                .'<li>Prisijungimo kodai galioja 15 minučių.</li>'
+                .'<li>Prisijungimo kodai galioja 15 minučių, o jų įrašai ištrinami po paros.</li>'
+                .'<li>Komandos kvietimų adresus – kol jų reikia, kad kvietimas nebūtų siunčiamas pakartotinai. Darbdavio paskyrą ištrynus, ištrinami ir jo įvesti adresai.</li>'
+                .'<li>Laukiančiųjų sąrašo įrašus – kol asmuo paprašo juos ištrinti arba ištrina savo GANG paskyrą.</li>'
                 .'<li>Sutikimo su taisyklėmis įrašus – kol turite paskyrą.</li>'
                 .'<li>Serverio žurnalus – ne ilgiau, nei jie saugomi prieglobos paslaugų teikėjo sistemose saugumo tikslais.</li></ul>'],
             ['teises', 'Jūsų teisės', '<p>Turite teisę susipažinti su savo duomenimis, juos ištaisyti, ištrinti, apriboti jų tvarkymą, gauti juos perkeliamu formatu, nesutikti, kad duomenys būtų tvarkomi remiantis teisėtu interesu, ir bet kada atšaukti duotą sutikimą. Daugumą duomenų galite patys pakeisti savo profilyje. Ten pat galite atsisiųsti savo duomenis (JSON formatu) ir ištrinti paskyrą.</p>'

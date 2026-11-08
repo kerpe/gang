@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 
 function migrate(PDO $db): void
 {
@@ -48,7 +48,8 @@ function migrate(PDO $db): void
             code_hash CHAR(64) NOT NULL,
             attempts INT NOT NULL DEFAULT 0,
             expires_at DATETIME NOT NULL,
-            created_at DATETIME NOT NULL",
+            created_at DATETIME NOT NULL,
+            ip_hash CHAR(64) NOT NULL DEFAULT ''",
         'venues' => "id $id,
             manager_id INT NOT NULL,
             name VARCHAR(120) NOT NULL,
@@ -242,6 +243,8 @@ function migrate(PDO $db): void
         'users ADD verified_at DATETIME NULL',
         // Version 19: raised by "Atsijungti visuose įrenginiuose"; sessions keep the value they started with.
         'users ADD session_epoch INT NOT NULL DEFAULT 0',
+        // Version 20: keyed hash of the visitor's IP, so one network cannot mail codes to many addresses.
+        "login_codes ADD ip_hash CHAR(64) NOT NULL DEFAULT ''",
     ];
     foreach ($columns as $column) {
         try {
@@ -283,6 +286,7 @@ function migrate(PDO $db): void
         'reviews_contract' => 'reviews (contract_id)',
         'requests_status' => 'requests (status)',
         'login_codes_email' => 'login_codes (email)',
+        'login_codes_ip' => 'login_codes (ip_hash, created_at)',
         'consents_user' => 'consents (user_id)',
         'team_links_manager' => 'team_links (manager_id)',
         'team_mails_manager' => 'team_mails (manager_id, created_at)',
