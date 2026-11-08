@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 function migrate(PDO $db): void
 {
@@ -154,7 +154,7 @@ function migrate(PDO $db): void
             sender_id INT NOT NULL,
             body TEXT NOT NULL,
             created_at DATETIME NOT NULL",
-        // Version 21: messages a worker adds to an application while the employer has not decided yet.
+        // Version 22: messages a worker adds to an application while the employer has not decided yet.
         'response_notes' => "id $id,
             response_id INT NOT NULL,
             body TEXT NOT NULL,
