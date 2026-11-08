@@ -995,3 +995,10 @@ table.data td.actions form + form { margin-left: 6px; }
 .onboard li::before { content: counter(o) ". "; }
 .onboard li.done { border-color: var(--lime); }
 .onboard li.now { border-color: var(--lime); color: var(--ink); font-weight: 700; }
+
+/* Changed job terms: the candidate confirms them again */
+.badge.wait { border-color: rgba(255,101,74,.45); background: rgba(255,101,74,.08); color: var(--ink); }
+.panel.recheck { border-color: rgba(255,101,74,.45); }
+.panel.recheck .facts { margin: 14px 0; }
+.panel.recheck form + form { margin-top: 10px; }
+.request-edit .owner-actions { margin-top: 20px; }

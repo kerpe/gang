@@ -77,6 +77,8 @@ match (true) {
     $is('/darbas/(\d+)/kviesti/(\d+)') && $post => invite_action((int) $m[1], (int) $m[2]),
     $is('/darbas/(\d+)/uzdaryti') && $post => close_request_action((int) $m[1]),
     $is('/darbas/(\d+)/palikti') && $post => keep_open_action((int) $m[1]),
+    $is('/darbas/(\d+)/redaguoti') => request_edit_page((int) $m[1]),
+    $is('/darbas/(\d+)/tinka') && $post => confirm_changes_action((int) $m[1]),
     $is('/atsiliepimas/(\d+)/patvirtinti') && $post => decide_response_action((int) $m[1], true),
     $is('/atsiliepimas/(\d+)/atmesti') && $post => decide_response_action((int) $m[1], false),
     $is('/pamaina/([0-9a-f]{32})') => shift_page($m[1]),

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 function migrate(PDO $db): void
 {
@@ -245,6 +245,9 @@ function migrate(PDO $db): void
         'users ADD session_epoch INT NOT NULL DEFAULT 0',
         // Version 20: keyed hash of the visitor's IP, so one network cannot mail codes to many addresses.
         "login_codes ADD ip_hash CHAR(64) NOT NULL DEFAULT ''",
+        // Version 21: the employer changed the job's dates or pay after this application; set until the
+        // candidate confirms the new terms ("Tinka") – until then the employer cannot approve them.
+        'responses ADD recheck_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {
