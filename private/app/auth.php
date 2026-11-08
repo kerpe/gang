@@ -123,6 +123,22 @@ function login_page(): never
     if (is_post()) {
         check_csrf();
         $email = mb_strtolower(input('email'));
+        if (input('prisijungti') === '1') {
+            // "Prisijungti" on the "you already have an account" notice: from here on this is a sign-in.
+            $_SESSION['signup_kind'] = '';
+            $_SESSION['signup_intent'] = false;
+            $kind = '';
+            $signup = false;
+        }
+        $member = $signup && filter_var($email, FILTER_VALIDATE_EMAIL)
+            ? sql('SELECT kind, blocked FROM users WHERE email = ?', [$email])->fetch()
+            : false;
+        if ($member && !$member['blocked']) {
+            // "Registruotis" with an address that already has an account: no new account and no code.
+            // Say so plainly and offer to sign in (clarity for the member matters more here than hiding
+            // which addresses are registered).
+            already_member_page($email, $member['kind'], $kind);
+        }
         if ($kind !== '' && !consent_given()) {
             $termsError = CONSENT_ERROR;
         }
@@ -138,16 +154,10 @@ function login_page(): never
             } else {
                 $code = (string) random_int(100000, 999999);
                 insert('login_codes', ['email' => $email, 'code_hash' => hash('sha256', $email.$code), 'expires_at' => date('Y-m-d H:i:s', time() + 900), 'created_at' => now(), 'ip_hash' => $ipHash]);
-                // Someone used "Registruotis" with an address that already has an account. The page they
-                // see next is the same as for a new address (so nobody can test which emails are members);
-                // only the email itself, which reaches the owner alone, says the account already exists.
-                $member = $signup && sql('SELECT 1 FROM users WHERE email = ?', [$email])->fetchColumn();
                 send_mail($email, "GANG prisijungimo kodas: $code", [
                     'kicker' => 'Prisijungimas',
-                    'title' => $member ? 'Jūs jau turite GANG paskyrą' : 'Jūsų prisijungimo kodas',
-                    'lead' => $member
-                        ? 'šiuo el. pašto adresu paskyra jau užregistruota, todėl naujos kurti nereikia. Norėdami prisijungti, įveskite šį kodą:'
-                        : 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
+                    'title' => 'Jūsų prisijungimo kodas',
+                    'lead' => 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
                     'code' => $code,
                     'after' => 'Kodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.',
                 ]);
@@ -176,6 +186,22 @@ function login_page(): never
         .'<label>El. paštas <input type="email" name="email" value="'.e($email).'" autocomplete="email" inputmode="email" required autofocus>'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
         .($kind !== '' ? consent_field($termsError) : '')
         .'<button class="btn">Siųsti kodą</button></form></section>', ['noindex' => true]);
+}
+
+// Shown instead of sending a code when "Registruotis" is used with an address that already has an account.
+function already_member_page(string $email, string $memberKind, string $wantedKind): never
+{
+    $role = $memberKind === 'manager' ? 'darbdavio' : 'darbuotojo';
+    $other = $wantedKind !== '' && $wantedKind !== $memberKind
+        ? '<p>Viena paskyra turi vieną vaidmenį. Jei norite '.($wantedKind === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyros, registruokitės kitu el. pašto adresu.</p>'
+        : '';
+    page('Paskyra jau yra', '<section class="wrap narrow"><h1>Jūs jau turite GANG paskyrą</h1>'
+        .'<p class="lead">Adresu <strong>'.e($email).'</strong> jau užregistruota '.$role.' paskyra, todėl naujos kurti nereikia. Prisijunkite prie esamos paskyros.</p>'
+        .$other
+        .'<form method="post" action="/prisijungti" class="form" novalidate'.ONE_SUBMIT.'>'.csrf_field()
+        .'<input type="hidden" name="email" value="'.e($email).'"><input type="hidden" name="prisijungti" value="1">'
+        .'<button class="btn">Prisijungti</button></form>'
+        .'<p><a href="'.login_again_url().'">Registruotis kitu el. pašto adresu</a></p></section>', ['noindex' => true]);
 }
 
 // Back to the email form in the same mode the visitor came in with (sign-in or registration).
