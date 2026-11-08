@@ -120,7 +120,12 @@ function profile_page(): never
         .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" required placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
-        .'<button class="btn">Išsaugoti</button></form></section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
+        .'<button class="btn">Išsaugoti</button></form>'
+        .'<h2>Mano duomenys</h2><p class="meta">Galite atsisiųsti viską, ką GANG apie jus saugo, arba ištrinti paskyrą kartu su visais duomenimis.</p>'
+        .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
+        .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
+        .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
+        .'</section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
 }
 
 // Shows the chosen photo in the circle right away and lets the worker zoom and drag it into place.
@@ -660,6 +665,10 @@ function check_phone(string $raw): array
     if (str_starts_with($p, '00')) {
         $p = '+'.substr($p, 2);
     }
+    // Lithuanian national format: 8 600 12345 → +370 600 12345.
+    if (preg_match('/^8\d{8}$/', preg_replace('/[\s()\-]/', '', $p))) {
+        $p = '+370'.substr(preg_replace('/[\s()\-]/', '', $p), 1);
+    }
     if (!preg_match('/^\+[0-9 ()\-]+$/', $p)) {
         return ['', PHONE_FORMAT_ERROR];
     }
@@ -728,6 +737,9 @@ function phone_check_script(): string
     v = v.trim();
     if (v === '') return final ? formatError : '';
     if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    // Lithuanian 8 600 12345: allowed while typing, turned into +370 600 12345 at 9 digits.
+    var l = v.replace(/[\s()\-]/g, '');
+    if (/^8\d*$/.test(l)) return l.length === 9 || (!final && l.length < 9) ? '' : 'Lietuvos numerį įveskite su +370 arba 8 pradžioje, pavyzdžiui, 8 600 12345.';
     if (!/^\+[0-9 ()\-]*$/.test(v)) return formatError;
     var d = v.replace(/\D/g, '');
     if (d.length < 3 && !final) return '';
@@ -753,6 +765,7 @@ function phone_check_script(): string
   // Spaces are added while typing: +37060516846 shows as +370 605 16846.
   function pretty(v) {
     if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    if (/^8\d{8}$/.test(v.replace(/[\s()\-]/g, ''))) v = '+370' + v.replace(/[\s()\-]/g, '').slice(1);
     if (!/^\+[0-9 ]*$/.test(v)) return null;
     var d = v.replace(/\D/g, '');
     for (var len = 3; len >= 1; len--) {
@@ -804,4 +817,121 @@ function phone_check_script(): string
 })();
 </script>
 HTML;
+}
+
+// Contracts that still lie ahead (not cancelled, not over): the account cannot be deleted until they are cancelled.
+function upcoming_contracts(array $u): array
+{
+    $where = $u['kind'] === 'worker' ? 'c.worker_id = ?' : 'v.manager_id = ?';
+    $rows = sql(CONTRACT_SELECT.' WHERE '.$where.' AND c.cancelled_at IS NULL', [$u['id']])->fetchAll();
+    return array_values(array_filter($rows, fn ($c) => contract_end($c) >= today()));
+}
+
+// "Atsisiųsti mano duomenis": everything GANG keeps about the member, as JSON (GDPR art. 15 and 20).
+function account_export(): never
+{
+    $u = require_user();
+    $id = (int) $u['id'];
+    $rows = fn (string $q, ?array $p = null) => sql($q, $p ?? [$id])->fetchAll(PDO::FETCH_ASSOC);
+    $profile = array_intersect_key($u, array_flip(['kind', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
+    $venues = $rows('SELECT id, name, type, concept, city, address, about, hours, team_size, perks, website, instagram, facebook, tiktok, created_at FROM venues WHERE manager_id = ?');
+    $venueIds = array_map('intval', array_column($venues, 'id')) ?: [0];
+    $in = implode(',', $venueIds);
+    $contractIds = array_map('intval', array_column($rows("SELECT c.id FROM contracts c WHERE c.worker_id = ? OR c.venue_id IN ($in)"), 'id')) ?: [0];
+    $cin = implode(',', $contractIds);
+    $data = [
+        'eksportuota' => date('c'),
+        'profilis' => $profile,
+        'pareigos_ir_patirtis' => $rows('SELECT role, experience FROM worker_roles WHERE user_id = ?'),
+        'laisvos_dienos' => $rows('SELECT start_date, end_date FROM availability WHERE user_id = ?'),
+        'darbovietes' => $venues,
+        'paieskos' => $rows("SELECT id, venue_id, role, kind, people, start_date, end_date, dates, pay, description, status, created_at FROM requests WHERE venue_id IN ($in)", []),
+        'kandidaturos' => $rows('SELECT request_id, note, dates, status, created_at FROM responses WHERE worker_id = ?'),
+        'kontraktai' => $rows("SELECT id, request_id, venue_id, start_date, end_date, dates, created_at, cancelled_at, cancelled_by, cancel_reason, cancel_note, no_show_at FROM contracts WHERE id IN ($cin)", []),
+        'mano_zinutes' => $rows('SELECT contract_id, body, created_at FROM messages WHERE sender_id = ?'),
+        'mano_ivertinimai' => $rows("SELECT contract_id, rating, c1, c2, c3, text, created_at FROM reviews WHERE contract_id IN ($cin) AND author = ?", [$u['kind']]),
+        'gauti_ivertinimai' => $rows("SELECT contract_id, rating, c1, c2, c3, text, created_at FROM reviews WHERE contract_id IN ($cin) AND author <> ?", [$u['kind']]),
+        'sutikimai' => $rows('SELECT version, accepted_at, ip, user_agent FROM consents WHERE user_id = ?'),
+    ];
+    header('Content-Type: application/json; charset=utf-8');
+    header('Content-Disposition: attachment; filename="gang-mano-duomenys-'.today().'.json"');
+    header('Cache-Control: no-store');
+    echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+// "Ištrinti paskyrą": the member deletes their own account and all its data (the same as admin delete).
+function account_delete_page(): never
+{
+    $u = require_user();
+    $upcoming = upcoming_contracts($u);
+    $error = '';
+    if (is_post()) {
+        check_csrf();
+        if ($upcoming) {
+            redirect('/profilis/istrinti');
+        }
+        if (!isset($_POST['confirm'])) {
+            $error = 'Pažymėkite, kad suprantate: ištrintos paskyros atkurti nebus galima.';
+        } else {
+            send_mail($u['email'], 'Jūsų GANG paskyra ištrinta', [
+                'kicker' => 'Paskyra',
+                'title' => 'Paskyra ištrinta',
+                'lead' => 'jūsų prašymu ištrynėme jūsų GANG paskyrą ir su ja susijusius duomenis.',
+                'body' => 'Jei paskyrą ištrynėte per klaidą, galite bet kada užsiregistruoti iš naujo. Jei paskyros netrynėte, nedelsdami parašykite mums [hello@gang.lt](mailto:hello@gang.lt).',
+            ]);
+            admin_delete_user((int) $u['id']);
+            $_SESSION = [];
+            session_regenerate_id(true);
+            flash('Paskyra ištrinta. Ačiū, kad buvote su GANG.');
+            redirect('/');
+        }
+    }
+    $worker = $u['kind'] === 'worker';
+    $what = $worker
+        ? '<li>profilis, nuotrauka, pareigos, miestai ir laisvos dienos;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
+        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai, komandos nariai ir kvietimai;</li>';
+    if ($upcoming) {
+        $list = '';
+        foreach ($upcoming as $c) {
+            $who = $worker ? $c['venue_name'] : $c['worker_name'].' · '.$c['venue_name'];
+            $list .= '<li>'.e((ROLES[$c['role']] ?? $c['role']).', '.$who.', '.rtrim(period($c), '.')).' – <a href="/kontraktas/'.(int) $c['id'].'/atsaukti">atšaukti</a></li>';
+        }
+        $body = '<div class="panel"><p><strong>Turite būsimų darbų.</strong> Kad kita pusė nebūtų palikta be žinios, prieš ištrindami paskyrą atšaukite juos:</p><ul>'.$list.'</ul></div>';
+    } else {
+        $body = '<form method="post" class="form">'.csrf_field()
+            .'<label class="check"><input type="checkbox" name="confirm" required> Suprantu, kad ištrintos paskyros ir jos duomenų atkurti nebus galima.</label>'
+            .($error ? '<p class="err">'.e($error).'</p>' : '')
+            .'<button class="btn danger">Ištrinti paskyrą visam laikui</button></form>';
+    }
+    page('Ištrinti paskyrą', '<section class="wrap narrow"><h1>Ištrinti paskyrą</h1>'
+        .'<p class="lead">Ištrynus paskyrą, iš GANG visam laikui pašalinsime:</p><ul>'.$what.'<li>el. pašto adresą '.e($u['email']).' ir sutikimų įrašus.</li></ul>'
+        .'<p>Prieš trindami galite <a href="/profilis/duomenys">atsisiųsti savo duomenis</a>. Išsiųsti el. laiškai lieka gavėjų pašto dėžutėse.</p>'
+        .$body.'<p><a href="/profilis">← Grįžti į profilį</a></p></section>', ['noindex' => true]);
+}
+
+// /atsisakyti/{id}/{token} from job-offer emails. GET asks first (mail scanners open links);
+// POST, including the mail client's own one-click POST (RFC 8058), turns the emails off.
+function unsubscribe_page(int $id, string $token): never
+{
+    header('X-Robots-Tag: noindex, nofollow');
+    $u = sql("SELECT * FROM users WHERE id = ? AND kind = 'worker'", [$id])->fetch();
+    if (!$u || !hash_equals(unsubscribe_token($id), $token)) {
+        not_found();
+    }
+    if (is_post()) {
+        sql('UPDATE users SET notify = 0 WHERE id = ?', [$id]);
+        if (($_POST['List-Unsubscribe'] ?? '') === 'One-Click') {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'OK';
+            exit;
+        }
+        page('Laiškų atsisakyta', '<section class="wrap narrow"><h1>Laiškų atsisakyta</h1><p class="lead">Daugiau nesiųsime laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong>.</p>'
+            .'<p>Laiškus apie jūsų kandidatūras, patvirtintus darbus ir žinutes gausite toliau. Darbo pasiūlymų laiškus vėl įjungti galite <a href="/profilis">profilyje</a>.</p></section>', ['noindex' => true]);
+    }
+    $body = (int) $u['notify']
+        ? '<p class="lead">Nebesiųsime laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong>. Laiškus apie jūsų kandidatūras, patvirtintus darbus ir žinutes gausite toliau.</p>'
+            .'<form method="post" class="form"><button class="btn">Atsisakyti darbo pasiūlymų laiškų</button></form>'
+        : '<p class="lead">Laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong> jau atsisakėte. Vėl įjungti galite <a href="/profilis">profilyje</a>.</p>';
+    page('Atsisakyti laiškų', '<section class="wrap narrow"><h1>Atsisakyti laiškų</h1>'.$body.'</section>', ['noindex' => true]);
 }

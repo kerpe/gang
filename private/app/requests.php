@@ -588,9 +588,9 @@ function request_form_page(): never
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     page('Nauja paieška', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
-        .'<aside class="live-preview" aria-live="polite"><p class="eyebrow">Taip skelbimą matys darbuotojai</p><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
+        .'<div class="live-preview" aria-live="polite"><h2 class="eyebrow">Taip skelbimą matys darbuotojai</h2><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
         .'<p class="event-name" data-p="event" hidden></p><p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag event" data-p="eventtag" hidden>Renginys</span></p>'
-        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></div></aside>'
+        .'<div class="card-when"><div><strong data-p="when">Datos nepažymėtos</strong></div></div></div></div></div></div>'
         .(count($venues) > 1 ? '<label>Darbovietė <select name="venue_id">'.options($venueOptions, $v['venue_id']).'</select>'.err($errors, 'venue_id').'</label>' : '<input type="hidden" name="venue_id" value="'.(int) $venues[0]['id'].'">')
         .'<div class="row"><label>Pareigos <select name="role" required>'.options(['' => 'Pasirinkite'] + ROLES, $v['role']).'</select>'.err($errors, 'role').'</label>'
         .'<label>Darbuotojų skaičius <input type="number" name="people" min="1" max="20" value="'.e($v['people']).'">'.err($errors, 'people').'</label></div>'
@@ -887,7 +887,7 @@ function request_page(int $id): never
     <h1>{$e($role)}</h1>$eventLine
   </header>
   <div class="job-grid">
-    <aside class="job-side">$payBox$facts</aside>
+    <div class="job-side">$payBox$facts</div>
     <div class="job-main">
       $venueSec
       $when
@@ -1090,7 +1090,7 @@ function owner_panel(array $r, bool $isOpen): string
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
-        .'<p class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></p></div>';
+        .'<div class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
 }
 
 // After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"
@@ -1111,8 +1111,8 @@ function leftover_question(array $r, bool $isOpen): string
     $people = count(array_unique($need)) > 1 ? 'iki '.$count.' darbuotojų' : $count.' '.($count === 1 ? 'darbuotojo' : 'darbuotojų');
     return '<div class="notice ok leftover" id="likusios"><p><strong>Ar skelbime paliekame tik '.e($open).'?</strong></p>'
         .'<p>'.e(ucfirst(days_text($full))).' jau '.(count($full) > 1 ? 'užpildytos' : 'užpildyta').'. '.e(ucfirst($open)).' dar reikia '.e($people).'.</p>'
-        .'<p class="owner-actions">'.post_button('/darbas/'.(int) $r['id'].'/palikti', 'Taip, ieškoti toliau', [], 'btn small')
-        .post_button('/darbas/'.(int) $r['id'].'/uzdaryti', 'Ne, uždaryti paiešką', [], 'btn small ghost', 'Uždarius paiešką, darbuotojai jos nebematys, o laukiantiems kandidatams pranešime, kad vietos užpildytos.').'</p></div>';
+        .'<div class="owner-actions">'.post_button('/darbas/'.(int) $r['id'].'/palikti', 'Taip, ieškoti toliau', [], 'btn small')
+        .post_button('/darbas/'.(int) $r['id'].'/uzdaryti', 'Ne, uždaryti paiešką', [], 'btn small ghost', 'Uždarius paiešką, darbuotojai jos nebematys, o laukiantiems kandidatams pranešime, kad vietos užpildytos.').'</div></div>';
 }
 
 function keep_open_action(int $id): never
@@ -1229,7 +1229,12 @@ function respond_action(int $id): never
         }
         $all = ranges_days(request_ranges($r));
         $dates = request_splittable($r) ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], days_ranges($days))) : '';
-        $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
+        try {
+            $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
+        } catch (PDOException) {
+            // Two tabs sent the same application at once: the unique index kept one.
+            redirect('/darbas/'.$id.'#atsiliepti');
+        }
         $some = $dates !== '' && $days !== $all;
         $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
         [$avg, $n] = worker_rating((int) $u['id']);

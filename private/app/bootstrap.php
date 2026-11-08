@@ -280,25 +280,27 @@ function check_csrf(): void
 }
 
 // $mail: the email's parts (see mail.php); sent as HTML with a plain-text alternative.
-function send_mail(string $to, string $subject, array $mail, string $replyTo = ''): bool
+// $headers: extra headers, e.g. List-Unsubscribe on job-offer emails (job_mail_headers()).
+function send_mail(string $to, string $subject, array $mail, string $replyTo = '', array $headers = []): bool
 {
     $c = config();
     $text = mail_text($mail);
     $html = mail_html($mail, $subject);
     if (defined('GANG_MAIL_CAPTURE')) {
-        file_put_contents(GANG_MAIL_CAPTURE, "To: $to\nSubject: $subject\n\n$text\n-----\n", FILE_APPEND);
+        $extra = implode('', array_map(fn ($k, $v) => "$k: $v\n", array_keys($headers), $headers));
+        file_put_contents(GANG_MAIL_CAPTURE, "To: $to\nSubject: $subject\n$extra\n$text\n-----\n", FILE_APPEND);
         if (defined('GANG_MAIL_HTML_DIR')) {
             file_put_contents(GANG_MAIL_HTML_DIR.'/'.date('His').'-'.substr(md5($to.$subject.microtime()), 0, 6).'.html', $html);
         }
         return true;
     }
-    if ($c['resend_key'] !== '' && resend_mail($c, $to, $subject, $text, $html, $replyTo)) {
+    if ($c['resend_key'] !== '' && resend_mail($c, $to, $subject, $text, $html, $replyTo, $headers)) {
         return true;
     }
     // PHP mail() on Hostinger: also the fallback when Resend is down or refuses the mail.
     $from = preg_match('/[^<\s]+@[^>\s]+/', $c['mail_from'], $m) ? $m[0] : 'hello@gang.lt';
     $boundary = 'gang-'.bin2hex(random_bytes(12));
-    $headers = [
+    $headers = $headers + [
         'From' => $c['mail_from'],
         'Date' => date(DATE_RFC2822),
         'Message-ID' => '<'.bin2hex(random_bytes(16)).'@'.substr(strrchr($from, '@'), 1).'>',
@@ -320,9 +322,12 @@ function send_mail(string $to, string $subject, array $mail, string $replyTo = '
 }
 
 // Resend API (DKIM-signed for gang.lt, bounces via send.gang.lt). False on any error, so the caller can fall back.
-function resend_mail(array $c, string $to, string $subject, string $text, string $html, string $replyTo): bool
+function resend_mail(array $c, string $to, string $subject, string $text, string $html, string $replyTo, array $headers = []): bool
 {
     $body = ['from' => $c['mail_from'], 'to' => [$to], 'subject' => $subject, 'text' => $text, 'html' => $html];
+    if ($headers) {
+        $body['headers'] = $headers;
+    }
     if ($replyTo !== '') {
         $body['reply_to'] = $replyTo;
     }

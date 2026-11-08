@@ -52,7 +52,13 @@ function review_page(int $contractId): never
         if (!$errors) {
             // The overall rating stays one number (average of the criteria) for lists and older reviews.
             $rating = (int) round(array_sum($scores) / count($scores));
-            insert('reviews', ['contract_id' => $contractId, 'author' => $author, 'rating' => $rating, 'text' => $text, 'created_at' => now()] + $scores);
+            try {
+                insert('reviews', ['contract_id' => $contractId, 'author' => $author, 'rating' => $rating, 'text' => $text, 'created_at' => now()] + $scores);
+            } catch (PDOException) {
+                // Sent twice at once (two tabs): the unique index kept the first one.
+                flash('Šį darbą jau įvertinote.');
+                redirect('/mano');
+            }
             flash('Dėkojame. Įvertinimas bus paskelbtas, kai įvertins ir kita šalis arba po '.REVIEW_HIDE_DAYS.' dienų.');
             redirect('/mano');
         }

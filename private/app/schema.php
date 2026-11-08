@@ -230,6 +230,8 @@ function migrate(PDO $db): void
         "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
         // Version 19: GANG checks every employer before they publish searches or open worker profiles.
         'users ADD verified_at DATETIME NULL',
+        // Version 19: raised by "Atsijungti visuose įrenginiuose"; sessions keep the value they started with.
+        'users ADD session_epoch INT NOT NULL DEFAULT 0',
     ];
     foreach ($columns as $column) {
         try {
@@ -288,6 +290,18 @@ function migrate(PDO $db): void
             $db->exec("CREATE INDEX $name ON $on");
         } catch (PDOException) {
             // Already exists.
+        }
+    }
+    // Version 19: one application per worker and request, one review per contract and side.
+    $unique = [
+        'responses_once' => 'responses (request_id, worker_id)',
+        'reviews_once' => 'reviews (contract_id, author)',
+    ];
+    foreach ($unique as $name => $on) {
+        try {
+            $db->exec("CREATE UNIQUE INDEX $name ON $on");
+        } catch (PDOException) {
+            // Already exists (or old duplicates; then the code checks still apply).
         }
     }
     @mkdir(dirname($marker), 0700, true);

@@ -225,6 +225,7 @@ function jobs_page(): never
     <button class="btn">Rodyti</button>
   </form>
   <p class="meta">Rasta: $count</p>
+  <h2 class="sr-only">Darbo pasiūlymai</h2>
   $cards
 </section>
 HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
@@ -248,8 +249,8 @@ function split_page(string $title, string $eyebrow, string $heading, string $cam
     $index = $index !== '' ? '<ol class="side-index">'.$index.'</ol>' : '';
     $photo = cam_photo($cam);
     $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
-    page($title, '<div class="wrap split"><aside class="side">'.($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '').'<h1>'.e($heading).'</h1>'.$photo
-        .$index.'</aside><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
+    page($title, '<div class="wrap split"><div class="side">'.($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '').'<h1>'.e($heading).'</h1>'.$photo
+        .$index.'</div><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
 }
 
 function team_page(string $n): never

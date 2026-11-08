@@ -310,7 +310,7 @@ function notify_workers(array $r, array $skip = []): int
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     [$subject, $mail] = job_offer_mail($r);
     foreach ($workers as $w) {
-        send_mail($w['email'], $subject, $mail);
+        send_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), '', job_mail_headers($w));
         job_mailed((int) $r['id'], (int) $w['id']);
     }
     sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
@@ -345,9 +345,40 @@ function job_offer_mail(array $r): array
     return [$subject, $mail];
 }
 
-function job_mail_footnote(): string
+function job_mail_footnote(?array $w = null): string
 {
-    return 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').';
+    return 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. '
+        .($w ? '[Atsisakyti darbo pasiūlymų laiškų]('.unsubscribe_url((int) $w['id']).') arba pakeisti nustatymus [profilyje]('.url('/profilis').').' : 'Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').');
+}
+
+// One-click unsubscribe from job-offer emails (Gmail/Yahoo bulk sender rules, RFC 8058).
+// The link carries an HMAC of the member id, so it works without signing in and cannot be guessed.
+function mail_secret(): string
+{
+    $secret = setting('mail_secret');
+    if ($secret === '') {
+        $secret = bin2hex(random_bytes(32));
+        set_setting('mail_secret', $secret);
+    }
+    return $secret;
+}
+
+function unsubscribe_token(int $userId): string
+{
+    return substr(hash_hmac('sha256', 'unsubscribe:'.$userId, mail_secret()), 0, 32);
+}
+
+function unsubscribe_url(int $userId): string
+{
+    return url('/atsisakyti/'.$userId.'/'.unsubscribe_token($userId));
+}
+
+function job_mail_headers(array $w): array
+{
+    return [
+        'List-Unsubscribe' => '<'.unsubscribe_url((int) $w['id']).'>, <mailto:hello@gang.lt?subject=Atsisakyti%20laisku>',
+        'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+    ];
 }
 
 // Open offers that match a worker's profile (roles, cities, durations, experience): the same
@@ -399,7 +430,7 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
             'footnote' => job_mail_footnote(),
         ];
     }
-    send_mail($u['email'], $subject, $mail);
+    send_mail($u['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($u)]), '', job_mail_headers($u));
     foreach ($jobs as $r) {
         job_mailed((int) $r['id'], (int) $u['id']);
     }
@@ -736,8 +767,8 @@ function invite_worker(array $r, array $worker): bool
             ], fn ($v) => $v !== ''),
             'note' => ['label' => 'Darbo laikas ir aprašymas', 'text' => $r['description']],
             'cta' => ['Peržiūrėti kvietimą', url('/darbas/'.$r['id'])],
-            'footnote' => 'Šį asmeninį kvietimą gavote, nes esate šio darbdavio komandos narys GANG platformoje.',
-        ]);
+            'footnote' => 'Šį asmeninį kvietimą gavote, nes esate šio darbdavio komandos narys GANG platformoje. [Atsisakyti darbo pasiūlymų laiškų]('.unsubscribe_url((int) $worker['id']).').',
+        ], '', job_mail_headers($worker));
     }
     return true;
 }
