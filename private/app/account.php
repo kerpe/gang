@@ -563,7 +563,7 @@ function manager_dashboard(array $u): string
         ['Komanda', (string) count(team_members((int) $u['id'])), '#komanda'],
     ]);
     return (manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
-        .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
+        .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
         .'<h2 id="paieskos">Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
             .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
             .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>')
