@@ -296,11 +296,16 @@ function dashboard_page(): never
     }
     $body = ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u));
     $kind = $u['kind'] === 'worker' ? 'Darbuotojo paskyra' : 'Darbdavio paskyra';
-    page('Mano GANG', '<section class="wrap">'.$body
+    $rating = '';
+    if ($u['kind'] === 'worker') {
+        [$avg, $n] = worker_rating((int) $u['id']);
+        $rating = '<span class="meta account-rating">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</span>';
+    }
+    page('Mano GANG', '<section class="wrap">'
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
-        .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><strong>'.e($u['name']).'</strong><span class="meta">'.e($u['email']).'</span></div>'
-        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
-        .'</div></section>', ['noindex' => true]);
+        .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><h1 class="account-name">'.e($u['name']).'</h1><span class="meta">'.e($u['email']).'</span>'.$rating.'</div>'
+        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a></div>'
+        .'</div>'.$body.'</section>', ['noindex' => true]);
 }
 
 const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, '.CONTRACT_DATES.', r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
@@ -471,9 +476,8 @@ function worker_dashboard(array $u): string
         ['Tinkantys pasiūlymai', (string) count($jobs), '#pasiulymai'],
         ['Įvertinimas', $n ? number_format((float) $avg, 1, ',', '') : '–', ''],
     ]);
-    return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
-        .next_step(...$next).$tiles
+    // Name, rating and GANG jobs are on the account card at the top of the page (dashboard_page).
+    return next_step(...$next).$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
@@ -558,8 +562,7 @@ function manager_dashboard(array $u): string
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
         ['Komanda', (string) count(team_members((int) $u['id'])), '#komanda'],
     ]);
-    return '<p class="eyebrow">Darbdavio paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
-        .(manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
+    return (manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
         .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
         .'<h2 id="paieskos">Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
             .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
