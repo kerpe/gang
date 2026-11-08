@@ -631,7 +631,8 @@ h2[id] { scroll-margin-top: 84px; }
 
 /* Duration options with a short explanation under each name */
 .kind-choices { display: grid; grid-template-columns: repeat(3, 1fr); }
-@media (max-width: 600px) { .kind-choices { gap: 8px; } .kind-choices .choice { padding: 10px; } }
+.kind-choices .hint-short { display: none; }
+@media (max-width: 600px) { .kind-choices { gap: 8px; } .kind-choices .choice { padding: 10px; } .kind-choices .hint-long { display: none; } .kind-choices .hint-short { display: inline; } .kind-choices small { white-space: nowrap; } }
 .kind-choices .choice { align-items: flex-start; padding: 12px 14px; }
 .kind-choices .choice input { margin-top: 4px; }
 .kind-choices .choice > span { display: grid; gap: 2px; line-height: 1.3; }

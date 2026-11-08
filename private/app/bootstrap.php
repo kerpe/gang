@@ -31,6 +31,12 @@ const KIND_HINTS = [
     'sezonas' => 'Keli mėnesiai',
     'nuolat' => 'Ilgalaikis darbas',
 ];
+// Shorter hints for phones, so each fits on one line in the narrow cards.
+const KIND_HINTS_SHORT = [
+    'trumpai' => 'Iki mėnesio',
+    'sezonas' => 'Keli mėn.',
+    'nuolat' => 'Ilgam',
+];
 // Levels are ordered: a worker matches a request when their experience in the requested
 // role (worker_roles.experience) >= min_experience. users.experience keeps the lowest
 // level across the worker's roles; 0 means not stated yet.
