@@ -667,7 +667,7 @@ function gang_calendar_panel(array $u): string
         .'<span>'.e($c['venue_name'].' · '.(ROLES[$c['role']] ?? '')).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</span></a></li>', array_slice($rows, 0, 12)));
     $later = $work && array_key_last($work) > $last ? '<p class="meta">Vėlesni darbai rodomi sąraše.</p>' : '';
     return '<section class="panel gang-cal" id="kalendorius"><h2>Mano GANG kalendorius</h2>'
-        .'<p class="meta">Čia automatiškai atsiranda darbai, kuriems darbdavys patvirtino jūsų kandidatūrą. Teikiant kandidatūrą, GANG įspės, jei tomis dienomis jau turite GANG darbą.</p>'
+        .'<p class="meta">Čia automatiškai atsiranda darbai, kuriems darbdavys patvirtino jūsų kandidatūrą. Teikiant kandidatūrą, GANG įspės, jei tomis dienomis jau turite darbą.</p>'
         .'<div class="pick-months n3">'.$months.'</div>'
         .($list ? '<ul class="cal-list">'.$list.'</ul>'.$later : '<p class="empty">Patvirtintų GANG darbų dar nėra.</p>')
         .'</section>';
