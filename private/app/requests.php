@@ -1015,19 +1015,20 @@ function application_state_poll(int $id): never
     exit;
 }
 
-// The waiting worker's page follows the employer's decision: once it changes, the page reloads
-// (with the confirmed status and the chat). A message being typed is not lost: a notice asks to refresh instead.
+// The waiting worker's page follows the employer's decision: once it changes, a notice says so and the page
+// reloads a moment later (with the confirmed status and the chat). A message being typed moves into the chat field.
 function application_watch(array $r, array $mine): string
 {
     $id = (int) $r['id'];
     $state = json_encode(application_state($r, $mine));
     return <<<HTML
-<p class="notice ok app-changed" hidden>Darbdavys atsakė į jūsų kandidatūrą. <a href="/darbas/$id">Atnaujinti puslapį</a></p>
+<p class="notice ok app-changed" role="status" hidden></p>
 <script>
 (function () {
   var state = $state, done = false;
-  function typing() {
-    return Array.prototype.some.call(document.querySelectorAll('#atsiliepti textarea, #papildyti textarea'), function (t) { return t.value.trim() !== ''; });
+  function draft() {
+    var t = document.querySelector('#papildyti textarea');
+    return t ? t.value.trim() : '';
   }
   function check() {
     if (done || document.hidden) return;
@@ -1036,13 +1037,42 @@ function application_watch(array $r, array $mine): string
       .then(function (d) {
         if (!d || !d.state || d.state === state || done) return;
         done = true;
-        if (typing()) { var n = document.querySelector('.app-changed'); if (n) n.hidden = false; return; }
-        location.replace('/darbas/$id');
+        var ok = d.state.indexOf('accepted|') === 0, n = document.querySelector('.app-changed');
+        n.textContent = ok ? 'Darbdavys patvirtino jūsų kandidatūrą. Atidarome pokalbį…' : 'Darbdavys atsakė į jūsų kandidatūrą. Atnaujiname puslapį…';
+        n.hidden = false;
+        n.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(function () {
+          var t = ok ? draft() : '';
+          try { if (ok) sessionStorage.setItem('gang-draft-$id', t); } catch (e) {}
+          location.replace('/darbas/$id');
+        }, 3000);
       }).catch(function () {});
   }
   setInterval(check, 10000);
   document.addEventListener('visibilitychange', check);
   window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+})();
+</script>
+HTML;
+}
+
+// Right after the confirmation reload: the page opens at the chat, and a message the worker was typing waits there, unsent.
+function application_draft_script(int $id): string
+{
+    return <<<HTML
+<script>
+(function () {
+  var t = null;
+  try { t = sessionStorage.getItem('gang-draft-$id'); sessionStorage.removeItem('gang-draft-$id'); } catch (e) {}
+  var ed = document.querySelector('[data-chat] .chat-input');
+  if (t === null || !ed) return;
+  ed.scrollIntoView({ block: 'center' });
+  if (!t) return;
+  ed.textContent = t;
+  ed.dispatchEvent(new Event('input'));
+  ed.focus();
+  var r = document.createRange(); r.selectNodeContents(ed); r.collapse(false);
+  var s = getSelection(); s.removeAllRanges(); s.addRange(r);
 })();
 </script>
 HTML;
@@ -1104,7 +1134,7 @@ function accepted_panel(array $r, array $u): string
     $c = sql(str_replace(' FROM contracts c', ", (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = 'worker') AS reviewed FROM contracts c", CONTRACT_SELECT)
         .' WHERE c.request_id = ? AND c.worker_id = ?', [$r['id'], $u['id']])->fetch();
     // The chat first: opening it marks the messages read, so the card's "Žinutės" count is already right.
-    $chat = $c && !$c['cancelled_at'] ? chat_box($c, $u).chat_script() : '';
+    $chat = $c && !$c['cancelled_at'] ? chat_box($c, $u).chat_script().application_draft_script((int) $r['id']) : '';
     return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
         .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
         .'<p class="shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
