@@ -58,9 +58,9 @@ function join_cta(string $workerClass = 'btn', string $employerClass = 'btn ligh
         return '<p class="cta"><a class="'.$workerClass.'" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="'.$employerClass.'" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
     }
     if ($u['kind'] === 'manager') {
-        return '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+        return '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano profilis</a></p>';
     }
-    return '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano GANG</a></p>';
+    return '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano profilis</a></p>';
 }
 
 function home_page(): never
@@ -107,7 +107,7 @@ function home_page(): never
     $me = current_user();
     $heroCta = join_cta();
     $workerBtn = !$me ? '<a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>'
-        : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Mano profilis</a>' : '');
+        : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Redaguoti profilį</a>' : '');
     $venueBtn = !$me ? '<a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>'
         : ($me['kind'] === 'manager' ? '<a class="btn light" href="/poreikis/naujas">Paskelbti paiešką</a>' : '');
     $finalCta = $me ? '' : '<section class="wrap home-block">

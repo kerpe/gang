@@ -96,7 +96,7 @@ function profile_page(): never
             redirect('/mano');
         }
     }
-    $title = profile_complete($u) ? 'Mano profilis' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
+    $title = profile_complete($u) ? 'Redaguoti profilį' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
     $workerFields = '';
     $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
     $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
@@ -304,7 +304,7 @@ function dashboard_page(): never
         [$avg, $n] = worker_rating((int) $u['id']);
         $rating = '<span class="meta account-rating">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</span>';
     }
-    page('Mano GANG', '<section class="wrap">'
+    page('Mano profilis', '<section class="wrap">'
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><h1 class="account-name">'.e($u['name']).'</h1><span class="meta">'.e($u['email']).'</span>'.$rating.'</div>'
         .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a></div>'
@@ -442,7 +442,7 @@ function worker_open_offers(array $u): array
     return [$invites, array_values($jobs)];
 }
 
-// "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano GANG.
+// "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano profilis.
 function worker_offers_page(): never
 {
     $u = require_user();
@@ -454,7 +454,7 @@ function worker_offers_page(): never
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
         .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik čia. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
-    page('Jums tinkantys darbo pasiūlymai', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano GANG</a></p>'
+    page('Jums tinkantys darbo pasiūlymai', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano profilis</a></p>'
         .'<h1>Jums tinkantys pasiūlymai</h1><p class="meta">Pagal jūsų pareigas, miestus ir darbo trukmę: '.count($jobs).'</p>'.$cards.'</section>', ['noindex' => true]);
 }
 
@@ -555,7 +555,7 @@ function manager_requests_page(): never
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
         .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
         .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>';
-    page('Aktyvios paieškos', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano GANG</a></p>'
+    page('Aktyvios paieškos', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano profilis</a></p>'
         .'<h1>Aktyvios paieškos</h1><p class="meta">Iš viso: '.count($open).'</p>'.$cards
         .($openHtml ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Nauja paieška</a></p>' : '').'</section>', ['noindex' => true]);
 }
@@ -616,7 +616,7 @@ function manager_dashboard(array $u): string
         .team_invite_box($u);
 }
 
-// "Kitas žingsnis": the one thing to do now, on top of Mano GANG. $tone: '' | warn | calm.
+// "Kitas žingsnis": the one thing to do now, on top of Mano profilis. $tone: '' | warn | calm.
 function next_step(string $tone, string $title, string $text, string $href, string $label): string
 {
     return '<section class="next-step'.($tone ? ' '.$tone : '').'"><div><p class="eyebrow">Kitas žingsnis</p><h2>'.e($title).'</h2><p>'.e($text).'</p></div>'

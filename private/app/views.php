@@ -14,11 +14,11 @@ function page(string $title, string $body, array $opt = []): never
     $ogUrl = url($opt['canonical'] ?? (parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/'));
     $ogImage = url('/img/og.jpg?v=1');
     $user = current_user();
-    // New chat messages: a count on "Mano GANG" (the contract cards there link to each chat).
+    // New chat messages: a count on "Mano profilis" (the contract cards there link to each chat).
     $unread = $user ? unread_messages_total((int) $user['id']) : 0;
     $badge = $unread ? ' <span class="count" data-unread-total aria-label="Naujos žinutės: '.$unread.'">'.$unread.'</span>' : '';
     if ($user) {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost');
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano profilis'.$badge.'</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost');
     } else {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti?registruotis">Registruotis</a>';
     }
@@ -29,8 +29,8 @@ function page(string $title, string $body, array $opt = []): never
     $tabbar = '';
     if ($user && profile_complete($user)) {
         $tabs = $user['kind'] === 'worker'
-            ? [['/mano', 'Mano GANG', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#kalendorius', 'Kalendorius', 'cal'], ['/profilis', 'Profilis', 'user']]
-            : [['/mano', 'Mano GANG', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Profilis', 'user']];
+            ? [['/mano', 'Mano profilis', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#kalendorius', 'Kalendorius', 'cal'], ['/profilis', 'Redaguoti', 'user']]
+            : [['/mano', 'Mano profilis', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Redaguoti', 'user']];
         $icons = [
             'home' => '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
             'list' => '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',

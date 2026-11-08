@@ -236,7 +236,7 @@ function chat_unread(int $contractId, int $userId): int
     return (int) sql('SELECT COUNT(*) FROM messages WHERE contract_id = ? AND sender_id <> ? AND id > ?', [$contractId, $userId, $last])->fetchColumn();
 }
 
-// Unread messages across all of the user's contracts (the "Mano GANG" link in the menu).
+// Unread messages across all of the user's contracts (the "Mano profilis" link in the menu).
 function unread_messages_total(int $userId): int
 {
     return (int) sql('SELECT COUNT(*) FROM messages m JOIN contracts c ON c.id = m.contract_id JOIN venues v ON v.id = c.venue_id
@@ -443,7 +443,7 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     if (d.here !== undefined) box.classList.toggle('here', !!d.here);
     if (d.unread !== undefined) badges(d.unread);
   }
-  // The open chat is read: its "Žinutės" count goes, and "Mano GANG" shows only what is unread elsewhere.
+  // The open chat is read: its "Žinutės" count goes, and "Mano profilis" shows only what is unread elsewhere.
   function badges(total) {
     document.querySelectorAll('[data-chat-link="' + id + '"] .count').forEach(function (b) { b.remove(); });
     if (total === undefined) return;

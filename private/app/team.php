@@ -45,7 +45,7 @@ function invite_landing_page(string $code): never
         $lead = 'GANG padeda restoranams, kavinėms, barams ir klubams rasti patikimus darbuotojus, o hospitality specialistams – papildomų pamainų ir darbo pasiūlymų. Jūsų kolega '.e($who).' jau yra GANG narys.';
         $action = $u === null
             ? '<p><a class="btn" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a> <a class="btn ghost" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>'
-            : ((int) $u['id'] === (int) $from['id'] ? '<p class="notice ok">Taip jūsų kvietimą matys kolegos.</p>' : '<p><a class="btn" href="/mano">Mano GANG</a></p>');
+            : ((int) $u['id'] === (int) $from['id'] ? '<p class="notice ok">Taip jūsų kvietimą matys kolegos.</p>' : '<p><a class="btn" href="/mano">Mano profilis</a></p>');
     }
     page($title, '<section class="wrap narrow invite-landing">'.($logo ? '<div class="invite-logo">'.$logo.'</div>' : '')
         .'<p class="eyebrow">Asmeninis kvietimas</p><h1>'.e($title).'</h1><p class="lead">'.$lead.'</p>'.$action
