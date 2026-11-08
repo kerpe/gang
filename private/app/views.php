@@ -20,11 +20,11 @@ function page(string $title, string $body, array $opt = []): never
     if ($user) {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>';
     } else {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti">Registruotis</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti?registruotis">Registruotis</a>';
     }
     // Phones: a guest menu behind one button; signed-in members get a bottom tab bar.
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    $menuLinks = '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti">Registruotis</a>');
+    $menuLinks = '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti?registruotis">Registruotis</a>');
     $nav .= '<details class="mnav"><summary aria-label="Meniu"><span></span><span></span><span></span></summary><div class="mnav-links">'.$menuLinks.'</div></details>';
     $tabbar = '';
     if ($user && profile_complete($user)) {
