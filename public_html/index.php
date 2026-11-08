@@ -34,6 +34,10 @@ $is = function (string $pattern) use ($path, &$m): bool {
     return (bool) preg_match('#^'.$pattern.'$#', $path, $m);
 };
 preview_gate($path);
+// Bulk email left in the queue goes out after this page is sent (see mail.php).
+if (!str_starts_with($path, '/nuotrauka/') && mail_queue_pending()) {
+    mail_queue_after_response(20);
+}
 release_team_requests();
 
 match (true) {

@@ -622,6 +622,7 @@ function admin_settings(): string
     $rows = [
         'Svetainė' => $yes(SITE_OPEN, 'Atverta visiems', 'Užrakinta').' <small>– '.(SITE_OPEN ? 'registracija atvira visiems.' : 'lankytojai be komandos slaptažodžio mato „Netrukus“.').'</small>',
         'Laiškų siuntėjas' => '<strong>'.e((string) $c['mail_from']).'</strong> <small>per '.$mail.'</small>',
+        'Laiškų eilė' => '<strong>'.mail_queue_pending().'</strong> <small>laukia išsiuntimo'.((int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NULL AND attempts >= ?', [MAIL_QUEUE_TRIES])->fetchColumn() ? ', '.(int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NULL AND attempts >= ?', [MAIL_QUEUE_TRIES])->fetchColumn().' nepavyko išsiųsti' : '').' · per 7 d. išsiųsta: '.(int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NOT NULL')->fetchColumn().'</small>',
         'SMS pranešimai' => $yes(($c['sms_provider'] ?? '') === 'twilio', 'Įjungti (Twilio)', 'Išjungti').' <small>– kol kas siunčiami tik el. laiškai.</small>',
         'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ '.($changed ? 'administravimo slaptažodis (pakeistas '.e(substr($changed, 0, 10)).')' : 'GANG komandos slaptažodis – pakeiskite žemiau').' + kodas el. paštu'.(admin_email() ? ' '.e(admin_email_hint(admin_email())) : '').'</small>',
     ];
