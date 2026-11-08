@@ -578,7 +578,7 @@ function manager_dashboard(array $u): string
 function next_step(string $tone, string $title, string $text, string $href, string $label): string
 {
     return '<section class="next-step'.($tone ? ' '.$tone : '').'"><div><p class="eyebrow">Kitas žingsnis</p><h2>'.e($title).'</h2><p>'.e($text).'</p></div>'
-        .($href !== '' ? '<a class="btn" href="'.e($href).'">'.e($label).'</a>' : '').'</section>';
+        .($href !== '' ? '<a class="btn small" href="'.e($href).'">'.e($label).'</a>' : '').'</section>';
 }
 
 // A row of small figures that jump to their section. Each item: [label, value, href or ''].
