@@ -201,6 +201,7 @@ function privacy_page(): never
                 .'<p>Duomenų neparduodame ir reklamos tikslais tretiesiems asmenims neperduodame.</p>'],
             ['kas-mato', 'Kas mato jūsų duomenis', '<ul>'
                 .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, įvertinimus) mato tik GANG patvirtinti darbdaviai, kuriems darbuotojas pateikė kandidatūrą, su kuriais dirbo per GANG arba prie kurių komandos prisijungė.</li>'
+                .'<li>Darbdavio profilio nuotrauką, jei ji įkelta, mato tik darbuotojai, kurie pateikė kandidatūrą jo paieškoms, dirbo su juo per GANG arba prisijungė prie jo komandos.</li>'
                 .'<li>Darbovietės puslapis, jos adresas ir paskelbtos paieškos yra vieši.</li>'
                 .'<li>Telefono numeris kitiems nariams nerodomas. GANG kontrakto šalys bendrauja GANG žinutėmis ir, jei nori, numeriais apsikeičia pačios.</li>'
                 .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys. Naujos žinutės ištrauka siunčiama gavėjui el. paštu.</li>'
