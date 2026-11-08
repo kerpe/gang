@@ -588,7 +588,7 @@ function request_form_page(): never
     $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką, pažymėti jūsų komandos nariai gaus asmeninį kvietimą. Patikrinkite duomenis ir paskelbkite.</p>'
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     $step = !sql('SELECT 1 FROM requests r JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? LIMIT 1', [$u['id']])->fetchColumn() ? onboarding_step(3) : '';
-    page('Nauja paieška', '<section class="wrap request-wrap">'.$step.'<h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
+    page('Nauja paieška', '<section class="wrap request-wrap">'.$step.'<h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
         .'<div class="live-preview" aria-live="polite"><h2 class="eyebrow">Taip skelbimą matys darbuotojai</h2><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
         .'<p class="event-name" data-p="event" hidden></p><p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag event" data-p="eventtag" hidden>Renginys</span></p>'
@@ -1287,7 +1287,7 @@ function request_edit_page(int $id): never
             .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label>';
     page('Redaguoti paiešką', '<section class="wrap narrow request-edit"><p class="back"><a href="/darbas/'.$id.'">← Atgal į skelbimą</a></p>'
         .'<h1>Redaguoti paiešką</h1><p class="meta">'.e($role.' · '.$r['venue_name'].', '.(CITIES[$r['city']] ?? '')).'</p>'.$who
-        .($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
+        .($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
         .'<form method="post" class="form" novalidate>'.csrf_field().$when
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required>'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
         .'<p class="hint">Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.</p>'
