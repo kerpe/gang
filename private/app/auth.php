@@ -98,13 +98,19 @@ function login_codes_from_ip(string $ipHash, int $seconds): int
 function login_page(): never
 {
     start_session();
-    if (isset($_GET['kaip']) && in_array($_GET['kaip'], ['darbuotojas', 'vadovas'], true)) {
-        $_SESSION['signup_kind'] = $_GET['kaip'] === 'vadovas' ? 'manager' : 'worker';
-    }
-    // "Registruotis" in the menu has no role yet; remember that the visitor meant to sign up,
-    // so an existing member can be told they already have an account.
+    // Every visit to the page sets the mode from the link alone: ?kaip=… registers with a role,
+    // ?registruotis registers without one, and the plain "Prisijungti" link is a sign-in, even if an
+    // earlier visit in this session went through a registration link. The POST keeps the mode it was shown in.
     if (!is_post()) {
-        $_SESSION['signup_intent'] = isset($_GET['registruotis']) || isset($_GET['kaip']);
+        $kaip = $_GET['kaip'] ?? '';
+        $_SESSION['signup_kind'] = match ($kaip) {
+            'vadovas' => 'manager',
+            'darbuotojas' => 'worker',
+            default => '',
+        };
+        // "Registruotis" in the menu has no role yet; remember that the visitor meant to sign up,
+        // so an existing member can be told they already have an account.
+        $_SESSION['signup_intent'] = isset($_GET['registruotis']) || $_SESSION['signup_kind'] !== '';
     }
     if (current_user()) {
         redirect('/mano');
@@ -156,7 +162,7 @@ function login_page(): never
     $title = match ($kind) {
         'worker' => 'Registracija darbuotojams',
         'manager' => 'Registracija darbdaviams',
-        default => $signup ? 'Registracija' : 'Prisijungti arba užsiregistruoti',
+        default => $signup ? 'Registracija' : 'Prisijungimas',
     };
     $lead = match ($kind) {
         'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.',
@@ -170,6 +176,18 @@ function login_page(): never
         .'<label>El. paštas <input type="email" name="email" value="'.e($email).'" autocomplete="email" inputmode="email" required autofocus>'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
         .($kind !== '' ? consent_field($termsError) : '')
         .'<button class="btn">Siųsti kodą</button></form></section>', ['noindex' => true]);
+}
+
+// Back to the email form in the same mode the visitor came in with (sign-in or registration).
+function login_again_url(): string
+{
+    $kind = $_SESSION['signup_kind'] ?? '';
+    return match (true) {
+        $kind === 'worker' => '/prisijungti?kaip=darbuotojas',
+        $kind === 'manager' => '/prisijungti?kaip=vadovas',
+        !empty($_SESSION['signup_intent']) => '/prisijungti?registruotis',
+        default => '/prisijungti',
+    };
 }
 
 function login_code_page(): never
@@ -213,7 +231,7 @@ function login_code_page(): never
     page('Įveskite kodą', '<section class="wrap narrow"><h1>Patikrinkite el. paštą</h1><p class="lead">Išsiuntėme 6 skaitmenų kodą adresu <strong>'.e($email).'</strong>. Jei laiško nematote, patikrinkite brukalo („Spam“) aplanką.</p>'
         .'<form method="post" class="form" novalidate'.ONE_SUBMIT.'>'.csrf_field()
         .'<label>Kodas '.login_code_input().($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
-        .'<button class="btn">Prisijungti</button></form><p><a href="/prisijungti">Siųsti kodą iš naujo arba pakeisti el. paštą</a></p></section>', ['noindex' => true]);
+        .'<button class="btn">Prisijungti</button></form><p><a href="'.login_again_url().'">Siųsti kodą iš naujo arba pakeisti el. paštą</a></p></section>', ['noindex' => true]);
 }
 
 // A new user who came through the plain "Prisijungti" link picks a side once.
