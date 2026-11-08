@@ -169,3 +169,73 @@ function mail_html(array $m, string $subject): string
         .'</td></tr>'
         .'</table></td></tr></table></body></html>';
 }
+
+// Mail queue for bulk email (new job offers to every matching worker). The page answers at once;
+// the queue goes out about one email per MAIL_QUEUE_GAP seconds (Resend allows 2 per second):
+// after the response of the page that queued it, on later page views and from cron.
+const MAIL_QUEUE_GAP = 0.6;
+const MAIL_QUEUE_TRIES = 5;
+
+// $priority: lower goes first (urgent offers before others).
+function queue_mail(string $to, string $subject, array $mail, array $headers = [], int $priority = 10): void
+{
+    insert('mail_queue', ['to_email' => $to, 'subject' => $subject, 'body' => json_encode($mail, JSON_UNESCAPED_UNICODE),
+        'headers' => json_encode($headers, JSON_UNESCAPED_UNICODE), 'priority' => $priority, 'created_at' => now()]);
+    mail_queue_after_response();
+}
+
+function mail_queue_pending(): int
+{
+    return (int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NULL AND attempts < ?', [MAIL_QUEUE_TRIES])->fetchColumn();
+}
+
+// Sends from the queue once the visitor already has the page (or right away in cron).
+function mail_queue_after_response(int $seconds = 40): void
+{
+    static $registered = false;
+    if ($registered) {
+        return;
+    }
+    $registered = true;
+    register_shutdown_function(function () use ($seconds) {
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        ignore_user_abort(true);
+        @set_time_limit($seconds + 20);
+        process_mail_queue($seconds);
+    });
+}
+
+// Sends queued emails for up to $seconds. One sender at a time (lock file), so the rate holds.
+function process_mail_queue(int $seconds): int
+{
+    $lock = @fopen(private_root().'/data/mail-queue.lock', 'c');
+    if (!$lock || !flock($lock, LOCK_EX | LOCK_NB)) {
+        return 0;
+    }
+    $sent = 0;
+    $until = microtime(true) + $seconds;
+    $pause = defined('GANG_MAIL_CAPTURE') ? 0 : (int) (MAIL_QUEUE_GAP * 1000000);
+    while (microtime(true) < $until) {
+        $row = sql('SELECT * FROM mail_queue WHERE sent_at IS NULL AND attempts < ? ORDER BY priority, id LIMIT 1', [MAIL_QUEUE_TRIES])->fetch();
+        if (!$row) {
+            break;
+        }
+        $ok = send_mail($row['to_email'], $row['subject'], (array) json_decode($row['body'], true), '', (array) json_decode((string) $row['headers'], true));
+        if ($ok) {
+            sql('UPDATE mail_queue SET sent_at = ? WHERE id = ?', [now(), $row['id']]);
+            $sent++;
+        } else {
+            sql('UPDATE mail_queue SET attempts = attempts + 1 WHERE id = ?', [$row['id']]);
+        }
+        if ($pause) {
+            usleep($pause);
+        }
+    }
+    // Sent mail is kept a week for the admin count, then removed (it holds addresses).
+    sql('DELETE FROM mail_queue WHERE sent_at IS NOT NULL AND sent_at < ?', [date('Y-m-d H:i:s', strtotime('-7 days'))]);
+    flock($lock, LOCK_UN);
+    fclose($lock);
+    return $sent;
+}

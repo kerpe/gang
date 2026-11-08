@@ -157,7 +157,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=56"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=57"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -622,6 +622,7 @@ function admin_settings(): string
     $rows = [
         'Svetainė' => $yes(SITE_OPEN, 'Atverta visiems', 'Užrakinta').' <small>– '.(SITE_OPEN ? 'registracija atvira visiems.' : 'lankytojai be komandos slaptažodžio mato „Netrukus“.').'</small>',
         'Laiškų siuntėjas' => '<strong>'.e((string) $c['mail_from']).'</strong> <small>per '.$mail.'</small>',
+        'Laiškų eilė' => '<strong>'.mail_queue_pending().'</strong> <small>laukia išsiuntimo'.((int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NULL AND attempts >= ?', [MAIL_QUEUE_TRIES])->fetchColumn() ? ', '.(int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NULL AND attempts >= ?', [MAIL_QUEUE_TRIES])->fetchColumn().' nepavyko išsiųsti' : '').' · per 7 d. išsiųsta: '.(int) sql('SELECT COUNT(*) FROM mail_queue WHERE sent_at IS NOT NULL')->fetchColumn().'</small>',
         'SMS pranešimai' => $yes(($c['sms_provider'] ?? '') === 'twilio', 'Įjungti (Twilio)', 'Išjungti').' <small>– kol kas siunčiami tik el. laiškai.</small>',
         'Admin prisijungimas' => '<strong>'.ADMIN_USER.'</strong> <small>+ '.($changed ? 'administravimo slaptažodis (pakeistas '.e(substr($changed, 0, 10)).')' : 'GANG komandos slaptažodis – pakeiskite žemiau').' + kodas el. paštu'.(admin_email() ? ' '.e(admin_email_hint(admin_email())) : '').'</small>',
     ];

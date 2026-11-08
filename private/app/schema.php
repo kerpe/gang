@@ -160,6 +160,16 @@ function migrate(PDO $db): void
             last_id INT NOT NULL DEFAULT 0,
             seen_at DATETIME NULL,
             mailed_at DATETIME NULL",
+        // Version 19: bulk email waiting to be sent (mail.php process_mail_queue()).
+        'mail_queue' => "id $id,
+            to_email VARCHAR(190) NOT NULL,
+            subject VARCHAR(255) NOT NULL,
+            body MEDIUMTEXT NOT NULL,
+            headers TEXT NOT NULL,
+            priority INT NOT NULL DEFAULT 10,
+            attempts INT NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL,
+            sent_at DATETIME NULL",
         // Version 19: site settings changed from /admin (admin_password = password_hash of the admin password).
         'settings' => "name VARCHAR(50) NOT NULL PRIMARY KEY,
             value TEXT NOT NULL",
@@ -284,6 +294,7 @@ function migrate(PDO $db): void
         'messages_contract' => 'messages (contract_id, id)',
         'messages_sender' => 'messages (sender_id, created_at)',
         'chat_reads_contract' => 'chat_reads (contract_id, user_id)',
+        'mail_queue_pending' => 'mail_queue (sent_at, priority, id)',
     ];
     foreach ($indexes as $name => $on) {
         try {

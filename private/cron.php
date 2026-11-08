@@ -44,4 +44,7 @@ release_team_requests();
 // Arrival confirmation for tomorrow's shifts (10:00 reminder, 16:00 warning to the employer).
 run_shift_checks();
 
+// Bulk email the pages did not finish (normally empty).
+process_mail_queue(240);
+
 sql('DELETE FROM login_codes WHERE expires_at < ?', [date('Y-m-d H:i:s', strtotime('-1 day'))]);

@@ -310,7 +310,9 @@ function notify_workers(array $r, array $skip = []): int
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     [$subject, $mail] = job_offer_mail($r);
     foreach ($workers as $w) {
-        send_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), '', job_mail_headers($w));
+        // Urgent offers first; within them, workers who marked these days as free.
+        $priority = ($r['kind'] === 'skubu' ? 0 : 10) + (is_available((int) $w['id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? 0 : 1);
+        queue_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), job_mail_headers($w), $priority);
         job_mailed((int) $r['id'], (int) $w['id']);
     }
     sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
