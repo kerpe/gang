@@ -1125,16 +1125,18 @@ function owner_panel(array $r, bool $isOpen): string
         ? '<div class="notice tip invite-nudge"><p><strong>Tinkamų darbuotojų GANG dar nedaug.</strong> Pakvieskite savo darbuotojus ir pažįstamus: prisijungę jie atsiras jūsų komandoje, o tinkantys gaus šį pasiūlymą.</p>'
             .share_link(url('/k/'.invite_code(current_user())), 'Prisijunkite prie mūsų komandos GANG platformoje').'</div>'
         : '';
-    $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
+    $leftover = leftover_question($r, $isOpen);
+    $reach = $teamOnly.$invite.$leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     // Once a worker is confirmed the search is settled: dates and pay are agreed, the talk is in the chat.
     // No "Redaguoti", "Uždaryti paiešką" or "Pakartoti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
     // If some days are still open, a quiet line says so and lets the employer stop looking for them.
     $confirmed = in_array('accepted', array_column($responses, 'status'), true);
     $still = '';
-    if ($isOpen && $confirmed && ($need = request_needs($r))) {
+    // Right after a partial approval the question above asks the same, so the quiet line waits for the next visit.
+    if ($isOpen && $confirmed && $leftover === '' && ($need = request_needs($r))) {
         $more = max($need) > 1 ? ' (iki '.max($need).' darbuotojų)' : '';
-        $still = '<div class="owner-actions still-looking"><p class="meta">'.($r['kind'] === 'nuolat' ? 'Dar ieškome darbuotojų'.e($more).'.' : 'Dar ieškome: '.e(days_text(array_keys($need))).e($more).'.').'</p>'
+        $still = '<div class="owner-actions still-looking"><p class="meta">'.($r['kind'] === 'nuolat' ? 'Dar ieškome darbuotojų'.e($more).'.' : e(rtrim('Dar ieškome: '.days_text(array_keys($need)).$more, '.')).'.').'</p>'
             .post_button('/darbas/'.(int) $r['id'].'/uzdaryti', 'Nebeieškoti', [], 'btn small ghost quiet', 'Daugiau darbuotojų neieškosime ir skelbimas nebebus matomas. Patvirtinti darbuotojai ir pokalbiai su jais lieka.').'</div>';
     }
     $close = $isOpen && !$confirmed ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
