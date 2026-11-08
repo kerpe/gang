@@ -484,7 +484,8 @@ function worker_dashboard(array $u): string
         (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
         (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '/mano/pasiulymai', 'Peržiūrėti'],
-        default => ['calm', 'Viskas sutvarkyta', 'Kai atsiras jums tinkantis darbo pasiūlymas, iš karto pranešime el. paštu.', '', ''],
+        // Nothing to do now: no card at all.
+        default => null,
     };
     $tiles = summary_tiles([
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
@@ -493,7 +494,7 @@ function worker_dashboard(array $u): string
         ['Įvertinimas', $n ? number_format((float) $avg, 1, ',', '') : '–', ''],
     ]);
     // Name, rating and GANG jobs are on the account card at the top of the page (dashboard_page).
-    return next_step(...$next).$tiles
+    return ($next ? next_step(...$next) : '').$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
