@@ -114,16 +114,12 @@ function admin_login_page(): never
         if (!$pending && isset($_POST['code'])) {
             $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
         } elseif ($pending) {
-            $key = 'admin:'.admin_email();
-            $code = preg_replace('/\D/', '', input('code'));
-            $row = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? ORDER BY id DESC LIMIT 1', [$key, now()])->fetch();
-            if (!$row || $row['attempts'] >= 5) {
+            $check = check_login_code('admin:'.admin_email(), input('code'));
+            if ($check === 'expired') {
                 $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
-            } elseif (!hash_equals($row['code_hash'], hash('sha256', $key.$code))) {
-                sql('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [$row['id']]);
+            } elseif ($check === 'wrong') {
                 $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';
             } else {
-                sql('DELETE FROM login_codes WHERE email = ?', [$key]);
                 unset($_SESSION['admin_pending'], $_SESSION['admin_pending_at']);
                 session_regenerate_id(true);
                 $_SESSION['admin'] = $token;
@@ -148,11 +144,11 @@ function admin_login_page(): never
     $error = $error ? '<p class="err">'.e($error).'</p>' : '';
     $form = $pending
         ? '<p class="lead">Išsiuntėme 6 skaitmenų kodą adresu <strong>'.e(admin_email_hint(admin_email())).'</strong>. Kodas galioja 10 minučių.</p>'
-            .'<form method="post" action="/admin" class="form">'.csrf_field()
-            .'<label>Kodas <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required autofocus class="code"></label>'
+            .'<form method="post" action="/admin" class="form"'.ONE_SUBMIT.'>'.csrf_field()
+            .'<label>Kodas '.login_code_input().'</label>'
             .$error.'<button class="btn">Prisijungti</button></form>'
-            .post_button('/admin', 'Siųsti kodą iš naujo', ['action' => 'restart'], 'btn small ghost')
-        : '<form method="post" action="/admin" class="form">'.csrf_field()
+            .'<p class="code-again">'.post_button('/admin', 'Siųsti kodą iš naujo', ['action' => 'restart'], 'btn small ghost').'</p>'
+        : '<form method="post" action="/admin" class="form"'.ONE_SUBMIT.'>'.csrf_field()
             .'<label>Vartotojas <input name="user" autocomplete="username" autocapitalize="none" required></label>'
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
