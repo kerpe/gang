@@ -208,6 +208,8 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .empty { color: var(--muted); }
 .meta.new { color: var(--lime); font-weight: 600; }
 .meta.wait { font-style: italic; }
+.card > .card-extra { padding: 0 18px 16px; margin: -8px 0 0; font-size: .92rem; }
+.card > .card-extra a { color: var(--lime); font-weight: 600; }
 
 /* Job page */
 .job .back { margin: 0 0 18px; }
@@ -584,6 +586,11 @@ h2[id] { scroll-margin-top: 84px; }
 .badge { border: 1px solid var(--line-strong); border-radius: 99px; padding: 3px 10px; font-size: .78rem; color: var(--muted); }
 .badge.on { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.1); color: var(--lime); font-weight: 600; }
 .responder.accepted { border-color: rgba(216,255,54,.45); }
+.note.added .note-when, .app-notes .note-when { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-style: normal; }
+.app-notes { margin: 18px 0; padding-top: 16px; border-top: 1px solid var(--line); }
+.app-notes h3 { margin: 0 0 8px; font-size: 1rem; }
+.app-notes .note { font-style: normal; color: var(--ink); background: var(--surface); border-left: 3px solid var(--lime); padding: 8px 12px; border-radius: 0 8px 8px 0; }
+.app-notes form { margin-top: 12px; }
 .responder .note { font-style: normal; color: var(--ink); background: var(--surface); border-left: 3px solid var(--lime); padding: 8px 12px; border-radius: 0 8px 8px 0; }
 .owner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .owner-actions form { margin: 0; }
