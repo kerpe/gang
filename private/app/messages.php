@@ -22,32 +22,32 @@ const CHAT_HERE_SECONDS = 25;
 // currentColor; "chef" is the GANG knives.
 const GANG_EMOJI = [
     'chef' => ['GANG peiliai', ''],
-    'kepure' => ['Virėjo kepurė', '<path d="M7 14.5a3.7 3.7 0 0 1-1.1-7.2A4.2 4.2 0 0 1 12 4.3a4.2 4.2 0 0 1 6.1 3 3.7 3.7 0 0 1-1.1 7.2"/><path d="M7 13v6.5h10V13M7 16.6h10"/>'],
     'dega' => ['Ugnis', '<path d="M12 3c.9 3.3 5.2 5.4 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-2.6 1.4-4.2 2.6-5.3.3 1.8 1.2 2.9 2.4 3.3C11.3 9 11 6 12 3z"/><path d="M12 20.4c-1.5 0-2.4-1.1-2.4-2.4 0-1.6 1.4-2.4 2.4-3.6 1 1.2 2.4 2 2.4 3.6 0 1.3-.9 2.4-2.4 2.4z"/>'],
-    'keptuve' => ['Keptuvė', '<circle cx="9.5" cy="13.5" r="6.5"/><path d="M15.2 10.3l5.3-3a1.2 1.2 0 0 1 1.2 2.1l-5.3 3"/><path d="M7 12.2c.3-1.6 2.2-2.3 3.5-1.4 1.6-.4 2.8 1.2 2.1 2.7.5 1.5-.9 2.9-2.4 2.4-1.2 1-3.1.3-3.3-1.2-1-.6-.9-2.1.1-2.5z"/><circle cx="9.7" cy="13.6" r="1.1" fill="currentColor" stroke="none"/>'],
     'service' => ['Patiekalas', '<path d="M3 19.5h18M5 17a7 7 0 0 1 14 0v2.5H5z"/><path d="M12 10V8.4"/><circle cx="12" cy="6.8" r="1.6"/>'],
     'irankiai' => ['Stalo įrankiai', '<path d="M6 3v5.2a2.6 2.6 0 0 0 5.2 0V3M8.6 3v18"/><path d="M18 21V3c-2.3 1.4-3.3 4.2-3.3 7.8V13H18"/>'],
     'pica' => ['Pica', '<path d="M3.8 7.2c5.3-2.9 11.1-2.9 16.4 0L12 21.2z"/><path d="M5.3 9.8c4.4-2 8.9-2 13.4 0"/><circle cx="10" cy="12.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.2" cy="13.2" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="16.6" r="1.1" fill="currentColor" stroke="none"/>'],
     'laikmatis' => ['Laikmatis', '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 1.8M9.5 2.8h5M12 2.8V5M19.2 5.6l1.4 1.4"/>'],
     'kava' => ['Kava', '<path d="M4.5 9.5h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M15.5 10.5h1.3a2.6 2.6 0 0 1 0 5.2h-1.6M8.5 3.5c-.9 1.1.9 2.1 0 3.4M12 3.5c-.9 1.1.9 2.1 0 3.4M3.5 21h14"/>'],
-    'alus' => ['Alus', '<path d="M5 8.5v10A1.5 1.5 0 0 0 6.5 20h7a1.5 1.5 0 0 0 1.5-1.5v-10"/><path d="M15 10.5h2.2a2 2 0 0 1 2 2v2.6a2 2 0 0 1-2 2H15M8.3 11.5v5.5M11.7 11.5v5.5"/><path d="M4.4 8.6a2.4 2.4 0 0 1 2-3.6 3 3 0 0 1 5.1-1 2.6 2.6 0 0 1 4.1 2.2 1.8 1.8 0 0 1-.5 2.4z"/>'],
     'vynas' => ['Vynas', '<path d="M7.2 3h9.6l.3 4.6a5.1 5.1 0 0 1-10.2 0z"/><path d="M7.1 7.5h9.8M12 12.8V20.5M8.5 20.5h7"/>'],
-    'dar' => ['Kokteilis', '<path d="M4 4.5h16l-8 8.5z"/><path d="M12 13v6.5M8 19.5h8M15.2 2.5l-4 7"/><circle cx="10.6" cy="8.2" r="1.2" fill="currentColor" stroke="none"/>'],
-    'seikeris' => ['Šeikeris', '<path d="M11 2.6h2M10.2 4.6h3.6l.6 3.4H9.6z"/><path d="M8.7 8h6.6l-1.1 12.3a1.2 1.2 0 0 1-1.2 1.1h-2a1.2 1.2 0 0 1-1.2-1.1z"/><path d="M9.1 12.2h5.8"/>'],
-    'butelis' => ['Butelis', '<path d="M10.5 2.5h3v4.3c0 1.1 2.7 2 2.7 4.8v8.5a1.4 1.4 0 0 1-1.4 1.4H9.2a1.4 1.4 0 0 1-1.4-1.4v-8.5c0-2.8 2.7-3.7 2.7-4.8z"/><path d="M7.8 13h8.4v4.6H7.8M10.5 4.5h3"/>'],
-    'citrina' => ['Citrina', '<circle cx="12" cy="12" r="8.7"/><circle cx="12" cy="12" r="6.4"/><path d="M12 5.6v12.8M6.5 8.8l11 6.4M17.5 8.8l-11 6.4"/>'],
-    'ledas' => ['Ledas', '<path d="M12 3.5l7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7z"/><path d="M4.5 7.7 12 12l7.5-4.3M12 12v8.5"/><path d="M8 21.5v.01M16 21.5v.01" stroke-width="2.4"/>'],
 ];
 
-// Codes of the first set (PR #102) that are no longer in the panel: old messages and reactions
+// Codes of earlier sets that are no longer in the panel: old messages and reactions
 // show them as the nearest new symbol.
 const GANG_EMOJI_OLD = [
-    'baigesi' => 'butelis',
+    'baigesi' => 'vynas',
     'veluoju' => 'laikmatis',
     'leksciu' => 'service',
     'arbatpinigiai' => 'irankiai',
     'maciau' => 'chef',
     'islaiste' => 'vynas',
+    'dar' => 'vynas',
+    'ledas' => 'vynas',
+    'kepure' => 'chef',
+    'keptuve' => 'dega',
+    'alus' => 'vynas',
+    'seikeris' => 'vynas',
+    'butelis' => 'vynas',
+    'citrina' => 'vynas',
 ];
 
 // A code from a message or reaction → the emoji to draw (null if unknown).
