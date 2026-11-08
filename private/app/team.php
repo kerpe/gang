@@ -5,7 +5,7 @@ declare(strict_types=1);
 // Personal invitation links /k/{code}. A manager's link brings their own staff into "Mano komanda";
 // a worker's link brings a colleague to GANG (users.referred_by).
 
-const TEAM_MAIL_PER_DAY = 50;
+const TEAM_MAIL_PER_DAY = 10;
 
 function invite_landing_page(string $code): never
 {
@@ -93,13 +93,16 @@ function team_joined_notice(array $u): void
 function team_invite_box(array $u): string
 {
     $link = url('/k/'.invite_code($u));
+    // Email invitations go out from gang.lt, so only checked employers can send them (spam risk).
+    $mail = manager_verified($u)
+        ? '<details class="invite-mail"><summary>Pakviesti el. paštu</summary>'
+            .'<form method="post" action="/komanda/kviesti" class="form">'.csrf_field()
+            .'<label>El. pašto adresai <small>(po vieną eilutėje arba atskirti kableliais, iki '.TEAM_MAIL_PER_DAY.' per dieną)</small><textarea name="emails" rows="3" placeholder="vardas@pavyzdys.lt"></textarea></label>'
+            .'<button class="btn small">Siųsti kvietimus</button></form></details>'
+        : '<p class="meta">Kvietimus el. paštu galėsite siųsti, kai patvirtinsime jūsų darbovietę. Iki tol dalinkitės nuoroda.</p>';
     return '<section class="panel invite-box"><h3>Pakvieskite savo darbuotojus</h3>'
         .'<p class="meta">Nusiųskite šią nuorodą savo komandai, pavyzdžiui, į darbuotojų pokalbių grupę. Prisijungę žmonės atsiras skiltyje „Mano komanda“, ir juos galėsite kviesti į pamainas vienu paspaudimu.</p>'
-        .share_link($link, 'Prisijunkite prie mūsų komandos GANG platformoje')
-        .'<details class="invite-mail"><summary>Pakviesti el. paštu</summary>'
-        .'<form method="post" action="/komanda/kviesti" class="form">'.csrf_field()
-        .'<label>El. pašto adresai <small>(po vieną eilutėje arba atskirti kableliais, iki 20)</small><textarea name="emails" rows="3" placeholder="vardas@pavyzdys.lt"></textarea></label>'
-        .'<button class="btn small">Siųsti kvietimus</button></form></details></section>';
+        .share_link($link, 'Prisijunkite prie mūsų komandos GANG platformoje').$mail.'</section>';
 }
 
 // A worker's referral link, on the worker's account page.
@@ -125,8 +128,12 @@ function team_mail_action(): never
 {
     $u = require_user('manager');
     check_csrf();
+    if (!manager_verified($u)) {
+        flash('Kvietimus el. paštu galėsite siųsti, kai patvirtinsime jūsų darbovietę.');
+        redirect('/mano#komanda');
+    }
     $emails = array_unique(array_filter(array_map(fn ($x) => mb_strtolower(trim($x)), preg_split('/[\s,;]+/', input('emails')))));
-    $valid = array_slice(array_values(array_filter($emails, fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL))), 0, 20);
+    $valid = array_slice(array_values(array_filter($emails, fn ($x) => filter_var($x, FILTER_VALIDATE_EMAIL))), 0, TEAM_MAIL_PER_DAY);
     $today = (int) sql('SELECT COUNT(*) FROM team_mails WHERE manager_id = ? AND created_at > ?', [$u['id'], date('Y-m-d H:i:s', strtotime('-1 day'))])->fetchColumn();
     if (!$valid) {
         flash('Įrašykite bent vieną teisingą el. pašto adresą.');
@@ -135,8 +142,10 @@ function team_mail_action(): never
     $venues = implode(', ', sql('SELECT name FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll(PDO::FETCH_COLUMN));
     $link = url('/k/'.invite_code($u));
     $sent = 0;
+    $limited = false;
     foreach ($valid as $email) {
         if ($today + $sent >= TEAM_MAIL_PER_DAY) {
+            $limited = true;
             break;
         }
         // One invitation per address and manager.
@@ -154,6 +163,29 @@ function team_mail_action(): never
         ]);
         $sent++;
     }
-    flash($sent ? 'Išsiųsta kvietimų: '.$sent.'.' : 'Šiais adresais kvietimai jau buvo išsiųsti arba pasiektas dienos limitas.');
+    if ($limited || $today + $sent >= TEAM_MAIL_PER_DAY) {
+        team_limit_alert($u, $today + $sent, $limited);
+    }
+    flash(($sent ? 'Išsiųsta kvietimų: '.$sent.'.' : 'Šiais adresais kvietimai jau buvo išsiųsti.')
+        .($limited ? ' Pasiektas dienos limitas ('.TEAM_MAIL_PER_DAY.'): likusius kvietimus galėsite išsiųsti rytoj arba pasidalykite nuoroda.' : ''));
     redirect('/mano#komanda');
+}
+
+// GANG hears once a day about an employer who used up the daily email invitations (Vilius 2026-11-08).
+function team_limit_alert(array $u, int $count, bool $refused): void
+{
+    $key = 'team_limit_'.(int) $u['id'];
+    $email = admin_email();
+    if ($email === '' || setting($key) === today()) {
+        return;
+    }
+    set_setting($key, today());
+    $venues = implode(', ', sql('SELECT name FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll(PDO::FETCH_COLUMN));
+    send_mail($email, 'Pasiektas komandos kvietimų limitas: '.$u['name'], [
+        'kicker' => 'Administravimas',
+        'title' => 'Pasiektas kvietimų limitas',
+        'lead' => 'darbdavys **'.$u['name'].'**'.($venues !== '' ? ' ('.$venues.')' : '').' šiandien išsiuntė '.$count.' komandos kvietimus el. paštu – tiek, kiek leidžia dienos limitas'.($refused ? ', ir bandė siųsti daugiau' : '').'.',
+        'body' => 'Jei tai tikra darbovietė, kuri kviečia savo darbuotojus, nieko daryti nereikia. Jei kyla įtarimų, peržiūrėkite narį ir, jei reikia, užblokuokite.',
+        'cta' => ['Atidaryti administravime', url('/admin?tab=user&id='.(int) $u['id'])],
+    ]);
 }
