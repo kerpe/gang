@@ -9,7 +9,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 | Path | What it is |
 |---|---|
 | `public_html/` | Web root: `index.php` (router), `style.css`, `.htaccess`, icons. |
-| `private/app/` | Server code: `bootstrap.php` (config, db, mail, lists of cities/roles), `schema.php` (tables, created on first request), `auth.php` (email-code login), `public.php`, `account.php` (profile, dashboard, availability), `requests.php` (venues, requests, responses, contracts), `reviews.php`, `admin.php`, `data.php` (queries, ratings, notifications), `views.php` (layout, helpers). |
+| `private/app/` | Server code: `bootstrap.php` (config, db, mail, lists of cities/roles), `schema.php` (tables, created on first request), `auth.php` (email-code login), `public.php`, `account.php` (profile, dashboard, GANG calendar), `requests.php` (venues, requests, responses, contracts), `reviews.php`, `admin.php`, `data.php` (queries, ratings, notifications), `views.php` (layout, helpers). |
 | `private/cron.php` | Hourly job: expires old requests, asks for reviews after the work, cleans login codes. |
 
 ## Rules worth knowing
@@ -21,6 +21,7 @@ Plain PHP 8.3 + MySQL, no build step. Live: https://gang.lt (Hostinger).
 - Team = past GANG contracts plus people who joined through the manager's link `/k/{code}` (`team_links`). "Pirmiausia pasiūlyti komandai" sets `requests.public_at`; until then only invited team members see the request, and `release_team_requests()` (cron and page views) sends it to everyone else. A worker's `/k/{code}` is a referral link (`users.referred_by`).
 - Some days only: on a job of several days the worker ticks the days they can work (`responses.dates`). Approving gives a contract for those days that are still open (`contracts.start_date/end_date/dates`, NULL = the whole job); `request_needs()` counts how many people each day still needs, the job page and cards show only the open days, and the request is filled once every day is covered. After a partial approval the employer is asked whether to keep the remaining days in the ad.
 - Editing a search (`/darbas/{id}/redaguoti`): while it is open the employer can change dates, pay and description (not role, city or duration). No candidates = no emails. Waiting candidates get one email about new dates or pay and must confirm (`responses.recheck_at`, `/darbas/{id}/tinka`) before they can be approved. Once a worker is confirmed, dates and pay are locked. An event's dates and description change for all its open roles.
+- GANG calendar: the worker's dashboard shows confirmed GANG work (contracts not cancelled) per day (`gang_work_days()`); there is no manual "free days" calendar any more (the `availability` table is kept, unused). Applying for a job on days the worker already works through GANG shows a warning to the worker only; employers never see the worker's other GANG work.
 - Events: one form, several roles; each role is its own request sharing `event_id` and `event_title`.
 - Reviews have three criteria (`REVIEW_CRITERIA`); `rating` is their rounded average. Pay hints use `PAY_GUIDE` until a role and city have `PAY_GUIDE_MIN` GANG requests in `PAY_GUIDE_DAYS`; pay at or above the upper end gets "Geras atlygis".
 - Admin = the user whose email equals `admin_email` in config.

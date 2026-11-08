@@ -288,35 +288,6 @@ document.querySelectorAll('input[data-crop]').forEach(function (input) {
 HTML;
 }
 
-function availability_action(): never
-{
-    $u = require_user('worker');
-    check_csrf();
-    $last = availability_last_day();
-    $days = [];
-    $add = function (string $from, string $to) use (&$days, $last): void {
-        for ($t = strtotime(max($from, today())); $t <= strtotime(min($to, $last)); $t = strtotime('+1 day', $t)) {
-            $days[] = date('Y-m-d', $t);
-        }
-    };
-    // The calendar sends "from:to,…"; a page left open overnight may still hold yesterday, so ranges are clamped, not rejected.
-    foreach (array_filter(explode(',', input('dates'))) as $part) {
-        if (preg_match('/^(\d{4}-\d{2}-\d{2}):(\d{4}-\d{2}-\d{2})$/', $part, $m) && $m[1] <= $m[2]) {
-            $add($m[1], $m[2]);
-        }
-    }
-    match (input('add')) {
-        'today' => $add(today(), today()),
-        'week' => $add(today(), date('Y-m-d', strtotime('+6 days'))),
-        'month' => $add(today(), date('Y-m-d', strtotime('+1 month -1 day'))),
-        'clear' => $days = [],
-        default => null,
-    };
-    save_availability((int) $u['id'], $days);
-    flash(availability_ranges((int) $u['id']) ? 'Laisvos dienos išsaugotos.' : 'Laisvos dienos pašalintos. Darbdaviai matys, kad šiuo metu darbo pasiūlymų nepriimate.');
-    redirect('/mano#laisvumas');
-}
-
 function dashboard_page(): never
 {
     $u = require_user();
@@ -329,7 +300,7 @@ function dashboard_page(): never
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><strong>'.e($u['name']).'</strong><span class="meta">'.e($u['email']).'</span></div>'
         .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost').'</div>'
-        .'</div></section>'.date_picker_script(), ['noindex' => true]);
+        .'</div></section>', ['noindex' => true]);
 }
 
 const CONTRACT_SELECT = 'SELECT c.*, r.role, r.kind, '.CONTRACT_DATES.', r.hours, v.name AS venue_name, v.address, v.city, v.manager_id,
@@ -455,8 +426,7 @@ function contract_ics(int $id): never
 function worker_dashboard(array $u): string
 {
     [$avg, $n] = worker_rating((int) $u['id']);
-    $hasDays = (bool) availability_ranges((int) $u['id']);
-    $availability = availability_panel($u);
+    $calendar = gang_calendar_panel($u);
 
     $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
@@ -492,7 +462,6 @@ function worker_dashboard(array $u): string
         (bool) $invites => ['', 'Asmeninis kvietimas', $what($invites[0]).', '.rtrim(period($invites[0]), '.').'. Su šiuo darbdaviu jau dirbote kartu.', '/darbas/'.(int) $invites[0]['id'], 'Peržiūrėti kvietimą'],
         (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
-        !$hasDays => ['', 'Pažymėkite laisvas dienas', 'Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tomis dienomis esate laisvi.', '#laisvumas', 'Pažymėti kalendoriuje'],
         (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '#pasiulymai', 'Peržiūrėti'],
         default => ['calm', 'Viskas sutvarkyta', 'Kai atsiras jums tinkantis darbo pasiūlymas, iš karto pranešime el. paštu.', '', ''],
     };
@@ -502,16 +471,14 @@ function worker_dashboard(array $u): string
         ['Tinkantys pasiūlymai', (string) count($jobs), '#pasiulymai'],
         ['Įvertinimas', $n ? number_format((float) $avg, 1, ',', '') : '–', ''],
     ]);
-    // Until the first days are marked, the calendar comes first; after that, work and offers do.
     return '<div class="greeting">'.avatar($u).'<div><p class="eyebrow">Darbuotojo paskyra</p><h1>'.e(first_name($u['name'])).'</h1>'
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
         .next_step(...$next).$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
-        .($hasDays ? '' : $availability)
+        .$calendar
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
-        .($hasDays ? $availability : '')
         .referral_box($u);
 }
 
@@ -568,7 +535,7 @@ function manager_dashboard(array $u): string
         [$avg, $n] = worker_rating((int) $w['id']);
         $teamHtml .= '<div class="team-card">'.avatar($w).'<div class="who"><a class="venue-name" href="/darbuotojas/'.(int) $w['id'].'">'.e(first_name($w['name'])).'</a>'
             .'<span class="meta">'.e(labels($w['roles'], ROLES)).'</span>'.stars($avg, $n)
-            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span>'.(is_available((int) $w['id']) ? '<span class="badge on">Laisvas šiandien</span>' : '').'</p>'
+            .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span></p>'
             .'<p class="venue-actions"><a class="btn small" href="/poreikis/naujas?kviesti='.(int) $w['id'].'">Pakviesti į darbą</a></p></div></div>';
     }
     $team = '<h2 id="komanda">Mano komanda</h2>'.team_invite_box($u).($teamHtml
@@ -622,30 +589,52 @@ function summary_tiles(array $items): string
     return $out.'</div>';
 }
 
-// The same calendar employers use for requests, always open: marked days, quick picks and save in one place.
-function availability_panel(array $u): string
+// "Mano GANG kalendorius": the worker's confirmed GANG work, filled in automatically from contracts.
+// Three months from this one; a day with work links to the job. On phones, months without work fold away.
+function gang_calendar_panel(array $u): string
 {
-    $ranges = availability_ranges((int) $u['id']);
-    $status = is_available((int) $u['id'])
-        ? '<p class="status on">● Šiandien galite priimti darbo pasiūlymus</p>'
-        : '<p class="status off">● Šiandien laisvos dienos nepažymėtos</p>';
-    $value = implode(',', array_map(fn ($r) => max($r['start_date'], today()).':'.$r['end_date'], $ranges));
-    return '<section class="panel avail" id="laisvumas"><h2>Mano laisvos dienos</h2>'.$status
-        .'<p class="meta">Pažymėkite dienas per artimiausius 12 mėnesių, kuriomis galite priimti darbo pasiūlymus. Darbdaviai, ieškantys darbuotojo konkrečiai datai, matys, kad tą dieną esate laisvi.</p>'
-        .'<form method="post" action="/laisvas" class="calendar-form">'.csrf_field()
-        // First submit button handles Enter: save, not "today".
-        .'<button class="offscreen" tabindex="-1" aria-hidden="true">Išsaugoti</button>'
-        .'<div class="quick"><span class="meta">Greitai pažymėti:</span>'
-        .'<button class="btn small ghost" name="add" value="today">Šiandien</button>'
-        .'<button class="btn small ghost" name="add" value="week">Artimiausios 7 dienos</button>'
-        .'<button class="btn small ghost" name="add" value="month">Artimiausias mėnuo</button></div>'
-        .'<p class="hint">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Galite pažymėti kelis laikotarpius. Pažymėtą dieną ar laikotarpį pašalinsite spustelėję jį dar kartą arba ×.</p>'
-        .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'" data-limit="60" data-empty="Laisvų dienų dar nepažymėjote."><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
-        .'<input type="hidden" name="dates" value="'.e($value).'">'
-        .'<div class="cal-actions"><button class="btn">Išsaugoti laisvas dienas</button>'
-        .'<span class="unsaved" hidden>Pakeitimai dar neišsaugoti</span>'
-        .($ranges ? '<button class="btn small ghost" name="add" value="clear" onclick="return confirm(\'Pašalinti visas pažymėtas laisvas dienas?\')">Pašalinti visas</button>' : '').'</div>'
-        .'</form></section>';
+    $first = date('Y-m-01');
+    $last = date('Y-m-t', strtotime($first.' +2 months'));
+    $work = gang_work_days((int) $u['id'], today());
+    $names = ['', 'Sausis', 'Vasaris', 'Kovas', 'Balandis', 'Gegužė', 'Birželis', 'Liepa', 'Rugpjūtis', 'Rugsėjis', 'Spalis', 'Lapkritis', 'Gruodis'];
+    $months = '';
+    for ($m = 0; $m < 3; $m++) {
+        $start = strtotime($first.' +'.$m.' months');
+        $lead = (int) date('N', $start) - 1;
+        $n = (int) date('t', $start);
+        $busy = false;
+        $cells = str_repeat('<span class="day pad"></span>', $lead);
+        for ($d = 1; $d <= $n; $d++) {
+            $day = date('Y-m-', $start).sprintf('%02d', $d);
+            $cls = ((int) date('N', strtotime($day)) >= 6 ? ' weekend' : '').($day === today() ? ' today' : '').($day < today() ? ' off' : '');
+            if (isset($work[$day])) {
+                $busy = true;
+                $c = $work[$day][0];
+                $title = implode('; ', array_map(fn ($x) => $x['venue_name'].', '.(ROLES[$x['role']] ?? ''), $work[$day]));
+                $cells .= '<a class="day work'.$cls.'" href="/darbas/'.(int) $c['request_id'].'" title="'.e(date_lt($day).': '.$title).'" aria-label="'.e(date_lt($day).': '.$title).'"><span>'.$d.'</span></a>';
+            } else {
+                $cells .= '<span class="day'.$cls.'"><span>'.$d.'</span></span>';
+            }
+        }
+        $months .= '<div class="month'.($busy || $m === 0 ? '' : ' idle').'"><h3>'.$names[(int) date('n', $start)].' '.date('Y', $start).'</h3>'
+            .'<div class="week"><span>Pr</span><span>An</span><span>Tr</span><span>Kt</span><span>Pn</span><span>Št</span><span>Sk</span></div><div class="days">'.$cells.'</div></div>';
+    }
+    // Upcoming work as a list: one row per contract and period.
+    $rows = [];
+    foreach ($work as $day => $cs) {
+        foreach ($cs as $c) {
+            $rows[(int) $c['id']] ??= $c + ['days' => []];
+            $rows[(int) $c['id']]['days'][] = $day;
+        }
+    }
+    $list = implode('', array_map(fn ($c) => '<li><a href="/darbas/'.(int) $c['request_id'].'"><strong>'.e($c['kind'] === 'nuolat' ? 'nuo '.date_lt($c['days'][0]) : days_text($c['days'])).'</strong>'
+        .'<span>'.e($c['venue_name'].' · '.(ROLES[$c['role']] ?? '')).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</span></a></li>', array_slice($rows, 0, 12)));
+    $later = $work && array_key_last($work) > $last ? '<p class="meta">Vėlesni darbai rodomi sąraše.</p>' : '';
+    return '<section class="panel gang-cal" id="kalendorius"><h2>Mano GANG kalendorius</h2>'
+        .'<p class="meta">Čia automatiškai atsiranda darbai, kuriems darbdavys patvirtino jūsų kandidatūrą. Teikiant kandidatūrą, GANG įspės, jei tomis dienomis jau turite GANG darbą.</p>'
+        .'<div class="pick-months n3">'.$months.'</div>'
+        .($list ? '<ul class="cal-list">'.$list.'</ul>'.$later : '<p class="empty">Patvirtintų GANG darbų dar nėra.</p>')
+        .'</section>';
 }
 
 function review_link(array $c, bool $reviewed): string

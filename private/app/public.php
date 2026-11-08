@@ -20,7 +20,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
         'roles' => ['Barmenai', 'Baristos', 'Baro vadovai'],
-        'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '02' => [
         'slug' => 'virtuve',
@@ -30,7 +30,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
             .'<p>Šefas, virėjai, virtuvės pagalbiniai darbuotojai ir indų plovėjai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
         'roles' => ['Šefai', 'Virėjai', 'Virtuvės pagalbiniai darbuotojai', 'Indų plovėjai'],
-        'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '03' => [
         'slug' => 'aptarnavimas',
@@ -41,7 +41,7 @@ const TEAM_PAGES = [
             .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
         'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Restorano vadovai'],
-        'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir laisvas dienas. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
 ];
 
@@ -139,7 +139,7 @@ function home_page(): never
       <p class="eyebrow">Darbuotojams</p>
       <h2>Dirbkite, kai jums patogu</h2>
       <ul>
-        <li><strong>Papildomos pajamos</strong>Kalendoriuje pažymite laisvas dienas, o tinkami pasiūlymai ateina el. paštu.</li>
+        <li><strong>Papildomos pajamos</strong>Tinkami pasiūlymai ateina el. paštu, o patvirtinti darbai atsiranda jūsų GANG kalendoriuje.</li>
         <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų profilį.</li>
         <li><strong>Jūsų pasirinkimas</strong>Patys sprendžiate, kur, kada ir su kokia komanda dirbti.</li>
       </ul>
@@ -149,8 +149,8 @@ function home_page(): never
       <p class="eyebrow">Darbdaviams</p>
       <h2>Darbuotojų pasiūla</h2>
       <ul>
-        <li><strong>Skubus pavadavimas</strong>Paskelbta paieška iš karto pasiekia laisvus darbuotojus jūsų mieste.</li>
-        <li><strong>Matote, ką kviečiate</strong>Kandidato patirtis, įvertinimai ir laisvos dienos vienoje vietoje.</li>
+        <li><strong>Skubus pavadavimas</strong>Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste.</li>
+        <li><strong>Matote, ką kviečiate</strong>Kandidato patirtis, įvertinimai ir GANG darbų istorija vienoje vietoje.</li>
         <li><strong>Salė ir virtuvė</strong>Nuo barmeno iki indų plovėjo – visos komandos pareigos.</li>
       </ul>
       $venueBtn
@@ -160,7 +160,7 @@ function home_page(): never
 
 <section class="wrap home-block">
   <div class="bento">
-    <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">12 mėn.</span><p>Kalendoriuje pažymėkite laisvas dienas, ir darbdaviai matys, kada galite dirbti.</p></div>
+    <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">1 kalendorius</span><p>Visi jūsų GANG darbai vienoje vietoje: patvirtinti darbai jame atsiranda patys.</p></div>
     <div class="bt t-2"><span class="k">Miestai</span><span class="big">6</span><p>Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys ir Palanga.</p></div>
     <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">{$mark}1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
@@ -270,10 +270,10 @@ function how_page(): never
 {
     $days = REVIEW_HIDE_DAYS;
     split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo paieškos iki pamainos', '03', [
-        ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Jei pasirinksite „Pirmiausia pasiūlyti komandai“, pasiūlymą pirmiausia gaus jūsų komanda, o kiti darbuotojai – vėliau. Kandidatus matote savo paskyroje kartu su jų patirtimi, įvertinimais ir laisvomis dienomis. Patvirtinę kandidatą, gaunate jo telefono numerį ir galite susirašinėti GANG pokalbyje.</p>'
+        ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Jei pasirinksite „Pirmiausia pasiūlyti komandai“, pasiūlymą pirmiausia gaus jūsų komanda, o kiti darbuotojai – vėliau. Kandidatus matote savo paskyroje kartu su jų patirtimi ir įvertinimais. Patvirtinę kandidatą, gaunate jo telefono numerį ir galite susirašinėti GANG pokalbyje.</p>'
             .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>'],
-        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Kalendoriuje pažymėkite dienas per artimiausius 12 mėnesių, kuriomis galite priimti darbo pasiūlymus: darbdaviai matys, kad tomis dienomis esate laisvi. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus ir galėsite susirašinėti GANG pokalbyje.</p>'
-            .'<p class="chips"><span>Profilis</span><span>Laisvos dienos</span><span>Pranešimai el. paštu</span></p>'],
+        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus, galėsite susirašinėti GANG pokalbyje, o darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
+            .'<p class="chips"><span>Profilis</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>'],
         ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atsiskaitymą ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
         ['ivertinimai', 'Įvertinimai', '<ul>'
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
@@ -291,7 +291,7 @@ function about_page(): never
             .'<li><strong>Darbuotojų trūkumas.</strong> Trūksta ne tik padavėjų ir barmenų, bet ir virėjų, indų plovėjų bei kitų virtuvės darbuotojų, be kurių neįsivaizduojama nė viena komanda.</li>'
             .'<li><strong>Patikimumas.</strong> Skelbimų portaluose ir socialinių tinklų grupėse sunku įvertinti, ar žmogus tikrai atvyks ir gerai atliks savo darbą.</li>'
             .'<li><strong>Brangūs tarpininkai.</strong> Įdarbinimo agentūros už kiekvieną darbo valandą ima papildomą mokestį, todėl trumpalaikė pagalba tampa brangi.</li></ul>'],
-        ['sprendimas', 'Sprendimai', '<p>GANG tiesiogiai sujungia restoranus, kavines, barus ir klubus su hospitality specialistais. Darbdavys paskelbia paiešką, ir apie ją iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kalendoriuje pažymi dienas, kuriomis gali dirbti, todėl darbdavys iš karto mato, kas yra laisvas.</p>'
+        ['sprendimas', 'Sprendimai', '<p>GANG tiesiogiai sujungia restoranus, kavines, barus ir klubus su hospitality specialistais. Darbdavys paskelbia paiešką, ir apie ją iš karto sužino tinkamas pareigas, miestą bei patirtį nurodę darbuotojai. Darbuotojai kandidatuoja į jiems tinkančius darbus, o patvirtinti darbai automatiškai atsiranda jų GANG kalendoriuje.</p>'
             .'<p>Pasitikėjimą kuria abipusiai įvertinimai: juos palikti gali tik tie, kurie iš tiesų dirbo kartu. Darbo sąlygas darbdavys ir darbuotojas suderina tiesiogiai, be tarpininkų ir valandinių mokesčių.</p>'
             .'<p>Tikime, kad darbas hospitality sektoriuje yra ne tik papildomos pajamos, bet ir profesija bei saviraiška. Norime, kad šis darbas būtų vertinamas taip, kaip jis to nusipelno.</p>'],
         ['kas-mes', 'GANG', '<blockquote><p>HoReCa sektoriuje sukuosi nuo 2008 metų ir dirbti teko visose įmanomose pozicijose: virtuvėje, bare, salėje ir, žinoma, lauke (dažniausiai prie klubo durų).</p>'

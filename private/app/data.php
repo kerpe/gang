@@ -236,60 +236,10 @@ function gang_jobs_text(int $workerId): string
     return 'Darbų per GANG: '.$done.' · Patikimumas: '.$reliable.' %';
 }
 
-// Open to offers on at least one day between $from and $to (default: today).
-function is_available(int $userId, ?string $from = null, ?string $to = null): bool
-{
-    $from ??= today();
-    return (bool) sql('SELECT 1 FROM availability WHERE user_id = ? AND start_date <= ? AND end_date >= ? LIMIT 1', [$userId, $to ?? $from, $from])->fetchColumn();
-}
-
-function availability_ranges(int $userId): array
-{
-    return sql('SELECT start_date, end_date FROM availability WHERE user_id = ? AND end_date >= ? ORDER BY start_date', [$userId, today()])->fetchAll();
-}
-
-function availability_days(int $userId): array
-{
-    $days = [];
-    foreach (availability_ranges($userId) as $r) {
-        for ($t = strtotime($r['start_date']); $t <= strtotime($r['end_date']); $t = strtotime('+1 day', $t)) {
-            $days[date('Y-m-d', $t)] = true;
-        }
-    }
-    return $days;
-}
-
-// Replaces the upcoming availability with the given days, stored as consecutive ranges.
-function save_availability(int $userId, array $days): void
-{
-    $last = availability_last_day();
-    $days = array_unique(array_filter($days, fn ($d) => is_string($d) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && $d >= today() && $d <= $last));
-    sort($days);
-    // Past days stay as history; a range running through today is cut at yesterday.
-    sql('UPDATE availability SET end_date = ? WHERE user_id = ? AND start_date < ? AND end_date >= ?', [date('Y-m-d', strtotime('-1 day')), $userId, today(), today()]);
-    sql('DELETE FROM availability WHERE user_id = ? AND start_date >= ?', [$userId, today()]);
-    $start = $prev = null;
-    foreach ([...$days, null] as $d) {
-        if ($d !== null && $prev !== null && $d === date('Y-m-d', strtotime($prev.' +1 day'))) {
-            $prev = $d;
-            continue;
-        }
-        if ($start !== null) {
-            insert('availability', ['user_id' => $userId, 'start_date' => $start, 'end_date' => $prev]);
-        }
-        $start = $prev = $d;
-    }
-}
-
 function availability_last_day(): string
 {
     // Same limit as job dates: PLANNING_MONTHS ahead of today.
     return date('Y-m-d', strtotime('+'.PLANNING_MONTHS.' months'));
-}
-
-function range_lt(array $r): string
-{
-    return $r['start_date'] === $r['end_date'] ? date_lt($r['start_date']) : date_lt($r['start_date']).' – '.date_lt($r['end_date']);
 }
 
 function first_name(string $name): string
@@ -310,8 +260,8 @@ function notify_workers(array $r, array $skip = []): int
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     [$subject, $mail] = job_offer_mail($r);
     foreach ($workers as $w) {
-        // Urgent offers first; within them, workers who marked these days as free.
-        $priority = ($r['kind'] === 'skubu' ? 0 : 10) + (is_available((int) $w['id'], $r['start_date'], $r['end_date'] ?: $r['start_date']) ? 0 : 1);
+        // Urgent offers first.
+        $priority = $r['kind'] === 'skubu' ? 0 : 10;
         queue_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), job_mail_headers($w), $priority);
         job_mailed((int) $r['id'], (int) $w['id']);
     }
@@ -439,13 +389,31 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
     return count($jobs);
 }
 
-// Matching workers, and how many of them marked $date as free.
-function matching_workers_count(string $role, string $city, string $date, int $minExperience = 1, string $kind = ''): array
+// How many workers match the role, city, experience and duration.
+function matching_workers_count(string $role, string $city, int $minExperience = 1, string $kind = ''): int
 {
-    $row = sql("SELECT COUNT(*) AS n, SUM(CASE WHEN EXISTS (SELECT 1 FROM availability a WHERE a.user_id = u.id AND a.start_date <= ? AND a.end_date >= ?) THEN 1 ELSE 0 END) AS free FROM users u
+    return (int) sql("SELECT COUNT(*) FROM users u
         WHERE kind = 'worker' AND blocked = 0 AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
-        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$date, $date, '%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetch();
-    return [(int) $row['n'], (int) $row['free']];
+        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", ['%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetchColumn();
+}
+
+// The worker's GANG work: confirmed, not cancelled contracts, per day from $from. [day => [contract, …]], sorted.
+// A permanent job counts from its first day only.
+function gang_work_days(int $workerId, string $from, ?string $to = null): array
+{
+    $rows = sql('SELECT c.id, c.request_id, r.role, r.kind, r.hours, v.name AS venue_name, '.CONTRACT_DATES.' FROM contracts c
+        JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id
+        WHERE c.worker_id = ? AND c.cancelled_at IS NULL AND '.CONTRACT_TO.' >= ?', [$workerId, $from])->fetchAll();
+    $days = [];
+    foreach ($rows as $c) {
+        foreach (ranges_days(request_ranges($c)) as $d) {
+            if ($d >= $from && ($to === null || $d <= $to)) {
+                $days[$d][] = $c;
+            }
+        }
+    }
+    ksort($days);
+    return $days;
 }
 
 // [role => experience level] for a worker, in ROLES order.
