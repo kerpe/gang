@@ -424,11 +424,9 @@ function contract_ics(int $id): never
     exit;
 }
 
-function worker_dashboard(array $u): string
+// Open offers for a worker, not yet answered: [personal invitations, other matching offers].
+function worker_open_offers(array $u): array
 {
-    [$avg, $n] = worker_rating((int) $u['id']);
-    $calendar = gang_calendar_panel($u);
-
     $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
     $jobs = array_filter($jobs, fn ($r) => !isset($responded[$r['id']]));
@@ -438,10 +436,32 @@ function worker_dashboard(array $u): string
         AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id AND s.worker_id = i.worker_id) ORDER BY r.start_date", array_merge([$u['id']], $params))->fetchAll();
     $inviteIds = array_column($invites, 'id');
     $jobs = array_filter($jobs, fn ($r) => !in_array($r['id'], $inviteIds));
-    $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: esate šio darbdavio komandoje</p>'), $invites));
-    $jobCards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
-        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik šiame puslapyje. Juos galite įjungti profilio nustatymuose.').'</p>'
+    return [$invites, array_values($jobs)];
+}
+
+// "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano GANG.
+function worker_offers_page(): never
+{
+    $u = require_user();
+    if ($u['kind'] !== 'worker') {
+        redirect('/mano');
+    }
+    [, $jobs] = worker_open_offers($u);
+    $cards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
+        : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
+        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik čia. Juos galite įjungti profilio nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
+    page('Jums tinkantys darbo pasiūlymai', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano GANG</a></p>'
+        .'<h1>Jums tinkantys pasiūlymai</h1><p class="meta">Pagal jūsų pareigas, miestus ir darbo trukmę: '.count($jobs).'</p>'.$cards.'</section>', ['noindex' => true]);
+}
+
+function worker_dashboard(array $u): string
+{
+    [$avg, $n] = worker_rating((int) $u['id']);
+    $calendar = gang_calendar_panel($u);
+
+    [$invites, $jobs] = worker_open_offers($u);
+    $inviteHtml = implode('', array_map(fn ($r) => request_card($r, '<p class="meta new">Asmeninis kvietimas: esate šio darbdavio komandoje</p>'), $invites));
 
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed FROM contracts c', CONTRACT_SELECT)
         .' WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll());
@@ -463,21 +483,21 @@ function worker_dashboard(array $u): string
         (bool) $invites => ['', 'Asmeninis kvietimas', $what($invites[0]).', '.rtrim(period($invites[0]), '.').'. Su šiuo darbdaviu jau dirbote kartu.', '/darbas/'.(int) $invites[0]['id'], 'Peržiūrėti kvietimą'],
         (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
-        (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '#pasiulymai', 'Peržiūrėti'],
-        default => ['calm', 'Viskas sutvarkyta', 'Kai atsiras jums tinkantis darbo pasiūlymas, iš karto pranešime el. paštu.', '', ''],
+        (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '/mano/pasiulymai', 'Peržiūrėti'],
+        // Nothing to do now: no card at all.
+        default => null,
     };
     $tiles = summary_tiles([
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
         ['Pateiktos kandidatūros', (string) count($pending), '#kandidaturos'],
-        ['Tinkantys pasiūlymai', (string) count($jobs), '#pasiulymai'],
+        ['Tinkantys pasiūlymai', (string) count($jobs), '/mano/pasiulymai'],
         ['Įvertinimas', $n ? number_format((float) $avg, 1, ',', '') : '–', ''],
     ]);
     // Name, rating and GANG jobs are on the account card at the top of the page (dashboard_page).
-    return next_step(...$next).$tiles
+    return ($next ? next_step(...$next) : '').$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
-        .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
         .$calendar
         .referral_box($u);
 }

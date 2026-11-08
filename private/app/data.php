@@ -378,7 +378,7 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
             'title' => 'Jums tinkantys darbo pasiūlymai',
             'lead' => 'Pagal jūsų atnaujintą profilį GANG rado tinkančių darbo pasiūlymų: **'.count($jobs).'**. Jei kuris nors pasiūlymas jums tinka, pateikite kandidatūrą.',
             'body' => $lines,
-            'cta' => ['Visi tinkantys pasiūlymai', url('/mano')],
+            'cta' => ['Visi tinkantys pasiūlymai', url('/mano/pasiulymai')],
             'footnote' => job_mail_footnote(),
         ];
     }
