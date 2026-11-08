@@ -93,6 +93,8 @@ const CANCEL_REASONS = [
         'kita' => 'Kita priežastis',
     ],
     'manager' => [
+        'renginys' => 'Renginys atšauktas',
+        'nuolatinis' => 'Radome nuolatinį darbuotoją',
         'nebereikia' => 'Darbuotojo nebereikia',
         'pasikeite' => 'Pasikeitė darbo planai',
         'susitarta' => 'Susitarėme su darbuotoju',
