@@ -202,10 +202,10 @@ function chat_box(array $c, array $u): string
         : 'Čia galite susirašinėti su darbuotoju: aptarti darbo laiką, aprangą, atvykimą ar kitus klausimus.').'</p>';
     $form = $closed
         ? '<p class="chat-closed meta">Darbas atšauktas, todėl naujų žinučių siųsti nebegalima.</p>'
-        : ($suggest !== '' ? '<button type="button" class="chat-suggest" data-text="'.e($suggest).'"><span>Siūloma žinutė</span>'.e($suggest).'</button>' : '')
-            .'<form class="chat-form" method="post" action="/kontraktas/'.$id.'/zinute">'.csrf_field()
+        : '<form class="chat-form" method="post" action="/kontraktas/'.$id.'/zinute">'.csrf_field()
             .'<label class="sr-only" for="chat-text-'.$id.'">Žinutė</label>'
-            .'<textarea id="chat-text-'.$id.'" name="body" rows="1" maxlength="'.MESSAGE_MAX.'" placeholder="Rašykite žinutę…" required></textarea>'
+            .'<textarea id="chat-text-'.$id.'" name="body" rows="1" maxlength="'.MESSAGE_MAX.'" '
+            .($suggest !== '' ? 'placeholder="'.e($suggest).'" data-suggest="'.e($suggest).'" title="Siūloma žinutė: spauskite „Siųsti“ arba Tab, kad ją panaudotumėte"' : 'placeholder="Rašykite žinutę…" required').'></textarea>'
             .'<button class="chat-send" aria-label="Siųsti"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" fill="currentColor"/></svg></button></form>';
     return '<section class="chat" id="pokalbis-'.$id.'" data-chat="'.$id.'" data-state="'.e(chat_state($c, (int) $u['id'], $messages)).'">'
         .'<header class="chat-head"><span class="chat-dot" aria-hidden="true"></span><div><strong>'.e(first_name($other)).'</strong><span class="meta">'.e($sub).'</span></div>'
@@ -233,22 +233,26 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     box.dataset.state = d.state;
   }
   bottom();
-  var tip = box.querySelector('.chat-suggest');
-  if (tip) tip.addEventListener('click', function () { text.value = tip.dataset.text; grow(); text.focus(); text.setSelectionRange(text.value.length, text.value.length); tip.remove(); });
+  if (text && text.dataset.suggest) { text.value = text.dataset.suggest; grow(); text.value = ''; }
+  // The suggested first message is the field's grey placeholder: Tab puts it in for editing, sending an empty field sends it as is.
+  function useTip() { text.value = text.dataset.suggest; grow(); text.setSelectionRange(text.value.length, text.value.length); }
+  function dropTip() { if (!text.dataset.suggest) return; delete text.dataset.suggest; text.removeAttribute('title'); text.placeholder = 'Rašykite žinutę…'; text.required = true; }
   if (form) {
     text.addEventListener('input', grow);
     text.addEventListener('keydown', function (e) {
+      if (e.key === 'Tab' && !e.shiftKey && text.dataset.suggest && !text.value.trim()) { e.preventDefault(); useTip(); return; }
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer: coarse)').matches) { e.preventDefault(); form.requestSubmit(); }
     });
     form.addEventListener('submit', function (e) {
       e.preventDefault();
+      if (!busy && !text.value.trim() && text.dataset.suggest) useTip();
       if (busy || !text.value.trim()) return;
       busy = true; send.disabled = true;
       fetch(form.action, { method: 'POST', body: new FormData(form), headers: { 'X-Requested-With': 'fetch' }, credentials: 'same-origin' })
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (d.error) { alert(d.error); return; }
-          text.value = ''; grow(); if (tip) tip.remove(); d.mine = true; apply(d);
+          text.value = ''; grow(); dropTip(); d.mine = true; apply(d);
         })
         .catch(function () { alert('Žinutės išsiųsti nepavyko. Patikrinkite interneto ryšį ir bandykite dar kartą.'); })
         .finally(function () { busy = false; send.disabled = false; text.focus(); });
