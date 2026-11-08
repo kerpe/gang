@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 23;
+const SCHEMA_VERSION = 24;
 
 function migrate(PDO $db): void
 {
@@ -288,6 +288,10 @@ function migrate(PDO $db): void
         $db->exec("UPDATE users SET verified_at = created_at WHERE kind = 'manager' AND verified_at IS NULL");
         $db->exec("INSERT INTO settings (name, value) VALUES ('managers_verified', '1')");
     }
+    // Version 24: "Skubiai" merged into "Trumpam" (Vilius 2026-11-08).
+    $db->exec("UPDATE requests SET kind = 'trumpai' WHERE kind = 'skubu'");
+    $db->exec("UPDATE users SET durations = REPLACE(durations, ',skubu,', ',trumpai,') WHERE durations LIKE '%,skubu,%' AND durations NOT LIKE '%,trumpai,%'");
+    $db->exec("UPDATE users SET durations = REPLACE(durations, 'skubu,', '') WHERE durations LIKE '%,skubu,%'");
     // Version 6: a request requires at most one year of experience.
     $db->exec('UPDATE requests SET min_experience = 3 WHERE min_experience > 3');
     $indexes = [

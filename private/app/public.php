@@ -70,7 +70,7 @@ function home_page(): never
     if (count($latest) >= 3) {
         $latest = array_slice($latest, 0, count($latest) >= 6 ? 6 : 3);
     }
-    $urgent = $latest && !array_filter($latest, fn ($r) => $r['kind'] !== 'skubu');
+    $urgent = $latest && !array_filter($latest, fn ($r) => !request_urgent($r));
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
