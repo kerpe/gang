@@ -68,10 +68,16 @@ function login_page(): never
     if (isset($_GET['kaip']) && in_array($_GET['kaip'], ['darbuotojas', 'vadovas'], true)) {
         $_SESSION['signup_kind'] = $_GET['kaip'] === 'vadovas' ? 'manager' : 'worker';
     }
+    // "Registruotis" in the menu has no role yet; remember that the visitor meant to sign up,
+    // so an existing member can be told they already have an account.
+    if (!is_post()) {
+        $_SESSION['signup_intent'] = isset($_GET['registruotis']) || isset($_GET['kaip']);
+    }
     if (current_user()) {
         redirect('/mano');
     }
     $kind = $_SESSION['signup_kind'] ?? '';
+    $signup = $kind !== '' || !empty($_SESSION['signup_intent']);
     $error = '';
     $termsError = '';
     $email = '';
@@ -96,7 +102,7 @@ function login_page(): never
                 // Someone used "Registruotis" with an address that already has an account. The page they
                 // see next is the same as for a new address (so nobody can test which emails are members);
                 // only the email itself, which reaches the owner alone, says the account already exists.
-                $member = $kind !== '' && sql('SELECT 1 FROM users WHERE email = ?', [$email])->fetchColumn();
+                $member = $signup && sql('SELECT 1 FROM users WHERE email = ?', [$email])->fetchColumn();
                 send_mail($email, "GANG prisijungimo kodas: $code", [
                     'kicker' => 'Prisijungimas',
                     'title' => $member ? 'Jūs jau turite GANG paskyrą' : 'Jūsų prisijungimo kodas',
@@ -117,12 +123,14 @@ function login_page(): never
     $title = match ($kind) {
         'worker' => 'Registracija darbuotojams',
         'manager' => 'Registracija darbdaviams',
-        default => 'Prisijungti arba užsiregistruoti',
+        default => $signup ? 'Registracija' : 'Prisijungti arba užsiregistruoti',
     };
     $lead = match ($kind) {
         'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.',
         'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų paieškas.',
-        default => 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
+        default => $signup
+            ? 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų kodą. Tada pasirinksite, ar ieškote darbo, ar darbuotojų.'
+            : 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
@@ -155,9 +163,9 @@ function login_code_page(): never
                 $error = 'Ši paskyra užblokuota. Jei manote, kad tai klaida, susisiekite su mumis.';
             } else {
                 $kind = $_SESSION['signup_kind'] ?? '';
-                if ($user && $kind !== '') {
+                if ($user && ($kind !== '' || !empty($_SESSION['signup_intent']))) {
                     // Came through "Registruotis" but already a member: sign in and say so.
-                    flash($user['kind'] === $kind
+                    flash($kind === '' || $user['kind'] === $kind
                         ? 'Šiuo el. paštu jau turite GANG paskyrą, todėl prisijungėte prie jos.'
                         : 'Šiuo el. paštu jau turite '.($user['kind'] === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrą, todėl prisijungėte prie jos. Viena paskyra turi vieną vaidmenį: '.($kind === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrai registruokitės kitu el. pašto adresu.');
                 }
@@ -218,7 +226,7 @@ function finish_login(int $userId): never
     session_regenerate_id(true);
     $_SESSION['uid'] = $userId;
     $_SESSION['epoch'] = (int) sql('SELECT session_epoch FROM users WHERE id = ?', [$userId])->fetchColumn();
-    unset($_SESSION['login_email'], $_SESSION['signup_kind']);
+    unset($_SESSION['login_email'], $_SESSION['signup_kind'], $_SESSION['signup_intent']);
     $new = !sql('SELECT last_login_at FROM users WHERE id = ?', [$userId])->fetchColumn();
     sql('UPDATE users SET last_login_at = ? WHERE id = ?', [now(), $userId]);
     $user = sql('SELECT * FROM users WHERE id = ?', [$userId])->fetch();
