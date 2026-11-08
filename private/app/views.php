@@ -185,7 +185,7 @@ function stars(?float $avg, int $count): string
 // One look for a job's duration everywhere: label from KINDS, colour per kind (style.css .tag.k-*).
 function kind_tag(string $kind): string
 {
-    return '<span class="tag k-'.e($kind).($kind === 'skubu' ? ' urgent' : '').'">'.e(KINDS[$kind] ?? $kind).'</span>';
+    return '<span class="tag k-'.e($kind).'">'.e(KINDS[$kind] ?? $kind).'</span>';
 }
 
 // "14 €" + "/val. į rankas" from a stored pay label; null when the label has no amount.

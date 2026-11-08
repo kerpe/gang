@@ -259,7 +259,7 @@ function admin_attention(): string
 {
     [$where, $params] = open_where();
     $items = [];
-    $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind = 'skubu' AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", $params)->fetchColumn();
+    $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind <> 'nuolat' AND r.start_date <= ? AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", [...$params, urgent_until()])->fetchColumn();
     if ($urgent) {
         $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
     }
