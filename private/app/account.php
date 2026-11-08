@@ -641,8 +641,9 @@ function review_link(array $c, bool $reviewed): string
     if ($reviewed) {
         return '<span class="meta done">Įvertinta</span>';
     }
+    // Nothing about rating until the work has started: before that it is just noise on the card.
     if ($c['start_date'] > today()) {
-        return '<span class="meta">Įvertinti galėsite pradėjus darbą</span>';
+        return '';
     }
     return '<a class="btn small" href="/vertinti/'.(int) $c['id'].'">Įvertinti</a>';
 }
