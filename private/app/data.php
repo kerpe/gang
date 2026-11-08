@@ -568,28 +568,34 @@ function ascii_slug(string $text): string
 }
 
 // Link words to choose from, best first. Empty until the profile or venue says enough.
-function invite_slug_options(array $u): array
+// A worker's word comes from the first role and city; with $all, every role and city counts
+// (used to check whether a word still fits the profile).
+function invite_slug_options(array $u, bool $all = false): array
 {
     if ($u['kind'] === 'manager') {
         $name = (string) sql('SELECT name FROM venues WHERE manager_id = ? ORDER BY id LIMIT 1', [$u['id']])->fetchColumn();
         $venue = substr(ascii_slug($name), 0, 40);
         return strlen($venue) >= 2 ? array_map(fn ($tail) => $venue.$tail, INVITE_VENUE_TAILS) : [];
     }
-    $role = array_values(array_filter(explode(',', (string) $u['roles']), fn ($r) => isset(INVITE_DOMAINS[$r])))[0] ?? '';
-    if ($role === '') {
+    $roles = array_values(array_filter(explode(',', (string) $u['roles']), fn ($r) => isset(INVITE_DOMAINS[$r])));
+    if (!$roles) {
         return [];
     }
-    $city = array_values(array_filter(explode(',', (string) $u['cities']), fn ($c) => isset(INVITE_CITIES_OF[$c])))[0] ?? '';
+    $cities = array_values(array_filter(explode(',', (string) $u['cities']), fn ($c) => isset(INVITE_CITIES_OF[$c])));
     $options = [];
-    foreach (INVITE_DOMAINS[$role] as $domain) {
-        foreach (INVITE_NOUNS as $noun) {
-            $options[] = $city !== '' ? INVITE_CITIES_OF[$city].$domain.$noun : $domain.$noun;
-            if ($city !== '') {
-                $options[] = $domain.$noun.INVITE_CITIES_IN[$city];
+    foreach ($all ? $roles : [$roles[0]] as $role) {
+        foreach ($cities ? ($all ? $cities : [$cities[0]]) : [''] as $city) {
+            foreach (INVITE_DOMAINS[$role] as $domain) {
+                foreach (INVITE_NOUNS as $noun) {
+                    $options[] = $city !== '' ? INVITE_CITIES_OF[$city].$domain.$noun : $domain.$noun;
+                    if ($city !== '') {
+                        $options[] = $domain.$noun.INVITE_CITIES_IN[$city];
+                    }
+                }
             }
         }
     }
-    return $options;
+    return array_values(array_unique($options));
 }
 
 // Is the word in use by someone else (current word, old code or an earlier word)?
@@ -625,17 +631,20 @@ function invite_owner(string $code): array|false
     if ($user) {
         return $user;
     }
-    // A word used before the venue was renamed still leads to the same person.
+    // A word used before a rename or a change of city still leads to the same person.
     return sql('SELECT u.* FROM invite_aliases a JOIN users u ON u.id = a.user_id WHERE a.slug = ? AND u.blocked = 0 ORDER BY a.id DESC LIMIT 1', [$code])->fetch();
 }
 
-// Does the manager's link word still come from the venue's current name? (Words may end in a number.)
+// Does the link word still match the venue's current name, or the worker's current roles and cities?
+// (Words may end in a number.) While the profile says too little for a word, the old one stays.
 function invite_slug_fits(array $u, string $slug): bool
 {
-    return $u['kind'] !== 'manager' || in_array(preg_replace('/\d+$/', '', $slug), invite_slug_options($u), true);
+    $options = invite_slug_options($u, true);
+    return !$options || in_array(preg_replace('/\d+$/', '', $slug), $options, true);
 }
 
-// A new link word after the venue was renamed; the earlier word is kept so links already shared keep working.
+// A new link word after the venue was renamed or the worker changed city or role;
+// the earlier word is kept so links already shared keep working.
 function refresh_invite_slug(array $u): void
 {
     $old = (string) ($u['invite_slug'] ?? '');
@@ -654,7 +663,7 @@ function refresh_invite_slug(array $u): void
 }
 
 // The personal link word (/k/{word}), made on first use and then kept, so shared links stay valid.
-// A manager gets a new word when the venue is renamed; the earlier words keep working (invite_aliases).
+// A new word comes when the venue is renamed or the worker's city or role changes; the earlier words keep working (invite_aliases).
 // Until the profile or venue says enough for a word, a random code stands in (and keeps working later).
 function invite_code(array $u): string
 {
