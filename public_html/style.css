@@ -1076,13 +1076,14 @@ table.data td.actions form + form { margin-left: 6px; }
 .emoji-panel { position: absolute; z-index: 5; left: 12px; right: 12px; max-width: 460px; margin-left: auto; background: var(--bg); border: 1px solid rgba(216,255,54,.45); border-radius: 14px; padding: 8px 10px 10px; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
 .emoji-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 6px; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .emoji-close { border: 0; background: none; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 4px; }
-.emoji-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.emoji-grid button { display: grid; justify-items: center; gap: 4px; padding: 8px 4px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--lime); cursor: pointer; font: inherit; }
-.emoji-grid button span { font-size: .66rem; line-height: 1.2; color: var(--text, #ddd); text-align: center; }
-.emoji-grid button .ge { width: 30px; height: 30px; }
+.emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.emoji-grid button { display: grid; place-items: center; aspect-ratio: 1; padding: 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--lime); cursor: pointer; font: inherit; }
+.emoji-grid button .ge { width: 30px; height: 30px; transition: transform .12s; }
+.emoji-grid button:hover .ge { transform: scale(1.15) rotate(-6deg); }
 .emoji-grid button:hover, .emoji-grid button:focus-visible { border-color: rgba(216,255,54,.5); background: rgba(216,255,54,.06); outline: none; }
 @media (max-width: 600px) {
-  .emoji-grid { grid-template-columns: repeat(3, 1fr); }
+  .emoji-grid { grid-template-columns: repeat(4, 1fr); }
+  .emoji-grid button { aspect-ratio: auto; padding: 10px 4px; }
   .react-add, .msg.mine .react-add { top: auto; bottom: -12px; translate: none; width: 26px; height: 26px; background: var(--surface); border: 1px solid var(--line); opacity: 1; }
   .react-add { right: -6px; } .msg.mine .react-add { left: -6px; }
   .react-add svg { width: 17px; height: 17px; }
