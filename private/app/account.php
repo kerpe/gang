@@ -2,6 +2,18 @@
 
 declare(strict_types=1);
 
+// An employer's first steps: own details, venue, first search ("Žingsnis 1 iš 3").
+const ONBOARDING_STEPS = [1 => 'Jūsų duomenys', 2 => 'Darbovietė', 3 => 'Pirmoji paieška'];
+
+function onboarding_step(int $n): string
+{
+    $dots = '';
+    foreach (ONBOARDING_STEPS as $i => $label) {
+        $dots .= '<li'.($i < $n ? ' class="done"' : ($i === $n ? ' class="now" aria-current="step"' : '')).'>'.e($label).'</li>';
+    }
+    return '<p class="eyebrow">Žingsnis '.$n.' iš '.count(ONBOARDING_STEPS).'</p><ol class="onboard" aria-label="Registracijos žingsniai">'.$dots.'</ol>';
+}
+
 function profile_page(): never
 {
     $u = require_user();
@@ -113,7 +125,8 @@ function profile_page(): never
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
     $phoneNote = $worker ? 'Numerį darbdavys matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
-    page($title, '<section class="wrap narrow"><h1>'.$title.'</h1>'
+    $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
+    page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
         .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" autocomplete="name" required>'.err($errors, 'name').'</label>'

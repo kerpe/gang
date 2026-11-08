@@ -138,7 +138,8 @@ function venue_form_page(?int $id = null): never
             .'<div class="row">'.$field('Facebook'.$optional, $text('facebook', 255, 'facebook.com/jusubaras', ' inputmode="url"'), 'facebook')
             .$field('TikTok'.$optional, $text('tiktok', 255, '@jusu_baras'), 'tiktok').'</div>');
     $cancel = '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
-    page($title, '<section class="wrap venue-edit"><h1>'.$title.'</h1>'
+    $step = !$venue && !sql('SELECT 1 FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn() ? onboarding_step(2) : '';
+    page($title, '<section class="wrap venue-edit">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
         .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
@@ -557,9 +558,9 @@ function request_form_page(): never
             $teamNote = $invited ? ' Asmeninį kvietimą gavo jūsų komandos narių: '.count($invited).'.' : '';
             flash(match (true) {
                 $publicAt !== null => $what.$teamNote.' Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.when_lt($publicAt).', jei vietos dar nebus užimtos.',
-                $sent > 0 => "$what Pranešimą gavo tinkamų darbuotojų: $sent.$teamNote Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.",
+                $sent > 0 => "$what Pranešimą siunčiame tinkamiems darbuotojams: $sent.$teamNote Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.",
                 $teamNote !== '' => $what.$teamNote.' Atsiliepimus matysite šiame puslapyje ir gausite el. paštu.',
-                default => $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai.',
+                default => $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite savo darbuotojus prisijungti – nuorodą rasite žemiau.',
             });
             redirect('/darbas/'.$id);
         }
@@ -586,7 +587,8 @@ function request_form_page(): never
     $venueData .= " data-guide='".e(json_encode($guide, JSON_UNESCAPED_UNICODE))."'";
     $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką, pažymėti jūsų komandos nariai gaus asmeninį kvietimą. Patikrinkite duomenis ir paskelbkite.</p>'
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
-    page('Nauja paieška', '<section class="wrap request-wrap"><h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
+    $step = !sql('SELECT 1 FROM requests r JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? LIMIT 1', [$u['id']])->fetchColumn() ? onboarding_step(3) : '';
+    page('Nauja paieška', '<section class="wrap request-wrap">'.$step.'<h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
         .'<form method="post" class="form request-form" novalidate'.$venueData.'>'.csrf_field()
         .'<div class="live-preview" aria-live="polite"><h2 class="eyebrow">Taip skelbimą matys darbuotojai</h2><p class="preview-count" data-p="count" hidden></p><div class="preview-cards"><div class="card job-card"><div class="card-link"><div class="card-head"><div><h3 data-p="role">Pareigos</h3>'
         .'<p class="event-name" data-p="event" hidden></p><p class="meta" data-p="venue"></p></div></div><p class="card-pay" data-p="pay" hidden><strong></strong> <span>/val. į rankas</span></p><p class="tags"><span class="tag" data-p="kind"></span><span class="tag event" data-p="eventtag" hidden>Renginys</span></p>'
@@ -1088,7 +1090,12 @@ function owner_panel(array $r, bool $isOpen): string
         ? '<div class="notice ok team-only"><p><strong>Šiuo metu paieška matoma tik jūsų komandai.</strong> Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.e(when_lt($r['public_at'])).', jei vietos dar nebus užimtos.</p>'
             .post_button('/darbas/'.(int) $r['id'].'/skelbti', 'Paskelbti visiems dabar', [], 'btn small').'</div>'
         : '';
-    $reach = $teamOnly.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
+    // Early days: nobody matches yet, so the employer's own people are the quickest way to fill GANG.
+    $invite = $isOpen && $responses === [] && $total === 0
+        ? '<div class="notice tip invite-nudge"><p><strong>Tinkamų darbuotojų GANG dar nedaug.</strong> Pakvieskite savo darbuotojus ir pažįstamus: prisijungę jie atsiras jūsų komandoje, o tinkantys gaus šį pasiūlymą.</p>'
+            .share_link(url('/k/'.invite_code(current_user())), 'Prisijunkite prie mūsų komandos GANG platformoje').'</div>'
+        : '';
+    $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li><li><b>'.$freeNow.'</b> laisvi pirmąją darbo dieną</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
