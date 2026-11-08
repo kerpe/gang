@@ -60,6 +60,7 @@ match (true) {
     $path === '/atsijungti/visur' && $post => logout_everywhere(),
     $path === '/mano' => dashboard_page(),
     $path === '/mano/pasiulymai' => worker_offers_page(),
+    $path === '/mano/paieskos' => manager_requests_page(),
     $path === '/profilis' => profile_page(),
     $path === '/profilis/duomenys' => account_export(),
     $path === '/profilis/istrinti' => account_delete_page(),

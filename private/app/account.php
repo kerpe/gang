@@ -502,23 +502,10 @@ function worker_dashboard(array $u): string
         .referral_box($u);
 }
 
-function manager_dashboard(array $u): string
+// The manager's open requests as cards, with candidates and confirmed workers. $in: the manager's venue ids, comma-separated.
+// Returns [requests, cards html, [[request, candidates], ...]].
+function manager_open_requests(string $in): array
 {
-    $venues = sql('SELECT * FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll();
-    if (!$venues) {
-        redirect('/darboviete/nauja');
-    }
-    $venueHtml = '';
-    foreach ($venues as $v) {
-        [$avg, $n] = venue_rating((int) $v['id']);
-        $venueHtml .= '<div class="venue-card"><div class="venue-card-head">'.venue_logo($v, 'small').'<a class="venue-name" href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a></div>'
-            .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'.stars($avg, $n)
-            .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'">Peržiūrėti</a></p></div>';
-    }
-    $short = array_filter($venues, fn ($v) => mb_strlen(trim((string) $v['about'])) < VENUE_ABOUT_MIN);
-    $aboutTip = $short ? '<p class="notice tip">Papildykite darbovietės aprašymą: kokia tai vieta, kokia komanda ir kokios darbo sąlygos. Tai padeda darbuotojams apsispręsti. <a href="/darboviete/'.(int) reset($short)['id'].'/redaguoti">Papildyti aprašymą</a></p>' : '';
-    $ids = array_column($venues, 'id');
-    $in = implode(',', array_map('intval', $ids));
     [$where, $params] = open_where();
     $open = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND $where ORDER BY r.start_date", $params)->fetchAll();
     $openHtml = '';
@@ -540,6 +527,48 @@ function manager_dashboard(array $u): string
         }
         $openHtml .= request_card($r, $label.($hired ? '' : '<p class="card-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a></p>'), false);
     }
+    return [$open, $openHtml, $waiting];
+}
+
+// "Aktyvios paieškos" on their own page: /mano shows only the count (Vilius 2026-11-08: less on one screen).
+function manager_requests_page(): never
+{
+    $u = require_user();
+    if ($u['kind'] !== 'manager') {
+        redirect('/mano');
+    }
+    $ids = sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchAll(PDO::FETCH_COLUMN);
+    if (!$ids) {
+        redirect('/darboviete/nauja');
+    }
+    [$open, $openHtml] = manager_open_requests(implode(',', array_map('intval', $ids)));
+    $cards = $openHtml ? '<div class="cards">'.$openHtml.'</div>'
+        : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
+        .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
+        .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>';
+    page('Aktyvios paieškos', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano GANG</a></p>'
+        .'<h1>Aktyvios paieškos</h1><p class="meta">Iš viso: '.count($open).'</p>'.$cards
+        .($openHtml ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Nauja paieška</a></p>' : '').'</section>', ['noindex' => true]);
+}
+
+function manager_dashboard(array $u): string
+{
+    $venues = sql('SELECT * FROM venues WHERE manager_id = ? ORDER BY id', [$u['id']])->fetchAll();
+    if (!$venues) {
+        redirect('/darboviete/nauja');
+    }
+    $venueHtml = '';
+    foreach ($venues as $v) {
+        [$avg, $n] = venue_rating((int) $v['id']);
+        $venueHtml .= '<div class="venue-card"><div class="venue-card-head">'.venue_logo($v, 'small').'<a class="venue-name" href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a></div>'
+            .'<span class="meta">'.e(CITIES[$v['city']] ?? '').($v['address'] !== '' ? ' · '.e($v['address']) : '').'</span>'.stars($avg, $n)
+            .'<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'/redaguoti">Redaguoti</a><a class="btn small ghost" href="/darboviete/'.(int) $v['id'].'">Peržiūrėti</a></p></div>';
+    }
+    $short = array_filter($venues, fn ($v) => mb_strlen(trim((string) $v['about'])) < VENUE_ABOUT_MIN);
+    $aboutTip = $short ? '<p class="notice tip">Papildykite darbovietės aprašymą: kokia tai vieta, kokia komanda ir kokios darbo sąlygos. Tai padeda darbuotojams apsispręsti. <a href="/darboviete/'.(int) reset($short)['id'].'/redaguoti">Papildyti aprašymą</a></p>' : '';
+    $ids = array_column($venues, 'id');
+    $in = implode(',', array_map('intval', $ids));
+    [$open, $openHtml, $waiting] = manager_open_requests($in);
     $openIds = array_column($open, 'id') ?: [0];
     $earlier = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND r.id NOT IN (".implode(',', array_map('intval', $openIds)).') ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
     $earlierHtml = '';
@@ -561,19 +590,16 @@ function manager_dashboard(array $u): string
         (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. Pirmoji paieška: '.(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
         (bool) $toReview => ['', 'Įvertinkite darbuotoją', $toReview[0]['worker_name'].' · '.(ROLES[$toReview[0]['role']] ?? '').'. Įvertinimas padeda kitiems darbdaviams.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         !$open => ['', 'Aktyvių paieškų nėra', 'Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką.', '/poreikis/naujas', '+ Paskelbti paiešką'],
-        default => ['calm', 'Paieškos aktyvios', 'Kai darbuotojai pateiks kandidatūras, pranešime el. paštu.', '/poreikis/naujas', '+ Nauja paieška'],
+        default => ['calm', 'Paieškos aktyvios', 'Kai darbuotojai pateiks kandidatūras, pranešime el. paštu.', '/mano/paieskos', 'Peržiūrėti'],
     };
     $tiles = summary_tiles([
-        ['Aktyvios paieškos', (string) count($open), '#paieskos'],
+        ['Aktyvios paieškos', (string) count($open), '/mano/paieskos'],
         ['Laukia sprendimo', (string) $candidates, $waiting ? '/darbas/'.(int) $waiting[0][0]['id'] : ''],
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
         ['Komanda', (string) $teamCount, '#kviesti'],
     ]);
     return (manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
         .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
-        .'<h2 id="paieskos">Aktyvios paieškos</h2>'.($openHtml ? '<div class="cards">'.$openHtml.'</div>' : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
-            .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
-            .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>')
         .($contractHtml ? '<h2 id="kontraktai">GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
