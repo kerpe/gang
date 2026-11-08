@@ -88,6 +88,7 @@ match (true) {
     $is('/kontraktas/(\d+)/neatvyko') && $post => no_show_action((int) $m[1]),
     $is('/kontraktas/(\d+)/zinute') && $post => message_send_action((int) $m[1]),
     $is('/kontraktas/(\d+)/zinutes') => messages_poll((int) $m[1]),
+    $is('/kontraktas/(\d+)/reakcija') && $post => message_react_action((int) $m[1]),
     $is('/pokalbis/(\d+)') => chat_link_page((int) $m[1]),
     $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
     $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),

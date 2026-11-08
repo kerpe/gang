@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 function migrate(PDO $db): void
 {
@@ -166,6 +166,13 @@ function migrate(PDO $db): void
             last_id INT NOT NULL DEFAULT 0,
             seen_at DATETIME NULL,
             mailed_at DATETIME NULL",
+        // Version 23: GANG emoji put on a chat message, one per member and message (messages.php GANG_EMOJI).
+        'message_reactions' => "id $id,
+            contract_id INT NOT NULL,
+            message_id INT NOT NULL,
+            user_id INT NOT NULL,
+            code VARCHAR(20) NOT NULL,
+            created_at DATETIME NOT NULL",
         // Version 19: bulk email waiting to be sent (mail.php process_mail_queue()).
         'mail_queue' => "id $id,
             to_email VARCHAR(190) NOT NULL,
@@ -253,6 +260,8 @@ function migrate(PDO $db): void
         // Version 21: the employer changed the job's dates or pay after this application; set until the
         // candidate confirms the new terms ("Tinka") – until then the employer cannot approve them.
         'responses ADD recheck_at DATETIME NULL',
+        // Version 23: when the member last read a new message (the chat's "Perskaityta 18:32").
+        'chat_reads ADD read_at DATETIME NULL',
     ];
     foreach ($columns as $column) {
         try {
@@ -307,6 +316,7 @@ function migrate(PDO $db): void
         'messages_sender' => 'messages (sender_id, created_at)',
         'response_notes_response' => 'response_notes (response_id, id)',
         'chat_reads_contract' => 'chat_reads (contract_id, user_id)',
+        'message_reactions_contract' => 'message_reactions (contract_id, message_id)',
         'mail_queue_pending' => 'mail_queue (sent_at, priority, id)',
     ];
     foreach ($indexes as $name => $on) {
@@ -320,6 +330,7 @@ function migrate(PDO $db): void
     $unique = [
         'responses_once' => 'responses (request_id, worker_id)',
         'reviews_once' => 'reviews (contract_id, author)',
+        'message_reactions_once' => 'message_reactions (message_id, user_id)',
     ];
     foreach ($unique as $name => $on) {
         try {
