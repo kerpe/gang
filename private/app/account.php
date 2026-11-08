@@ -478,8 +478,8 @@ function worker_dashboard(array $u): string
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
-        .referral_box($u)
-        .$calendar;
+        .$calendar
+        .referral_box($u);
 }
 
 function manager_dashboard(array $u): string
@@ -538,9 +538,8 @@ function manager_dashboard(array $u): string
             .'<p class="badges"><span class="badge">'.((int) $w['jobs'] ? 'Kartu dirbta: '.(int) $w['jobs'] : 'Prisijungė pagal kvietimą').'</span></p>'
             .'<p class="venue-actions"><a class="btn small" href="/poreikis/naujas?kviesti='.(int) $w['id'].'">Pakviesti į darbą</a></p></div></div>';
     }
-    $team = '<h2 id="komanda">Mano komanda</h2>'.team_invite_box($u).($teamHtml
-        ? '<p class="meta">Žmonės, su kuriais dirbote per GANG, ir prisijungę pagal jūsų kvietimą. Pakviestas žmogus gaus asmeninį kvietimą, o darbas bus užfiksuotas kaip GANG kontraktas su abipusiais įvertinimais.</p><div class="venue-grid team-grid">'.$teamHtml.'</div>'
-        : '<p class="meta">Čia matysite žmones, su kuriais dirbote per GANG, ir tuos, kurie prisijungė pagal jūsų kvietimą. Juos galėsite pakviesti į pamainą vienu paspaudimu.</p>');
+    // Team members only; the invite card sits at the very bottom of the page, same as the worker's (Vilius 2026-11-08).
+    $team = $teamHtml ? '<h2 id="komanda">Mano komanda</h2><div class="venue-grid team-grid">'.$teamHtml.'</div>' : '';
     $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
     $toReview = array_values(array_filter($contracts, fn ($c) => !$c['reviewed'] && $c['start_date'] <= today()));
     $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
@@ -556,7 +555,7 @@ function manager_dashboard(array $u): string
         ['Aktyvios paieškos', (string) count($open), '#paieskos'],
         ['Laukia sprendimo', (string) $candidates, $waiting ? '/darbas/'.(int) $waiting[0][0]['id'] : ''],
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
-        ['Komanda', (string) count(team_members((int) $u['id'])), '#komanda'],
+        ['Komanda', (string) count(team_members((int) $u['id'])), $teamHtml ? '#komanda' : '#kviesti'],
     ]);
     return (manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
         .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')
@@ -567,7 +566,8 @@ function manager_dashboard(array $u): string
         .($contractHtml ? '<h2 id="kontraktai">GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
-        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų restoranas, kavinė, baras ar klubas</span></a></div>';
+        .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų restoranas, kavinė, baras ar klubas</span></a></div>'
+        .team_invite_box($u);
 }
 
 // "Kitas žingsnis": the one thing to do now, on top of Mano GANG. $tone: '' | warn | calm.
