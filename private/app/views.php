@@ -16,7 +16,7 @@ function page(string $title, string $body, array $opt = []): never
     $user = current_user();
     // New chat messages: a count on "Mano GANG" (the contract cards there link to each chat).
     $unread = $user ? unread_messages_total((int) $user['id']) : 0;
-    $badge = $unread ? ' <span class="count" aria-label="Naujos žinutės: '.$unread.'">'.$unread.'</span>' : '';
+    $badge = $unread ? ' <span class="count" data-unread-total aria-label="Naujos žinutės: '.$unread.'">'.$unread.'</span>' : '';
     if ($user) {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost');
     } else {

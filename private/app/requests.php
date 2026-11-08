@@ -1046,11 +1046,13 @@ function accepted_panel(array $r, array $u): string
 {
     $c = sql(str_replace(' FROM contracts c', ", (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = 'worker') AS reviewed FROM contracts c", CONTRACT_SELECT)
         .' WHERE c.request_id = ? AND c.worker_id = ?', [$r['id'], $u['id']])->fetch();
+    // The chat first: opening it marks the messages read, so the card's "Žinutės" count is already right.
+    $chat = $c && !$c['cancelled_at'] ? chat_box($c, $u).chat_script() : '';
     return '<div class="panel ok"><h2>Darbdavys patvirtino jūsų kandidatūrą</h2>'
         .'<p>Susisiekite su darbdaviu ir aptarkite darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.</p>'
         .'<p class="shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .($c ? contract_card($c, 'worker', (bool) $c['reviewed']) : '').'</div>'
-        .($c && !$c['cancelled_at'] ? chat_box($c, $u).chat_script() : '');
+        .$chat;
 }
 
 function owner_panel(array $r, bool $isOpen): string
