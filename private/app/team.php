@@ -101,7 +101,7 @@ function team_invite_box(array $u): string
             .'<button class="btn small">Siųsti kvietimus</button></form></details>'
         : '<p class="meta">Kvietimus el. paštu galėsite siųsti, kai patvirtinsime jūsų darbovietę. Iki tol dalinkitės nuoroda.</p>';
     return '<section class="panel invite-box" id="kviesti"><h3>Pakvieskite savo darbuotojus</h3>'
-        .'<p class="meta">Nusiųskite šią nuorodą savo komandai, pavyzdžiui, į darbuotojų pokalbių grupę. Prisijungę žmonės ir tie, su kuriais dirbote per GANG, atsiras jūsų komandoje: kurdami paiešką, juos galėsite pakviesti vienu paspaudimu.</p>'
+        .'<p class="meta">Nusiųskite šią nuorodą savo draugams – draugai ir žmonės, su kuriais dirbote per GANG, atsiras komandos skiltyje.</p>'
         .share_link($link, 'Prisijunkite prie mūsų komandos GANG platformoje').$mail.'</section>';
 }
 
