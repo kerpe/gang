@@ -194,6 +194,9 @@ function pay_parts(string $pay): ?array
     return preg_match('/^([\d,]+)\s*€\s*(.*)$/u', $pay, $m) ? [$m[1].' €', $m[2]] : null;
 }
 
+// onsubmit for forms that must not be sent twice (a double click would send a second login code).
+const ONE_SUBMIT = ' onsubmit="if(this.dataset.sent)return false;this.dataset.sent=1"';
+
 const MONTHS_SHORT = ['', 'Saus', 'Vas', 'Kov', 'Bal', 'Geg', 'Birž', 'Liep', 'Rugp', 'Rugs', 'Spal', 'Lapkr', 'Gruod'];
 
 // "Šiandien", "Rytoj", "Po 3 d." for work starting within a week; '' otherwise.
