@@ -1093,18 +1093,18 @@ function owner_panel(array $r, bool $isOpen): string
             $badges[] = '<span class="badge">Patirtis: '.e(mb_strtolower(EXPERIENCE[(int) $s['experience']])).'</span>';
         }
         $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
+        // A confirmed worker: the chat with them right under their card, and "Atšaukti darbą" (with a reason) instead of editing or closing the search.
+        $c = $s['status'] === 'accepted' && current_user()
+            ? sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.worker_id = ? AND c.cancelled_at IS NULL ORDER BY c.id DESC', [$r['id'], $s['worker_id']])->fetch()
+            : false;
         $buttons = $s['status'] === 'accepted'
-            ? '<p class="ok-text">Patvirtinta</p>'
+            ? '<p class="ok-text">Patvirtinta</p>'.($c && contract_end($c) >= today() ? '<a class="btn small ghost quiet" href="/kontraktas/'.(int) $c['id'].'/atsaukti">Atšaukti darbą</a>' : '')
             : ($s['recheck_at'] ? '' : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small')))
                 .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
-        // A confirmed worker: the chat with them right under their card.
         $chat = '';
-        if ($s['status'] === 'accepted' && ($u = current_user())) {
-            $c = sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.worker_id = ? AND c.cancelled_at IS NULL ORDER BY c.id DESC', [$r['id'], $s['worker_id']])->fetch();
-            if ($c) {
-                $chat = chat_box($c, $u);
-                $chats = true;
-            }
+        if ($c) {
+            $chat = chat_box($c, current_user());
+            $chats = true;
         }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
@@ -1125,20 +1125,20 @@ function owner_panel(array $r, bool $isOpen): string
         : '';
     $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
-    // Someone is already confirmed but more people are still needed: say what is still being looked for,
-    // and make clear that closing keeps the confirmed workers. Their dates and pay are fixed, so only the description can be edited.
+    // Once a worker is confirmed the search is settled: dates and pay are agreed, the talk is in the chat.
+    // No "Redaguoti" or "Uždaryti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
+    // If some days are still open, a quiet line says so and lets the employer stop looking for them.
     $confirmed = in_array('accepted', array_column($responses, 'status'), true);
     $still = '';
     if ($isOpen && $confirmed && ($need = request_needs($r))) {
         $more = max($need) > 1 ? ' (iki '.max($need).' darbuotojų)' : '';
-        $still = '<p class="meta still-looking">'.($r['kind'] === 'nuolat' ? 'Dar ieškome darbuotojų'.$more.'.' : 'Dar ieškome: '.e(days_text(array_keys($need))).e($more).'.').'</p>';
+        $still = '<div class="owner-actions still-looking"><p class="meta">'.($r['kind'] === 'nuolat' ? 'Dar ieškome darbuotojų'.e($more).'.' : 'Dar ieškome: '.e(days_text(array_keys($need))).e($more).'.').'</p>'
+            .post_button('/darbas/'.(int) $r['id'].'/uzdaryti', 'Nebeieškoti', [], 'btn small ghost quiet', 'Daugiau darbuotojų neieškosime ir skelbimas nebebus matomas. Patvirtinti darbuotojai ir pokalbiai su jais lieka.').'</div>';
     }
-    $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', $confirmed
-        ? 'Daugiau darbuotojų neieškosime ir skelbimas nebebus matomas. Patvirtinti darbuotojai ir pokalbiai su jais lieka.'
-        : 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
+    $close = $isOpen && !$confirmed ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
-        .$still.'<div class="owner-actions">'.($isOpen ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">'.($confirmed ? 'Redaguoti aprašymą' : 'Redaguoti').'</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
+        .$still.'<div class="owner-actions">'.($isOpen && !$confirmed ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
 }
 
 // After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"

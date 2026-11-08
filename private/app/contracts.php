@@ -71,7 +71,7 @@ function contract_cancel_page(int $id): never
         .'<p class="notice '.($late ? 'tip' : 'ok').'">'.e($warning).'</p>'
         .'<form method="post" class="form" novalidate>'.csrf_field()
         .'<fieldset><legend>Priežastis</legend>'.radios('reason', $reasons, $reason).err($errors, 'reason').'</fieldset>'
-        .'<label>Komentaras <small>(neprivaloma, bus perduotas '.($worker ? 'darbdaviui' : 'darbuotojui').')</small><textarea name="note" rows="3" maxlength="500">'.e($note).'</textarea>'.err($errors, 'note').'</label>'
+        .'<label>Komentaras <small>(neprivaloma, bus perduotas '.($worker ? 'darbdaviui' : 'darbuotojui').')</small><textarea name="note" rows="3" maxlength="500"'.($worker ? '' : ' placeholder="Pvz.: renginys atšauktas dėl techninių kliūčių"').'>'.e($note).'</textarea>'.err($errors, 'note').'</label>'
         .'<p class="fine">'.e($after).'</p>'
         .'<div class="form-actions"><button class="btn">Atšaukti darbą</button><a class="btn ghost" href="/mano">Grįžti</a></div></form></section>', ['noindex' => true]);
 }
