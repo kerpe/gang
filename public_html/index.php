@@ -73,6 +73,7 @@ match (true) {
     $is('/kandidatura/(\d+)') => application_link_page((int) $m[1]),
     $is('/kandidatura/(\d+)/prisijungti') && $post => application_switch_action((int) $m[1]),
     $is('/darbas/(\d+)/atsiliepti') && $post => respond_action((int) $m[1]),
+    $is('/darbas/(\d+)/busena') => application_state_poll((int) $m[1]),
     $is('/darbas/(\d+)/atsaukti') && $post => withdraw_action((int) $m[1]),
     $is('/darbas/(\d+)/papildyti') && $post => response_note_action((int) $m[1]),
     $is('/darbas/(\d+)/kviesti/(\d+)') && $post => invite_action((int) $m[1], (int) $m[2]),

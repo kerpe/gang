@@ -940,19 +940,20 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     // A withdrawn application can be sent again while the request is open.
     $again = $mine && $mine['status'] === 'withdrawn' && $isOpen;
     if ($mine && $mine['status'] === 'sent' && $mine['recheck_at'] && $isOpen) {
-        return recheck_panel($r);
+        return recheck_panel($r).application_watch($r, $mine);
     }
     if ($mine && !$again) {
         return match ($mine['status']) {
             'accepted' => accepted_panel($r, $u),
             'declined' => '<div class="panel"><p>Dėkojame už susidomėjimą. Šį kartą darbdavys pasirinko kitą kandidatą. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
-            'withdrawn' => '<div class="panel"><p>Savo atsiliepimą atšaukėte.</p></div>',
+            'withdrawn' => '<div class="panel"><p>Kandidatūrą atsiėmėte.</p></div>',
             'cancelled' => '<div class="panel"><p>Šis GANG kontraktas atšauktas. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
-            default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2>'
+            default => '<div class="panel"><h2>Jūsų kandidatūra išsiųsta</h2>'
                 .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
-                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus ir galėsite susirašinėti GANG pokalbyje.</p>'
+                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Kai darbdavys patvirtins jūsų kandidatūrą, šis puslapis atsinaujins ir čia pat galėsite susirašinėti GANG pokalbyje. Pranešimą gausite ir el. paštu.</p>'
                 .($isOpen ? response_note_form($r, $mine) : '')
-                .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Ar tikrai norite atšaukti atsiliepimą?').'</div>',
+                .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atsiimti kandidatūrą', [], 'btn small ghost', 'Ar tikrai norite atsiimti kandidatūrą? Darbdavys jos nebematys.').'</div>'
+                .application_watch($r, $mine),
         };
     }
     if (!$isOpen) {
@@ -989,6 +990,62 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numeris nerodomas: patvirtinus kandidatūrą bendrausite GANG žinutėse.</p></div>';
+}
+
+// What the worker's waiting application looks like right now: a change (confirmed, declined, new terms, search closed) reloads the page.
+function application_state(array $r, array $mine): string
+{
+    return $mine['status'].'|'.($mine['recheck_at'] ? 1 : 0).'|'.$r['status'];
+}
+
+// /darbas/{id}/busena: polled from the worker's job page while the application waits for the employer.
+function application_state_poll(int $id): never
+{
+    $u = current_user();
+    $r = $u && $u['kind'] === 'worker' ? find_request($id) : null;
+    $mine = $r ? sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetch() : false;
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    if (!$mine) {
+        http_response_code(404);
+        echo '{}';
+        exit;
+    }
+    echo json_encode(['state' => application_state($r, $mine)]);
+    exit;
+}
+
+// The waiting worker's page follows the employer's decision: once it changes, the page reloads
+// (with the confirmed status and the chat). A message being typed is not lost: a notice asks to refresh instead.
+function application_watch(array $r, array $mine): string
+{
+    $id = (int) $r['id'];
+    $state = json_encode(application_state($r, $mine));
+    return <<<HTML
+<p class="notice ok app-changed" hidden>Darbdavys atsakė į jūsų kandidatūrą. <a href="/darbas/$id">Atnaujinti puslapį</a></p>
+<script>
+(function () {
+  var state = $state, done = false;
+  function typing() {
+    return Array.prototype.some.call(document.querySelectorAll('#atsiliepti textarea, #papildyti textarea'), function (t) { return t.value.trim() !== ''; });
+  }
+  function check() {
+    if (done || document.hidden) return;
+    fetch('/darbas/$id/busena', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d || !d.state || d.state === state || done) return;
+        done = true;
+        if (typing()) { var n = document.querySelector('.app-changed'); if (n) n.hidden = false; return; }
+        location.replace('/darbas/$id');
+      }).catch(function () {});
+  }
+  setInterval(check, 10000);
+  document.addEventListener('visibilitychange', check);
+  window.addEventListener('pageshow', function (e) { if (e.persisted) check(); });
+})();
+</script>
+HTML;
 }
 
 // The employer changed the dates or pay after the worker applied: "Tinka" or "Atsiimti kandidatūrą".
@@ -1616,7 +1673,9 @@ function withdraw_action(int $id): never
 {
     $u = require_user('worker');
     check_csrf();
-    sql("UPDATE responses SET status = 'withdrawn' WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']]);
+    $done = sql("UPDATE responses SET status = 'withdrawn' WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']])->rowCount();
+    // An older page: the employer had already decided, so the page now shows that decision instead.
+    flash($done ? 'Kandidatūra atsiimta.' : 'Darbdavys jau priėmė sprendimą dėl jūsų kandidatūros.');
     redirect('/darbas/'.$id);
 }
 
