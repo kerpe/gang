@@ -202,7 +202,7 @@ function privacy_page(): never
                 .'<li>Prisijungimo kodai galioja 15 minučių.</li>'
                 .'<li>Sutikimo su taisyklėmis įrašus – kol turite paskyrą.</li>'
                 .'<li>Serverio žurnalus – ne ilgiau, nei jie saugomi prieglobos paslaugų teikėjo sistemose saugumo tikslais.</li></ul>'],
-            ['teises', 'Jūsų teisės', '<p>Turite teisę susipažinti su savo duomenimis, juos ištaisyti, ištrinti, apriboti jų tvarkymą, gauti juos perkeliamu formatu, nesutikti, kad duomenys būtų tvarkomi remiantis teisėtu interesu, ir bet kada atšaukti duotą sutikimą. Daugumą duomenų galite patys pakeisti savo profilyje.</p>'
+            ['teises', 'Jūsų teisės', '<p>Turite teisę susipažinti su savo duomenimis, juos ištaisyti, ištrinti, apriboti jų tvarkymą, gauti juos perkeliamu formatu, nesutikti, kad duomenys būtų tvarkomi remiantis teisėtu interesu, ir bet kada atšaukti duotą sutikimą. Daugumą duomenų galite patys pakeisti savo profilyje. Ten pat galite atsisiųsti savo duomenis (JSON formatu) ir ištrinti paskyrą.</p>'
                 .'<p>Norėdami pasinaudoti teisėmis, rašykite '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę. Atsakysime per 30 dienų. Jei manote, kad jūsų duomenys tvarkomi netinkamai, galite pateikti skundą Valstybinei duomenų apsaugos inspekcijai (<a href="https://vdai.lrv.lt" rel="noopener" target="_blank">vdai.lrv.lt</a>).</p>'],
             ['slapukai', 'Slapukai', '<p>Naudojame tik būtinuosius slapukus, be kurių svetainė neveiktų:</p><ul>'
                 .'<li><strong>PHPSESSID</strong> – išlaiko jus prisijungusius ir apsaugo formas; galioja iki 60 dienų;</li>'

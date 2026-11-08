@@ -55,6 +55,8 @@ match (true) {
     $path === '/atsijungti' && $post => logout(),
     $path === '/mano' => dashboard_page(),
     $path === '/profilis' => profile_page(),
+    $path === '/profilis/duomenys' => account_export(),
+    $path === '/profilis/istrinti' => account_delete_page(),
     $path === '/laisvas' && $post => availability_action(),
     $path === '/darboviete/nauja' => venue_form_page(),
     $path === '/poreikis/naujas' => request_form_page(),
@@ -85,5 +87,6 @@ match (true) {
     $path === '/komanda/kviesti' && $post => team_mail_action(),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
+    $is('/atsisakyti/(\d+)/([0-9a-f]{32})') => unsubscribe_page((int) $m[1], $m[2]),
     default => not_found(),
 };
