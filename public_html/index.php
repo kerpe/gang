@@ -53,6 +53,7 @@ match (true) {
     $path === '/prisijungti/kodas' => login_code_page(),
     $path === '/prisijungti/kas' => choose_kind_page(),
     $path === '/atsijungti' && $post => logout(),
+    $path === '/atsijungti/visur' && $post => logout_everywhere(),
     $path === '/mano' => dashboard_page(),
     $path === '/profilis' => profile_page(),
     $path === '/profilis/duomenys' => account_export(),

@@ -29,7 +29,7 @@ function preview_gate(string $path): void
         if (hash_equals($password, (string) ($_POST['password'] ?? ''))) {
             setcookie('gang_preview', $token, ['expires' => time() + 60 * 60 * 24 * 90, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => str_starts_with($c['public_url'], 'https://')]);
             $next = (string) ($_POST['next'] ?? '/');
-            header('Location: '.(str_starts_with($next, '/') && !str_starts_with($next, '//') ? $next : '/'), true, 303);
+            header('Location: '.(str_starts_with($next, '/') && !str_starts_with($next, '//') && !str_contains($next, '\\') ? $next : '/'), true, 303);
             exit;
         }
         $error = '<span class="err">Neteisingas slaptažodis.</span>';

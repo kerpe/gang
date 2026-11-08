@@ -123,6 +123,8 @@ function profile_page(): never
         .'<button class="btn">Išsaugoti</button></form>'
         .'<h2>Mano duomenys</h2><p class="meta">Galite atsisiųsti viską, ką GANG apie jus saugo, arba ištrinti paskyrą kartu su visais duomenimis.</p>'
         .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
+        .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
+        .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
         .'</section>'.phone_check_script().($worker ? photo_resize_script() : ''), ['noindex' => true]);
 }
 
@@ -663,6 +665,10 @@ function check_phone(string $raw): array
     if (str_starts_with($p, '00')) {
         $p = '+'.substr($p, 2);
     }
+    // Lithuanian national format: 8 600 12345 → +370 600 12345.
+    if (preg_match('/^8\d{8}$/', preg_replace('/[\s()\-]/', '', $p))) {
+        $p = '+370'.substr(preg_replace('/[\s()\-]/', '', $p), 1);
+    }
     if (!preg_match('/^\+[0-9 ()\-]+$/', $p)) {
         return ['', PHONE_FORMAT_ERROR];
     }
@@ -731,6 +737,9 @@ function phone_check_script(): string
     v = v.trim();
     if (v === '') return final ? formatError : '';
     if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    // Lithuanian 8 600 12345: allowed while typing, turned into +370 600 12345 at 9 digits.
+    var l = v.replace(/[\s()\-]/g, '');
+    if (/^8\d*$/.test(l)) return l.length === 9 || (!final && l.length < 9) ? '' : 'Lietuvos numerį įveskite su +370 arba 8 pradžioje, pavyzdžiui, 8 600 12345.';
     if (!/^\+[0-9 ()\-]*$/.test(v)) return formatError;
     var d = v.replace(/\D/g, '');
     if (d.length < 3 && !final) return '';
@@ -756,6 +765,7 @@ function phone_check_script(): string
   // Spaces are added while typing: +37060516846 shows as +370 605 16846.
   function pretty(v) {
     if (v.indexOf('00') === 0) v = '+' + v.slice(2);
+    if (/^8\d{8}$/.test(v.replace(/[\s()\-]/g, ''))) v = '+370' + v.replace(/[\s()\-]/g, '').slice(1);
     if (!/^\+[0-9 ]*$/.test(v)) return null;
     var d = v.replace(/\D/g, '');
     for (var len = 3; len >= 1; len--) {

@@ -10,6 +10,11 @@ function current_user(): ?array
         $user = null;
         if (!empty($_SESSION['uid'])) {
             $user = sql('SELECT * FROM users WHERE id = ? AND blocked = 0', [$_SESSION['uid']])->fetch() ?: null;
+            // "Atsijungti visuose įrenginiuose" raises session_epoch: older sessions stop working.
+            if ($user && (int) ($_SESSION['epoch'] ?? 0) !== (int) $user['session_epoch']) {
+                $user = null;
+                $_SESSION = [];
+            }
         }
     }
     return $user;
@@ -187,6 +192,7 @@ function finish_login(int $userId): never
 {
     session_regenerate_id(true);
     $_SESSION['uid'] = $userId;
+    $_SESSION['epoch'] = (int) sql('SELECT session_epoch FROM users WHERE id = ?', [$userId])->fetchColumn();
     unset($_SESSION['login_email'], $_SESSION['signup_kind']);
     $new = !sql('SELECT last_login_at FROM users WHERE id = ?', [$userId])->fetchColumn();
     sql('UPDATE users SET last_login_at = ? WHERE id = ?', [now(), $userId]);
@@ -208,6 +214,18 @@ function finish_login(int $userId): never
     $next = $_SESSION['after_login'] ?? '/mano';
     unset($_SESSION['after_login']);
     redirect(str_starts_with($next, '/') && !str_starts_with($next, '//') ? $next : '/mano');
+}
+
+// Signs the member out on every device, this one included.
+function logout_everywhere(): never
+{
+    $u = require_user();
+    check_csrf();
+    sql('UPDATE users SET session_epoch = session_epoch + 1 WHERE id = ?', [$u['id']]);
+    $_SESSION = [];
+    session_regenerate_id(true);
+    flash('Atsijungėte visuose įrenginiuose. Prisijunkite iš naujo.');
+    redirect('/prisijungti');
 }
 
 function logout(): never

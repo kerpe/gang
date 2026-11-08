@@ -254,7 +254,7 @@ function admin_page(): never
     };
     $title = $tab === 'user' ? 'Narys' : ($tabs[$tab][0] ?? 'Rodikliai');
     $logout = post_button('/admin', 'Atsijungti', ['action' => 'logout'], 'btn small ghost');
-    page('Administravimas', '<div class="admin-layout"><aside class="admin-side">'.$nav.'<div class="admin-out">'.$logout.'</div></aside>'
+    page('Administravimas', '<div class="admin-layout"><div class="admin-side">'.$nav.'<div class="admin-out">'.$logout.'</div></div>'
         .'<section class="admin-main"><h1>'.e($title).'</h1>'.$body.'</section></div>'.admin_table_script(), ['noindex' => true, 'shell' => 'admin']);
 }
 

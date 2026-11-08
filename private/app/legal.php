@@ -41,6 +41,16 @@ function consent_given(): bool
 const CONSENT_ERROR = 'Norėdami tęsti, pažymėkite, kad sutinkate su Naudojimosi taisyklėmis.';
 
 // Proof of consent: one row per acceptance, plus the current version on the user row.
+// The visitor's address. gang.lt sits behind Hostinger's CDN (server: hcdn), so REMOTE_ADDR can be the
+// CDN's own server; the CDN passes the visitor's address first in X-Forwarded-For. Only used as consent
+// metadata, never for access decisions.
+function client_ip(): string
+{
+    $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+    $first = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
+    return substr(filter_var($first, FILTER_VALIDATE_IP) ? $first : $remote, 0, 45);
+}
+
 function record_consent(int $userId): void
 {
     $now = now();
@@ -48,7 +58,7 @@ function record_consent(int $userId): void
         'user_id' => $userId,
         'version' => TERMS_VERSION,
         'accepted_at' => $now,
-        'ip' => substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45),
+        'ip' => client_ip(),
         'user_agent' => mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255),
     ]);
     sql('UPDATE users SET terms_version = ?, terms_accepted_at = ? WHERE id = ?', [TERMS_VERSION, $now, $userId]);

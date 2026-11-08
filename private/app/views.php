@@ -155,9 +155,11 @@ function knives(string $class = 'gk'): string
 {
     $k = '<path d="M7.5 10.2H20.5C22.5 10.2 23.2 11 23 12C21.8 13.6 18 14.6 7.5 14.6Z"/><rect x="1" y="10.9" width="6.2" height="3" rx="1"/>';
     $b = 'transform="translate(24 0) scale(-1 1) rotate(45 12 12)"';
+    static $n = 0;
+    $id = 'gk-m'.(++$n > 1 ? $n : '');
     return '<svg class="'.$class.'" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
-        .'<mask id="gk-m" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><g '.$b.' fill="#000" stroke="#000" stroke-width="2.2" stroke-linejoin="round">'.$k.'</g></mask>'
-        .'<g mask="url(#gk-m)"><g transform="rotate(45 12 12)">'.$k.'</g></g><g '.$b.'>'.$k.'</g></svg>';
+        .'<mask id="'.$id.'" maskUnits="userSpaceOnUse" x="0" y="0" width="24" height="24"><rect width="24" height="24" fill="#fff"/><g '.$b.' fill="#000" stroke="#000" stroke-width="2.2" stroke-linejoin="round">'.$k.'</g></mask>'
+        .'<g mask="url(#'.$id.')"><g transform="rotate(45 12 12)">'.$k.'</g></g><g '.$b.'>'.$k.'</g></svg>';
 }
 
 function stars(?float $avg, int $count): string
