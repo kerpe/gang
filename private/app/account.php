@@ -540,7 +540,7 @@ function manager_dashboard(array $u): string
             $waiting[] = [$r, $n];
         }
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : '<p class="meta wait">Kandidatūrų dar negauta</p>';
-        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
+        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a> <a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
     }
     $openIds = array_column($open, 'id') ?: [0];
     $earlier = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND r.id NOT IN (".implode(',', array_map('intval', $openIds)).') ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
