@@ -253,7 +253,7 @@ function request_card(array $r, string $extra = '', bool $goodTag = true): strin
         .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p></div></div>'
         .$pay
         .'<p class="tags">'.kind_tag($r['kind']).$good.'</p>'
-        .'<div class="card-when"><div><strong>'.e($when).'</strong>'
+        .'<div class="card-when"><div><strong>'.e(mb_strtoupper(mb_substr($when, 0, 1)).mb_substr($when, 1)).'</strong>'
         .($r['hours'] !== '' ? '<span class="meta">'.e($r['hours']).'</span>' : '')
         .($soon !== '' ? '<span class="starts">'.e($soon).'</span>' : '').'</div></div></a>'.$extra.'</div>';
 }
