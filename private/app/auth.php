@@ -57,6 +57,39 @@ function profile_complete(array $u): bool
 const LOGIN_CODES_PER_IP_HOUR = 10;
 const LOGIN_CODES_PER_IP_DAY = 30;
 
+// How many of the newest unexpired codes for one address still work. Asking for a code again
+// (or a double click on "Siųsti kodą") sends a second email, and the person often types the code
+// from the first one, so it has to keep working. A wrong guess counts against every live code,
+// so there are still at most 5 guesses before a new code is needed.
+const LOGIN_CODES_LIVE = 3;
+const LOGIN_CODE_TRIES = 5;
+
+// The code input: digits only, so a pasted code with spaces or a line break still fits.
+function login_code_input(): string
+{
+    return '<input name="code" inputmode="numeric" autocomplete="one-time-code" required autofocus class="code"'
+        .' oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,6)">';
+}
+
+// Checks a typed code against $key's live codes: 'ok' (the codes are then used up), 'wrong' or 'expired'.
+function check_login_code(string $key, string $typed): string
+{
+    $code = preg_replace('/\D/', '', $typed);
+    $rows = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? AND attempts < ? ORDER BY id DESC LIMIT '.LOGIN_CODES_LIVE,
+        [$key, now(), LOGIN_CODE_TRIES])->fetchAll();
+    if (!$rows) {
+        return 'expired';
+    }
+    foreach ($rows as $row) {
+        if (strlen($code) === 6 && hash_equals($row['code_hash'], hash('sha256', $key.$code))) {
+            sql('DELETE FROM login_codes WHERE email = ?', [$key]);
+            return 'ok';
+        }
+    }
+    sql('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at > ?', [$key, now()]);
+    return 'wrong';
+}
+
 function login_codes_from_ip(string $ipHash, int $seconds): int
 {
     return (int) sql('SELECT COUNT(*) FROM login_codes WHERE ip_hash = ? AND created_at > ?', [$ipHash, date('Y-m-d H:i:s', time() - $seconds)])->fetchColumn();
@@ -133,7 +166,7 @@ function login_page(): never
             : 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų prisijungimo kodą.',
     };
     page($title, '<section class="wrap narrow"><h1>'.$title.'</h1><p class="lead">'.$lead.'</p>'
-        .'<form method="post" class="form" novalidate>'.csrf_field()
+        .'<form method="post" class="form" novalidate'.ONE_SUBMIT.'>'.csrf_field()
         .'<label>El. paštas <input type="email" name="email" value="'.e($email).'" autocomplete="email" inputmode="email" required autofocus>'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
         .($kind !== '' ? consent_field($termsError) : '')
         .'<button class="btn">Siųsti kodą</button></form></section>', ['noindex' => true]);
@@ -149,15 +182,12 @@ function login_code_page(): never
     $error = '';
     if (is_post()) {
         check_csrf();
-        $code = preg_replace('/\D/', '', input('code'));
-        $row = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? ORDER BY id DESC LIMIT 1', [$email, now()])->fetch();
-        if (!$row || $row['attempts'] >= 5) {
+        $check = check_login_code($email, input('code'));
+        if ($check === 'expired') {
             $error = 'Kodas nebegalioja. Paprašykite naujo kodo.';
-        } elseif (!hash_equals($row['code_hash'], hash('sha256', $email.$code))) {
-            sql('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [$row['id']]);
+        } elseif ($check === 'wrong') {
             $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';
         } else {
-            sql('DELETE FROM login_codes WHERE email = ?', [$email]);
             $user = sql('SELECT * FROM users WHERE email = ?', [$email])->fetch();
             if ($user && $user['blocked']) {
                 $error = 'Ši paskyra užblokuota. Jei manote, kad tai klaida, susisiekite su mumis.';
@@ -181,8 +211,8 @@ function login_code_page(): never
         }
     }
     page('Įveskite kodą', '<section class="wrap narrow"><h1>Patikrinkite el. paštą</h1><p class="lead">Išsiuntėme 6 skaitmenų kodą adresu <strong>'.e($email).'</strong>. Jei laiško nematote, patikrinkite brukalo („Spam“) aplanką.</p>'
-        .'<form method="post" class="form" novalidate>'.csrf_field()
-        .'<label>Kodas <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" pattern="[0-9 ]*" required autofocus class="code">'.($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
+        .'<form method="post" class="form" novalidate'.ONE_SUBMIT.'>'.csrf_field()
+        .'<label>Kodas '.login_code_input().($error ? '<span class="err">'.e($error).'</span>' : '').'</label>'
         .'<button class="btn">Prisijungti</button></form><p><a href="/prisijungti">Siųsti kodą iš naujo arba pakeisti el. paštą</a></p></section>', ['noindex' => true]);
 }
 
