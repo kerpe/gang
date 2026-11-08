@@ -85,7 +85,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=72">
+<link rel="stylesheet" href="/style.css?v=74">
 $head
 </head>
 <body$bodyClass>
@@ -197,8 +197,6 @@ function pay_parts(string $pay): ?array
 // onsubmit for forms that must not be sent twice (a double click would send a second login code).
 const ONE_SUBMIT = ' onsubmit="if(this.dataset.sent)return false;this.dataset.sent=1"';
 
-const MONTHS_SHORT = ['', 'Saus', 'Vas', 'Kov', 'Bal', 'Geg', 'Birž', 'Liep', 'Rugp', 'Rugs', 'Spal', 'Lapkr', 'Gruod'];
-
 // "Šiandien", "Rytoj", "Po 3 d." for work starting within a week; '' otherwise.
 function starts_in(string $date): string
 {
@@ -250,13 +248,12 @@ function request_card(array $r, string $extra = '', bool $goodTag = true): strin
         $first = array_key_first(request_needs($r)) ?? $first;
     }
     $soon = $r['kind'] !== 'nuolat' ? starts_in($first) : '';
-    $cal = '<span class="cal k-'.e($r['kind']).'" aria-hidden="true"><b>'.MONTHS_SHORT[(int) substr($first, 5, 2)].'</b><span>'.(int) substr($first, 8, 2).'</span></span>';
     return '<div class="card job-card"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
         .'<div class="card-head">'.$logo.'<div><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
         .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p></div></div>'
         .$pay
         .'<p class="tags">'.kind_tag($r['kind']).$good.'</p>'
-        .'<div class="card-when">'.$cal.'<div><strong>'.e($when).'</strong>'
+        .'<div class="card-when"><div><strong>'.e($when).'</strong>'
         .($r['hours'] !== '' ? '<span class="meta">'.e($r['hours']).'</span>' : '')
         .($soon !== '' ? '<span class="starts">'.e($soon).'</span>' : '').'</div></div></a>'.$extra.'</div>';
 }
