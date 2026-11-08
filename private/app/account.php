@@ -589,7 +589,6 @@ function manager_dashboard(array $u): string
         .' WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll());
     $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'manager', (bool) $c['reviewed']), $contracts));
     // No "Mano komanda" section here: the team is shown where it is used, in the new search form (Vilius 2026-11-08: redundant on /mano).
-    $teamCount = count(team_members((int) $u['id']));
     $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
     $toReview = array_values(array_filter($contracts, fn ($c) => !$c['reviewed'] && $c['start_date'] <= today()));
     $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
@@ -605,7 +604,6 @@ function manager_dashboard(array $u): string
         ['Aktyvios paieškos', (string) count($open), '/mano/paieskos'],
         ['Laukia sprendimo', (string) $candidates, $waiting ? '/darbas/'.(int) $waiting[0][0]['id'] : ''],
         ['Artimiausi darbai', (string) count($upcoming), '#kontraktai'],
-        ['Komanda', (string) $teamCount, '#kviesti'],
     ]);
     return (manager_verified($u) ? next_step(...$next) : verification_note()).$tiles.$aboutTip
         .($next[3] !== '/poreikis/naujas' ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Paskelbti paiešką</a></p>' : '')

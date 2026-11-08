@@ -108,6 +108,9 @@ const CANCEL_REASONS = [
 ];
 // After the work ends, the employer can mark a no-show for this many days.
 const NO_SHOW_DAYS = 7;
+// "Mano komanda" (team links, personal invitations to the team, "Pirmiausia pasiūlyti komandai"):
+// switched off for the first version (Vilius 2026-11-08). The data stays; true brings it all back.
+const TEAM_ENABLED = false;
 // Team first: other workers get the request this many hours after the team, unless it is filled by then.
 const TEAM_FIRST_HOURS = ['trumpai' => 12, 'sezonas' => 24, 'nuolat' => 24];
 // A job that starts within this many days counts as urgent: listed and emailed first,
