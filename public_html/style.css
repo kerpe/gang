@@ -981,9 +981,6 @@ table.data td.actions form + form { margin-left: 6px; }
 .msg-time { display: block; margin-top: 3px; font-size: .68rem; color: var(--muted); text-align: right; }
 .msg.mine { align-self: flex-end; background: var(--lime); border-color: var(--lime); color: var(--lime-ink); border-radius: 16px 16px 4px 16px; }
 .msg.mine .msg-time { color: rgba(21,21,21,.6); }
-.chat-suggest { display: block; width: calc(100% - 32px); margin: 0 16px 10px; text-align: left; font: inherit; font-size: .9rem; color: var(--ink); background: rgba(216,255,54,.06); border: 1px dashed rgba(216,255,54,.6); border-radius: 12px; padding: 10px 14px; cursor: pointer; line-height: 1.4; }
-.chat-suggest span { display: block; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--lime); margin-bottom: 3px; }
-.chat-suggest:hover { background: rgba(216,255,54,.12); border-style: solid; }
 .chat-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--line); background: var(--bg); }
 .chat-form textarea { flex: 1; resize: none; min-height: 44px; max-height: 160px; border-radius: 22px; padding: 11px 16px; line-height: 1.4; margin: 0; }
 .chat-send { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center; background: var(--lime); color: var(--lime-ink); cursor: pointer; transition: transform .15s; }
