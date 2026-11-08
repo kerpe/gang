@@ -95,7 +95,6 @@ match (true) {
     $is('/pokalbis/(-?\d+)') => chat_link_page((int) $m[1]),
     $is('/darbas/(\d+)/skelbti') && $post => release_now_action((int) $m[1]),
     $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),
-    $path === '/komanda/kviesti' && $post => team_mail_action(),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
     $is('/atsisakyti/(\d+)/([0-9a-f]{32})') => unsubscribe_page((int) $m[1], $m[2]),

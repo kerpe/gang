@@ -95,7 +95,7 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
             'facts' => $facts,
             'note' => $noteBlock,
             'body' => $reopened
-                ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus. Paieškos puslapyje galite asmeniškai pakviesti savo komandos narius.'
+                ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus.'.(TEAM_ENABLED ? ' Paieškos puslapyje galite asmeniškai pakviesti savo komandos narius.' : '')
                 : 'Jei reikalingas pakaitinis darbuotojas, paskelbkite naują paiešką. Forma bus užpildyta pagal šį darbą.',
             'cta' => $reopened ? ['Peržiūrėti paiešką', url('/darbas/'.$c['request_id'])] : ['Rasti pakaitinį darbuotoją', url('/poreikis/naujas?pagal='.(int) $c['request_id'])],
         ]));

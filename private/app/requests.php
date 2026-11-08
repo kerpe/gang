@@ -585,7 +585,7 @@ function request_form_page(): never
         }
     }
     $venueData .= " data-guide='".e(json_encode($guide, JSON_UNESCAPED_UNICODE))."'";
-    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką, pažymėti jūsų komandos nariai gaus asmeninį kvietimą. Patikrinkite duomenis ir paskelbkite.</p>'
+    $repeat = $replacing ? '<p class="notice tip">Pakaitinio darbuotojo paieška rytojui. Forma užpildyta pagal ankstesnę paiešką'.(TEAM_ENABLED ? ', pažymėti jūsų komandos nariai gaus asmeninį kvietimą' : '').'. Patikrinkite duomenis ir paskelbkite.</p>'
         : ($from && (int) $from['manager_id'] === (int) $u['id'] ? '<p class="notice tip">Forma užpildyta pagal ankstesnę paiešką. Pažymėkite naujas datas ir, jei reikia, pakoreguokite kitus laukus.</p>' : '');
     $step = !sql('SELECT 1 FROM requests r JOIN venues v ON v.id = r.venue_id WHERE v.manager_id = ? LIMIT 1', [$u['id']])->fetchColumn() ? onboarding_step(3) : '';
     page('Nauja paieška', '<section class="wrap request-wrap">'.$step.'<h1>Kokio darbuotojo ieškote?</h1>'.$repeat.($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
@@ -1856,7 +1856,7 @@ function worker_profile_page(int $id): never
     if (!sees_worker_profile($u, $id)) {
         flash(match (true) {
             $u['kind'] !== 'manager' => 'Darbuotojų profilius gali peržiūrėti tik darbdaviai.',
-            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką arba prisijungs prie jūsų komandos.',
+            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką'.(TEAM_ENABLED ? ' arba prisijungs prie jūsų komandos.' : '.'),
         });
         redirect('/mano');
     }

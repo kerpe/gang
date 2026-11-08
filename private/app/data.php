@@ -495,6 +495,9 @@ function sees_worker_profile(?array $u, int $workerId): bool
 
 function team_members(int $managerId): array
 {
+    if (!TEAM_ENABLED) {
+        return [];
+    }
     $worked = sql("SELECT u.id, u.name, u.photo, u.roles, u.email, u.notify, COUNT(c.id) AS jobs, MAX(r.start_date) AS last
         FROM contracts c JOIN venues v ON v.id = c.venue_id JOIN requests r ON r.id = c.request_id JOIN users u ON u.id = c.worker_id
         WHERE v.manager_id = ? AND u.blocked = 0 AND c.cancelled_at IS NULL
