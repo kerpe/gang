@@ -522,7 +522,7 @@ function join_team(int $managerId, int $workerId): bool
             'lead' => '**'.first_name($worker['name']).'** priėmė jūsų kvietimą ir prisijungė prie jūsų komandos GANG.',
             'facts' => array_filter(['Pareigos' => labels($worker['roles'], ROLES), 'Miestai' => labels($worker['cities'], CITIES)]),
             'body' => 'Skelbdami paiešką, šį žmogų galėsite pakviesti asmeniškai, o pažymėję „Pirmiausia pasiūlyti komandai“ pasiūlymą jūsų komanda gaus anksčiau nei kiti darbuotojai.',
-            'cta' => ['Mano GANG', url('/mano')],
+            'cta' => ['Mano profilis', url('/mano')],
         ]);
     }
     return true;

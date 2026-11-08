@@ -416,7 +416,7 @@ function request_form_page(): never
         redirect('/darboviete/nauja');
     }
     if (!manager_verified($u)) {
-        page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į Mano GANG</a></p></section>', ['noindex' => true]);
+        page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į profilį</a></p></section>', ['noindex' => true]);
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => '', 'team_first' => ''];
@@ -1775,10 +1775,10 @@ function decide_response_action(int $responseId, bool $accept): never
             'Kontaktas' => $u['name'],
         ],
         'body' => [
-            'Darbo detales aptarkite su darbdaviu GANG žinutėse: jas rasite skiltyje „Mano GANG“. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
+            'Darbo detales aptarkite su darbdaviu GANG žinutėse: jas rasite skiltyje „Mano profilis“. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
             '**Atvykimo patvirtinimas.** '.shift_notice(),
         ],
-        'cta' => ['Mano GANG', url('/mano')],
+        'cta' => ['Mano profilis', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
     $contact = ' Su '.first_name($worker['name']).' galite susirašinėti GANG žinutėse.';
