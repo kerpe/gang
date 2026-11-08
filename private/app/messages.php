@@ -16,22 +16,46 @@ const CHAT_MAIL_HOURS = 12;
 // "Dabar pokalbyje": the other side's open chat polled within this many seconds (it polls every 8 s).
 const CHAT_HERE_SECONDS = 25;
 
-// GANG's own emoji: put into a message as "[gang:kava]" (alone it shows as a sticker) or on a message as a reaction.
-// Icons are 24×24 line drawings in currentColor; "chef" is the GANG knives.
+// GANG's own emoji: kitchen and bar symbols that speak for themselves (no captions in the chat).
+// Put into a message as "[gang:kava]" (alone it shows as a sticker) or on a message as a reaction.
+// The name is only for screen readers, the tooltip and emails. Icons are 24×24 line drawings in
+// currentColor; "chef" is the GANG knives.
 const GANG_EMOJI = [
-    'chef' => ['Yes, chef!', ''],
-    'dega' => ['Viskas dega', '<path d="M12 3c.9 3.3 5.2 5.4 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-2.6 1.4-4.2 2.6-5.3.3 1.8 1.2 2.9 2.4 3.3C11.3 9 11 6 12 3z"/><path d="M12 20.4c-1.5 0-2.4-1.1-2.4-2.4 0-1.6 1.4-2.4 2.4-3.6 1 1.2 2.4 2 2.4 3.6 0 1.3-.9 2.4-2.4 2.4z"/>'],
-    'baigesi' => ['86: baigėsi', '<circle cx="12" cy="12" r="9"/><text x="12" y="15.6" text-anchor="middle" font-size="10" font-weight="800" font-family="system-ui, sans-serif" fill="currentColor" stroke="none">86</text>'],
-    'veluoju' => ['Vėluoju 5 min. (tikrai 5)', '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 1.8M9.5 2.8h5M12 2.8V5M19.2 5.6l1.4 1.4"/>'],
-    'kava' => ['Be kavos nekalbu', '<path d="M4.5 9.5h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M15.5 10.5h1.3a2.6 2.6 0 0 1 0 5.2h-1.6M8.5 3.5c-.9 1.1.9 2.1 0 3.4M12 3.5c-.9 1.1.9 2.1 0 3.4M3.5 21h14"/>'],
-    'leksciu' => ['Lėkštės pačios neišsineš', '<ellipse cx="12" cy="8" rx="9" ry="3"/><path d="M3 8v2.6c0 1.7 4 3 9 3s9-1.3 9-3V8M3 12.4V15c0 1.7 4 3 9 3s9-1.3 9-3v-2.6"/><path d="M8 20.5h8"/>'],
-    'arbatpinigiai' => ['Arbatpinigiai? Juokauji', '<path d="M7.5 6.5h9v2.2a2.4 2.4 0 0 1 1.5 2.2v7.6a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2v-7.6a2.4 2.4 0 0 1 1.5-2.2z"/><path d="M7.5 8.7h9"/><circle cx="12" cy="14.6" r="2.4"/><path d="M12 2.5v2.2"/>'],
-    'service' => ['Service!', '<path d="M3 19.5h18M5 17a7 7 0 0 1 14 0v2.5H5z"/><path d="M12 10V8.4"/><circle cx="12" cy="6.8" r="1.6"/>'],
-    'maciau' => ['Mačiau', '<circle cx="7.5" cy="12" r="4"/><circle cx="16.5" cy="12" r="4"/><circle cx="9.6" cy="12.6" r="1.5" fill="currentColor" stroke="none"/><circle cx="18.6" cy="12.6" r="1.5" fill="currentColor" stroke="none"/><path d="M3.5 6.6l5-1.2M20.5 6.6l-5-1.2"/>'],
-    'islaiste' => ['Kas išlaistė?', '<path d="M12 3s-4.2 4.6-4.2 7.6a4.2 4.2 0 0 0 8.4 0C16.2 7.6 12 3 12 3z"/><path d="M3.5 19.5c2.3-1.6 5.3-1.2 8.5-.6s6 .4 8.5-.9"/><path d="M14 18.2l1.6 2.5"/>'],
-    'dar' => ['Dar vieną?', '<path d="M4 4.5h16l-8 8.5z"/><path d="M12 13v6.5M8 19.5h8M15.2 2.5l-4 7"/><circle cx="10.6" cy="8.2" r="1.2" fill="currentColor" stroke="none"/>'],
-    'ledas' => ['Ledo neliko', '<path d="M12 3.5l7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7z"/><path d="M4.5 7.7 12 12l7.5-4.3M12 12v8.5"/><path d="M8 21.5v.01M16 21.5v.01" stroke-width="2.4"/>'],
+    'chef' => ['GANG peiliai', ''],
+    'kepure' => ['Virėjo kepurė', '<path d="M7 14.5a3.7 3.7 0 0 1-1.1-7.2A4.2 4.2 0 0 1 12 4.3a4.2 4.2 0 0 1 6.1 3 3.7 3.7 0 0 1-1.1 7.2"/><path d="M7 13v6.5h10V13M7 16.6h10"/>'],
+    'dega' => ['Ugnis', '<path d="M12 3c.9 3.3 5.2 5.4 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-2.6 1.4-4.2 2.6-5.3.3 1.8 1.2 2.9 2.4 3.3C11.3 9 11 6 12 3z"/><path d="M12 20.4c-1.5 0-2.4-1.1-2.4-2.4 0-1.6 1.4-2.4 2.4-3.6 1 1.2 2.4 2 2.4 3.6 0 1.3-.9 2.4-2.4 2.4z"/>'],
+    'keptuve' => ['Keptuvė', '<circle cx="9.5" cy="13.5" r="6.5"/><path d="M15.2 10.3l5.3-3a1.2 1.2 0 0 1 1.2 2.1l-5.3 3"/><path d="M7 12.2c.3-1.6 2.2-2.3 3.5-1.4 1.6-.4 2.8 1.2 2.1 2.7.5 1.5-.9 2.9-2.4 2.4-1.2 1-3.1.3-3.3-1.2-1-.6-.9-2.1.1-2.5z"/><circle cx="9.7" cy="13.6" r="1.1" fill="currentColor" stroke="none"/>'],
+    'service' => ['Patiekalas', '<path d="M3 19.5h18M5 17a7 7 0 0 1 14 0v2.5H5z"/><path d="M12 10V8.4"/><circle cx="12" cy="6.8" r="1.6"/>'],
+    'irankiai' => ['Stalo įrankiai', '<path d="M6 3v5.2a2.6 2.6 0 0 0 5.2 0V3M8.6 3v18"/><path d="M18 21V3c-2.3 1.4-3.3 4.2-3.3 7.8V13H18"/>'],
+    'pica' => ['Pica', '<path d="M3.8 7.2c5.3-2.9 11.1-2.9 16.4 0L12 21.2z"/><path d="M5.3 9.8c4.4-2 8.9-2 13.4 0"/><circle cx="10" cy="12.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="14.2" cy="13.2" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="16.6" r="1.1" fill="currentColor" stroke="none"/>'],
+    'laikmatis' => ['Laikmatis', '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.6 1.8M9.5 2.8h5M12 2.8V5M19.2 5.6l1.4 1.4"/>'],
+    'kava' => ['Kava', '<path d="M4.5 9.5h11v4.5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5z"/><path d="M15.5 10.5h1.3a2.6 2.6 0 0 1 0 5.2h-1.6M8.5 3.5c-.9 1.1.9 2.1 0 3.4M12 3.5c-.9 1.1.9 2.1 0 3.4M3.5 21h14"/>'],
+    'alus' => ['Alus', '<path d="M5 8.5v10A1.5 1.5 0 0 0 6.5 20h7a1.5 1.5 0 0 0 1.5-1.5v-10"/><path d="M15 10.5h2.2a2 2 0 0 1 2 2v2.6a2 2 0 0 1-2 2H15M8.3 11.5v5.5M11.7 11.5v5.5"/><path d="M4.4 8.6a2.4 2.4 0 0 1 2-3.6 3 3 0 0 1 5.1-1 2.6 2.6 0 0 1 4.1 2.2 1.8 1.8 0 0 1-.5 2.4z"/>'],
+    'vynas' => ['Vynas', '<path d="M7.2 3h9.6l.3 4.6a5.1 5.1 0 0 1-10.2 0z"/><path d="M7.1 7.5h9.8M12 12.8V20.5M8.5 20.5h7"/>'],
+    'dar' => ['Kokteilis', '<path d="M4 4.5h16l-8 8.5z"/><path d="M12 13v6.5M8 19.5h8M15.2 2.5l-4 7"/><circle cx="10.6" cy="8.2" r="1.2" fill="currentColor" stroke="none"/>'],
+    'seikeris' => ['Šeikeris', '<path d="M11 2.6h2M10.2 4.6h3.6l.6 3.4H9.6z"/><path d="M8.7 8h6.6l-1.1 12.3a1.2 1.2 0 0 1-1.2 1.1h-2a1.2 1.2 0 0 1-1.2-1.1z"/><path d="M9.1 12.2h5.8"/>'],
+    'butelis' => ['Butelis', '<path d="M10.5 2.5h3v4.3c0 1.1 2.7 2 2.7 4.8v8.5a1.4 1.4 0 0 1-1.4 1.4H9.2a1.4 1.4 0 0 1-1.4-1.4v-8.5c0-2.8 2.7-3.7 2.7-4.8z"/><path d="M7.8 13h8.4v4.6H7.8M10.5 4.5h3"/>'],
+    'citrina' => ['Citrina', '<circle cx="12" cy="12" r="8.7"/><circle cx="12" cy="12" r="6.4"/><path d="M12 5.6v12.8M6.5 8.8l11 6.4M17.5 8.8l-11 6.4"/>'],
+    'ledas' => ['Ledas', '<path d="M12 3.5l7.5 4.2v8.6L12 20.5l-7.5-4.2V7.7z"/><path d="M4.5 7.7 12 12l7.5-4.3M12 12v8.5"/><path d="M8 21.5v.01M16 21.5v.01" stroke-width="2.4"/>'],
 ];
+
+// Codes of the first set (PR #102) that are no longer in the panel: old messages and reactions
+// show them as the nearest new symbol.
+const GANG_EMOJI_OLD = [
+    'baigesi' => 'butelis',
+    'veluoju' => 'laikmatis',
+    'leksciu' => 'service',
+    'arbatpinigiai' => 'irankiai',
+    'maciau' => 'chef',
+    'islaiste' => 'vynas',
+];
+
+// A code from a message or reaction → the emoji to draw (null if unknown).
+function gang_emoji_code(string $code): ?string
+{
+    $code = GANG_EMOJI_OLD[$code] ?? $code;
+    return isset(GANG_EMOJI[$code]) ? $code : null;
+}
 
 const CHAT_SMILE = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M8.6 14.2c.9 1.2 2 1.8 3.4 1.8s2.5-.6 3.4-1.8"/><path d="M9.2 9.6v.01M14.8 9.6v.01" stroke-width="2.4"/></svg>';
 
@@ -46,7 +70,7 @@ function gang_emoji_icon(string $code): string
 // "[gang:kava]" → "kava" when the message is one GANG emoji sent as a sticker.
 function sticker_code(string $body): ?string
 {
-    return preg_match('/^\[gang:([a-z0-9]+)\]$/', $body, $m) && isset(GANG_EMOJI[$m[1]]) ? $m[1] : null;
+    return preg_match('/^\[gang:([a-z0-9]+)\]$/', $body, $m) ? gang_emoji_code($m[1]) : null;
 }
 
 // The message as plain text (emails): a sticker becomes its caption, an emoji in the text "(caption)".
@@ -56,7 +80,7 @@ function chat_plain(string $body): string
     if ($code) {
         return GANG_EMOJI[$code][0];
     }
-    return preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => isset(GANG_EMOJI[$m[1]]) ? '('.GANG_EMOJI[$m[1]][0].')' : $m[0], $body);
+    return preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => ($k = gang_emoji_code($m[1])) ? '('.GANG_EMOJI[$k][0].')' : $m[0], $body);
 }
 
 // One GANG emoji inside the text of a message or in the field.
@@ -68,7 +92,7 @@ function gang_emoji_inline(string $code): string
 // The message text as HTML: GANG emoji drawn where they were put, line breaks kept.
 function chat_body_html(string $body): string
 {
-    $html = preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => isset(GANG_EMOJI[$m[1]]) ? gang_emoji_inline($m[1]) : $m[0], e($body));
+    $html = preg_replace_callback('/\[gang:([a-z0-9]+)\]/', fn ($m) => ($k = gang_emoji_code($m[1])) ? gang_emoji_inline($k) : $m[0], e($body));
     return nl2br($html);
 }
 
@@ -215,7 +239,9 @@ function chat_reactions(int $contractId): array
 {
     $out = [];
     foreach (sql('SELECT message_id, user_id, code FROM message_reactions WHERE contract_id = ? ORDER BY id', [$contractId])->fetchAll() as $r) {
-        $out[(int) $r['message_id']][$r['code']][] = (int) $r['user_id'];
+        if ($k = gang_emoji_code($r['code'])) {
+            $out[(int) $r['message_id']][$k][] = (int) $r['user_id'];
+        }
     }
     return $out;
 }
@@ -266,7 +292,7 @@ function chat_list_html(array $c, int $userId, array $messages): string
         }
         $code = sticker_code((string) $m['body']);
         $body = $code
-            ? '<span class="sticker-art">'.gang_emoji_icon($code).'</span><p>'.e(GANG_EMOJI[$code][0]).'</p>'
+            ? '<span class="sticker-art" role="img" aria-label="'.e(GANG_EMOJI[$code][0]).'" title="'.e(GANG_EMOJI[$code][0]).'">'.gang_emoji_icon($code).'</span>'
             : '<p>'.chat_body_html((string) $m['body']).'</p>';
         $only = !$code && chat_emoji_only((string) $m['body']);
         $chips = '';
@@ -310,7 +336,7 @@ function chat_emoji_panel(): string
 {
     $out = '';
     foreach (GANG_EMOJI as $code => [$label]) {
-        $out .= '<button type="button" data-emoji="'.e($code).'" title="'.e($label).'">'.gang_emoji_icon($code).'<span>'.e($label).'</span></button>';
+        $out .= '<button type="button" data-emoji="'.e($code).'" title="'.e($label).'" aria-label="'.e($label).'">'.gang_emoji_icon($code).'</button>';
     }
     return '<div class="emoji-panel" role="menu" hidden><p class="emoji-head"><span class="emoji-for">GANG emoji</span><button type="button" class="emoji-close" aria-label="Uždaryti">×</button></p><div class="emoji-grid">'.$out.'</div></div>';
 }
@@ -494,7 +520,7 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     });
     document.addEventListener('click', function (e) { if (!panel.hidden && !panel.contains(e.target) && e.target !== opener && !opener.contains(e.target)) closePanel(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) { var o = opener; closePanel(); o.focus(); } });
-    list.addEventListener('scroll', closePanel);
+    list.addEventListener('scroll', function () { if (target) closePanel(); });
   }
   function poll() {
     if (document.hidden) return;
@@ -614,7 +640,7 @@ function message_react_action(int $id): never
     }
     $had = sql('SELECT code FROM message_reactions WHERE message_id = ? AND user_id = ?', [$msgId, $u['id']])->fetchColumn();
     sql('DELETE FROM message_reactions WHERE message_id = ? AND user_id = ?', [$msgId, $u['id']]);
-    if ($had !== $code) {
+    if ($had === false || gang_emoji_code((string) $had) !== $code) {
         insert('message_reactions', ['contract_id' => $id, 'message_id' => $msgId, 'user_id' => $u['id'], 'code' => $code, 'created_at' => now()]);
     }
     $messages = chat_messages($id);
