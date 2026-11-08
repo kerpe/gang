@@ -939,6 +939,9 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     $mine = sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetch();
     // A withdrawn application can be sent again while the request is open.
     $again = $mine && $mine['status'] === 'withdrawn' && $isOpen;
+    if ($mine && $mine['status'] === 'sent' && $mine['recheck_at'] && $isOpen) {
+        return recheck_panel($r);
+    }
     if ($mine && !$again) {
         return match ($mine['status']) {
             'accepted' => accepted_panel($r, $u),
@@ -948,6 +951,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
             default => '<div class="panel"><h2>Jūsų atsiliepimas išsiųstas</h2>'
                 .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
                 .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Darbdaviui patvirtinus jūsų kandidatūrą, el. paštu gausite jo kontaktus ir galėsite susirašinėti GANG pokalbyje.</p>'
+                .($isOpen ? response_note_form($r, $mine) : '')
                 .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atšaukti atsiliepimą', [], 'btn small ghost', 'Ar tikrai norite atšaukti atsiliepimą?').'</div>',
         };
     }
@@ -969,10 +973,21 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .days_fieldset($r)
-        .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
+        .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
+}
+
+// The employer changed the dates or pay after the worker applied: "Tinka" or "Atsiimti kandidatūrą".
+function recheck_panel(array $r): string
+{
+    return '<div class="panel recheck" id="atsiliepti"><h2>Pasikeitė darbo sąlygos</h2>'
+        .'<p>Po jūsų kandidatūros darbdavys pakeitė šio darbo datas arba atlygį. Patvirtinkite, ar naujos sąlygos jums tinka. Kol to nepadarysite, darbdavys jūsų kandidatūros patvirtinti negalės.</p>'
+        .'<ul class="facts"><li><b>Kada</b>'.e(period($r)).'</li><li><b>Atlygis</b>'.e($r['pay']).'</li></ul>'
+        .'<form method="post" action="/darbas/'.(int) $r['id'].'/tinka" class="form">'.csrf_field().days_fieldset($r)
+        .'<div class="owner-actions"><button class="btn">Tinka, kandidatuoju</button></div></form>'
+        .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atsiimti kandidatūrą', [], 'btn small ghost', 'Ar tikrai norite atsiimti kandidatūrą?').'</div>';
 }
 
 // Longest list of single days a worker can tick; a longer job is picked by its date ranges.
@@ -1058,7 +1073,9 @@ function owner_panel(array $r, bool $isOpen): string
                 }
             }
         }
-        if (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
+        if ($s['status'] === 'sent' && $s['recheck_at']) {
+            $badges[] = '<span class="badge wait">Laukiama, kol patvirtins naujas sąlygas</span>';
+        } elseif (is_available((int) $s['worker_id'], $r['start_date'], $r['end_date'] ?: $r['start_date'])) {
             $badges[] = '<span class="badge on">Laisvas šiomis dienomis</span>';
         }
         if (isset(EXPERIENCE[(int) $s['experience']])) {
@@ -1067,7 +1084,7 @@ function owner_panel(array $r, bool $isOpen): string
         $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
         $buttons = $s['status'] === 'accepted'
             ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
-            : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small'))
+            : ($s['recheck_at'] ? '' : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small')))
                 .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
         // A confirmed worker: the chat with them right under their card.
         $chat = '';
@@ -1080,7 +1097,7 @@ function owner_panel(array $r, bool $isOpen): string
         }
         $list .= '<div class="responder'.($s['status'] === 'accepted' ? ' accepted' : '').'" id="kandidatas-'.(int) $s['id'].'">'.avatar(array_merge($s, ['id' => $s['worker_id']])).'<div class="who"><strong><a href="/darbuotojas/'.(int) $s['worker_id'].'">'.e(first_name($s['name'])).'</a></strong> '.stars($avg, $n)
             .'<p class="badges">'.implode('', $badges).'</p>'
-            .($s['note'] && $chat === '' ? '<p class="note">'.e($s['note']).'</p>' : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
+            .($chat === '' ? application_notes_html($s) : '').($s['about'] ? '<details><summary>Apie save</summary><p>'.nl2br(e($s['about'])).'</p></details>' : '')
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
@@ -1100,7 +1117,7 @@ function owner_panel(array $r, bool $isOpen): string
     $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
-        .'<div class="owner-actions">'.$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
+        .'<div class="owner-actions">'.($isOpen ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
 }
 
 // After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"
@@ -1139,6 +1156,190 @@ function keep_open_action(int $id): never
 }
 
 // The "Nauja kandidatūra" email links here: the employer signs in if needed and lands on that candidate in the job's list.
+// "Redaguoti": while a search is open the employer can correct its dates, pay and description.
+// Once a worker is confirmed the dates and pay stay as agreed and only the description can change.
+// Nobody is emailed while there are no candidates; candidates who already applied get one email
+// about new dates or pay and confirm them ("Tinka") before the employer can approve them.
+// An event's roles share their dates and description, so those change for every open role of the event.
+function request_edit_page(int $id): never
+{
+    $u = require_user('manager');
+    $r = find_request($id);
+    if (!$r || (int) $r['manager_id'] !== (int) $u['id']) {
+        not_found();
+    }
+    [$where, $params] = open_where();
+    $group = $r['event_id']
+        ? sql(REQUEST_SELECT." WHERE r.event_id = ? AND $where ORDER BY r.id", array_merge([$r['event_id']], $params))->fetchAll()
+        : sql(REQUEST_SELECT." WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchAll();
+    if (!in_array($id, array_map('intval', array_column($group, 'id')), true)) {
+        flash('Uždarytos ar pasibaigusios paieškos redaguoti negalima. Galite ją pakartoti su naujomis datomis.');
+        redirect('/darbas/'.$id);
+    }
+    $ids = implode(',', array_map('intval', array_column($group, 'id')));
+    $locked = (bool) sql("SELECT 1 FROM contracts WHERE request_id IN ($ids) AND cancelled_at IS NULL LIMIT 1")->fetchColumn();
+    $candidates = (int) sql("SELECT COUNT(*) FROM responses WHERE request_id IN ($ids) AND status = 'sent'")->fetchColumn();
+    // Days already past drop out of the form: only the days ahead can be changed.
+    $ahead = [];
+    foreach (request_ranges($r) as [$from, $to]) {
+        if ($r['kind'] === 'nuolat' || $to >= today()) {
+            $ahead[] = [$r['kind'] === 'nuolat' ? $from : max($from, today()), $to];
+        }
+    }
+    $oldDates = ranges_string($ahead);
+    preg_match('/^\d+(?:,\d+)?/', (string) $r['pay'], $m);
+    $oldPay = $m[0] ?? '';
+    $v = ['dates' => $oldDates, 'pay' => $oldPay, 'description' => ($r['hours'] !== '' ? 'Darbo laikas: '.$r['hours']."\n\n" : '').$r['description']];
+    $errors = [];
+    if (is_post()) {
+        check_csrf();
+        foreach ($v as $k => $_) {
+            $v[$k] = input($k);
+        }
+        $ranges = [];
+        if ($locked) {
+            $v['dates'] = $oldDates;
+            $v['pay'] = $oldPay;
+        } else {
+            $ranges = parse_ranges($v['dates']);
+            if (!$ranges) {
+                $errors['dates'] = 'Pažymėkite kalendoriuje bent vieną dieną, kada reikalingas darbuotojas.';
+            } elseif ($r['kind'] === 'nuolat') {
+                $ranges = [[$ranges[0][0], $ranges[0][0]]];
+            }
+            $v['dates'] = ranges_string($ranges) ?: $v['dates'];
+            if (!valid_pay($v['pay'])) {
+                $errors['pay'] = PAY_ERROR;
+            }
+        }
+        if (mb_strlen($v['description']) < 20 || mb_strlen($v['description']) > 3000) {
+            $errors['description'] = 'Nurodykite darbo laiką ir trumpai aprašykite darbo pobūdį bei pareigas (bent 20 simbolių).';
+        }
+        if (!$errors) {
+            $datesChanged = !$locked && $v['dates'] !== $oldDates;
+            $newPay = $locked ? $r['pay'] : pay_label(str_replace(',', '.', $v['pay']));
+            $payChanged = $newPay !== $r['pay'];
+            if ($datesChanged) {
+                // Cancelled contracts on the whole job keep the dates they were made for.
+                sql("UPDATE contracts SET start_date = (SELECT start_date FROM requests WHERE requests.id = contracts.request_id),
+                    end_date = (SELECT end_date FROM requests WHERE requests.id = contracts.request_id),
+                    dates = (SELECT dates FROM requests WHERE requests.id = contracts.request_id)
+                    WHERE request_id IN ($ids) AND start_date IS NULL");
+                sql("UPDATE requests SET start_date = ?, end_date = ?, dates = ? WHERE id IN ($ids)", [
+                    $ranges[0][0], end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, count($ranges) > 1 ? $v['dates'] : '',
+                ]);
+            }
+            sql("UPDATE requests SET description = ?, hours = '' WHERE id IN ($ids)", [$v['description']]);
+            sql('UPDATE requests SET pay = ? WHERE id = ?', [$newPay, $id]);
+            $asked = 0;
+            foreach ($group as $old) {
+                $mine = (int) $old['id'] === $id;
+                if ($datesChanged || ($payChanged && $mine)) {
+                    $asked += ask_to_recheck($old, find_request((int) $old['id']), $datesChanged, $payChanged && $mine);
+                }
+            }
+            flash(match (true) {
+                !$datesChanged && !$payChanged => 'Pakeitimai išsaugoti.',
+                $asked > 0 => 'Pakeitimai išsaugoti. Laišką gavo kandidatų: '.$asked.'. Jie turės patvirtinti, ar naujos sąlygos jiems tinka.',
+                default => 'Pakeitimai išsaugoti. Skelbime jau rodomos naujos sąlygos.',
+            });
+            redirect('/darbas/'.$id);
+        }
+    }
+    $role = ROLES[$r['role']] ?? '';
+    $event = count($group) > 1 ? ' Datos ir aprašymas pasikeis visoms šio renginio pareigoms.' : '';
+    $who = $locked
+        ? '<p class="notice tip">Šiai paieškai jau patvirtinote darbuotoją, todėl datos ir atlygis lieka tokie, dėl kurių susitarėte. Jei jie keičiasi, susitarkite su darbuotoju GANG pokalbyje. Aprašymą galite keisti.</p>'
+        : ($candidates
+            ? '<p class="notice tip">Kandidatūrų jau gauta: '.$candidates.'. Pakeitus datas ar atlygį, kandidatai gaus laišką ir turės patvirtinti, ar naujos sąlygos jiems tinka. Kol jie to nepadarys, jų kandidatūrų patvirtinti negalėsite.'.$event.'</p>'
+            : '<p class="notice ok">Kandidatūrų dar negauta, todėl pakeitimai bus išsaugoti be papildomų laiškų. Darbuotojai, atidarę skelbimą, matys atnaujintą informaciją.'.$event.'</p>');
+    $kind = $r['kind'] === 'nuolat' ? '<input type="radio" name="kind" value="nuolat" checked hidden>' : '';
+    $when = $locked
+        ? '<fieldset><legend>Kada reikalingas darbuotojas?</legend><p><b>'.e(period($r)).'</b></p></fieldset>'
+            .'<p><b>Atlygis į rankas:</b> '.e($r['pay']).'</p>'
+        : '<fieldset class="when"><legend>Kada reikalingas darbuotojas?</legend>'.$kind
+            .'<p class="hint when-hint" data-nuolat="Pažymėkite darbo pradžios dieną.">Spustelėkite dieną, kad pažymėtumėte vieną dieną. Spustelėjus kitą dieną, pažymimas laikotarpis nuo–iki. Pažymėtą dieną ar laikotarpį pašalinsite spustelėję jį dar kartą.</p>'
+            .'<div class="picker" data-min="'.today().'" data-max="'.availability_last_day().'"><noscript><p class="notice">Kalendoriui reikalingas „JavaScript“. Įjunkite jį naršyklėje.</p></noscript></div>'
+            .'<input type="hidden" name="dates" value="'.e($v['dates']).'">'.err($errors, 'dates').'</fieldset>'
+            .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?"><span aria-hidden="true">€/val.</span></span>'.err($errors, 'pay').'</label>';
+    page('Redaguoti paiešką', '<section class="wrap narrow request-edit"><p class="back"><a href="/darbas/'.$id.'">← Atgal į skelbimą</a></p>'
+        .'<h1>Redaguoti paiešką</h1><p class="meta">'.e($role.' · '.$r['venue_name'].', '.(CITIES[$r['city']] ?? '')).'</p>'.$who
+        .($errors ? '<p class="notice tip">Patikrinkite pažymėtus laukus.</p>' : '')
+        .'<form method="post" class="form" novalidate>'.csrf_field().$when
+        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required>'.e($v['description']).'</textarea>'.err($errors, 'description').'</label>'
+        .'<p class="hint">Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.</p>'
+        .'<div class="owner-actions"><button class="btn">Išsaugoti pakeitimus</button><a class="btn ghost" href="/darbas/'.$id.'">Atšaukti</a></div></form></section>'
+        .($locked ? '' : date_picker_script()), ['noindex' => true]);
+}
+
+// After new dates or pay: every waiting candidate of the request confirms the new terms again
+// (and picks the days again, the old days may be gone). Returns how many candidates were emailed.
+function ask_to_recheck(array $old, array $new, bool $dates, bool $pay): int
+{
+    $waiting = sql("SELECT s.id, w.email, w.name FROM responses s JOIN users w ON w.id = s.worker_id WHERE s.request_id = ? AND s.status = 'sent'", [$new['id']])->fetchAll();
+    if (!$waiting) {
+        return 0;
+    }
+    sql("UPDATE responses SET recheck_at = ?".($dates ? ", dates = ''" : '')." WHERE request_id = ? AND status = 'sent'", [now(), $new['id']]);
+    $role = ROLES[$new['role']] ?? '';
+    $what = $dates && $pay ? 'datas ir atlygį' : ($dates ? 'datas' : 'atlygį');
+    $facts = [];
+    if ($dates) {
+        $facts['Naujos datos'] = period($new);
+        $facts['Buvo'] = period($old);
+    }
+    if ($pay) {
+        $facts['Naujas atlygis'] = $new['pay'];
+        $facts[$dates ? 'Buvęs atlygis' : 'Buvo'] = $old['pay'];
+    }
+    foreach ($waiting as $w) {
+        send_mail($w['email'], 'Pasikeitė '.($dates && $pay ? 'darbo datos ir atlygis' : ($dates ? 'darbo datos' : 'atlygis')).': '.$role.' – '.$new['venue_name'], [
+            'kicker' => 'Pasikeitė darbo sąlygos',
+            'title' => $role,
+            'lead' => "**{$new['venue_name']}** pakeitė darbo pasiūlymo, į kurį atsiliepėte, $what. Patvirtinkite, ar naujos sąlygos jums tinka. Kol to nepadarysite, darbdavys jūsų kandidatūros patvirtinti negalės.",
+            'facts' => $facts,
+            'cta' => ['Peržiūrėti ir atsakyti', url('/darbas/'.(int) $new['id'].'#atsiliepti')],
+            'after' => 'Jei naujos sąlygos netinka, kandidatūrą galite atsiimti tame pačiame puslapyje.',
+        ]);
+    }
+    return count($waiting);
+}
+
+// The candidate's "Tinka" after the employer changed the dates or pay; the employer hears about it.
+function confirm_changes_action(int $id): never
+{
+    $u = require_user('worker');
+    check_csrf();
+    $r = find_request($id);
+    [$where, $params] = open_where();
+    if (!$r || !sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchColumn()) {
+        not_found();
+    }
+    $s = sql("SELECT * FROM responses WHERE request_id = ? AND worker_id = ? AND status = 'sent' AND recheck_at IS NOT NULL", [$id, $u['id']])->fetch();
+    if (!$s) {
+        redirect('/darbas/'.$id);
+    }
+    $days = posted_days($r);
+    if (!$days) {
+        flash('Pažymėkite bent vieną dieną, kurią galite dirbti.');
+        redirect('/darbas/'.$id.'#atsiliepti');
+    }
+    $dates = request_splittable($r) ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], days_ranges($days))) : '';
+    sql('UPDATE responses SET recheck_at = NULL, dates = ? WHERE id = ?', [$dates, $s['id']]);
+    $some = $dates !== '' && $days !== ranges_days(request_ranges($r));
+    $manager = sql('SELECT * FROM users WHERE id = ?', [$r['manager_id']])->fetch();
+    $role = ROLES[$r['role']] ?? '';
+    send_mail($manager['email'], 'Kandidatas patvirtino naujas sąlygas: '.$role.' – '.first_name($u['name']), [
+        'kicker' => 'Kandidatūra atnaujinta',
+        'title' => $role,
+        'lead' => '**'.first_name($u['name']).'** patvirtino, kad naujos darbo sąlygos tinka'.($some ? ', ir nurodė, kad gali dirbti tik kai kuriomis dienomis' : '').'. Dabar galite patvirtinti kandidatūrą.',
+        'facts' => ['Kandidatas' => first_name($u['name'])] + ($some ? ['Gali dirbti' => days_text($days)] : ['Darbo laikas' => period($r)]) + ['Atlygis' => $r['pay']],
+        'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $s['id'])],
+    ]);
+    flash('Ačiū. Darbdavys gaus pranešimą, kad naujos sąlygos jums tinka.');
+    redirect('/darbas/'.$id);
+}
+
 function application_link_page(int $responseId): never
 {
     $s = sql('SELECT s.id, s.status, s.request_id, v.manager_id FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id WHERE s.id = ?', [$responseId])->fetch();
@@ -1242,11 +1443,12 @@ function respond_action(int $id): never
         $dates = request_splittable($r) ? implode(',', array_map(fn ($x) => $x[0].':'.$x[1], days_ranges($days))) : '';
         if ($previous) {
             // Applying again after withdrawing: the same row comes back (one row per worker and request).
-            $again = sql("UPDATE responses SET status = 'sent', note = ?, dates = ?, created_at = ? WHERE id = ? AND status = 'withdrawn'", [$note, $dates, now(), $previous['id']]);
+            $again = sql("UPDATE responses SET status = 'sent', note = ?, dates = ?, created_at = ?, recheck_at = NULL WHERE id = ? AND status = 'withdrawn'", [$note, $dates, now(), $previous['id']]);
             if (!$again->rowCount()) {
                 redirect('/darbas/'.$id.'#atsiliepti');
             }
             $responseId = (int) $previous['id'];
+            sql('DELETE FROM response_notes WHERE response_id = ?', [$responseId]);
         } else {
             try {
                 $responseId = insert('responses', ['request_id' => $id, 'worker_id' => $u['id'], 'note' => $note, 'dates' => $dates, 'created_at' => now()]);
@@ -1271,6 +1473,94 @@ function respond_action(int $id): never
     }
     flash('Kandidatūra pateikta. Darbdavys gaus pranešimą el. paštu.');
     redirect('/darbas/'.$id);
+}
+
+// Before the employer decides, the worker can add a few messages to the application
+// ("Pamiršau paminėti, kad…"). They show under the application and later open the chat.
+const RESPONSE_NOTES_MAX = 3;
+const RESPONSE_NOTE_MAX = 1000;
+// One email to the employer per application in this many hours; later additions wait on the job page.
+const RESPONSE_NOTE_MAIL_HOURS = 12;
+
+function response_notes(int $responseId): array
+{
+    return sql('SELECT * FROM response_notes WHERE response_id = ? ORDER BY id', [$responseId])->fetchAll();
+}
+
+function response_notes_left(int $responseId): int
+{
+    return max(0, RESPONSE_NOTES_MAX - (int) sql('SELECT COUNT(*) FROM response_notes WHERE response_id = ?', [$responseId])->fetchColumn());
+}
+
+// The note sent with the application and the messages added later, as the employer sees them.
+function application_notes_html(array $s): string
+{
+    $html = $s['note'] ? '<p class="note">'.e($s['note']).'</p>' : '';
+    foreach (response_notes((int) $s['id']) as $n) {
+        $html .= '<p class="note added"><span class="note-when">Papildyta '.e(when_lt($n['created_at'])).'</span>'.nl2br(e($n['body'])).'</p>';
+    }
+    return $html;
+}
+
+// Under the worker's pending application: what they wrote and a form to add a message.
+function response_note_form(array $r, array $mine): string
+{
+    $sent = application_notes_html($mine);
+    $left = response_notes_left((int) $mine['id']);
+    $html = '<div class="app-notes" id="papildyti">'.($sent !== '' ? '<h3>Jūsų žinutės darbdaviui</h3>'.$sent : '');
+    if ($left <= 0) {
+        return $html.'<p class="meta">Kandidatūrą papildėte '.RESPONSE_NOTES_MAX.' kartus. Daugiau parašyti galėsite GANG pokalbyje, kai darbdavys patvirtins jūsų kandidatūrą.</p></div>';
+    }
+    return $html.'<form method="post" action="/darbas/'.(int) $r['id'].'/papildyti" class="form">'.csrf_field()
+        .'<label>Papildoma žinutė darbdaviui <small>(galite parašyti dar '.$left.' '.($left === 1 ? 'kartą' : 'kartus').')</small>'
+        .'<textarea name="body" rows="3" maxlength="'.RESPONSE_NOTE_MAX.'" required placeholder="Pavyzdžiui: pamiršau paminėti, kad dvejus metus dirbau virėju restorane „…“."></textarea></label>'
+        .'<button class="btn small">Siųsti žinutę</button></form></div>';
+}
+
+// /darbas/{id}/papildyti: the worker adds a message to an application still waiting for the employer.
+function response_note_action(int $id): never
+{
+    $u = require_user('worker');
+    check_csrf();
+    $r = find_request($id);
+    $s = $r ? sql("SELECT * FROM responses WHERE request_id = ? AND worker_id = ? AND status = 'sent'", [$id, $u['id']])->fetch() : false;
+    if (!$r || !$s || $r['status'] !== 'open') {
+        flash('Kandidatūros papildyti nebegalima: darbdavys jau priėmė sprendimą arba paieška uždaryta.');
+        redirect('/darbas/'.$id);
+    }
+    $body = trim(str_replace("\r\n", "\n", (string) ($_POST['body'] ?? '')));
+    $body = (string) preg_replace("/\n{3,}/", "\n\n", $body);
+    if ($body === '') {
+        flash('Parašykite žinutę.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    if (mb_strlen($body) > RESPONSE_NOTE_MAX) {
+        flash('Žinutė per ilga: daugiausia '.RESPONSE_NOTE_MAX.' simbolių.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    if (response_notes_left((int) $s['id']) <= 0) {
+        flash('Kandidatūrą jau papildėte '.RESPONSE_NOTES_MAX.' kartus.');
+        redirect('/darbas/'.$id.'#papildyti');
+    }
+    // An earlier addition already emailed in the last hours: this one waits on the job page.
+    $mailed = (bool) sql('SELECT 1 FROM response_notes WHERE response_id = ? AND created_at > ?',
+        [$s['id'], date('Y-m-d H:i:s', strtotime('-'.RESPONSE_NOTE_MAIL_HOURS.' hours'))])->fetchColumn();
+    insert('response_notes', ['response_id' => $s['id'], 'body' => $body, 'created_at' => now()]);
+    $email = $mailed ? false : sql('SELECT email FROM users WHERE id = ? AND blocked = 0', [$r['manager_id']])->fetchColumn();
+    if ($email) {
+        $role = ROLES[$r['role']] ?? '';
+        $short = mb_strlen($body) > 600 ? rtrim(mb_substr($body, 0, 600)).'…' : $body;
+        send_mail($email, 'Kandidatūra papildyta: '.$role.' – '.first_name($u['name']), [
+            'kicker' => 'Kandidatūra papildyta',
+            'title' => $role,
+            'lead' => '**'.first_name($u['name']).'** papildė savo kandidatūrą žinute. Ji laukia jūsų sprendimo.',
+            'facts' => ['Kandidatas' => first_name($u['name']), 'Darbo laikas' => period($r)],
+            'note' => ['label' => 'Papildoma žinutė', 'text' => $short],
+            'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $s['id'])],
+        ]);
+    }
+    flash('Žinutė išsiųsta. Darbdavys ją matys prie jūsų kandidatūros.');
+    redirect('/darbas/'.$id.'#papildyti');
 }
 
 // Team first: the manager sends the request to everyone before the team-only window ends.
@@ -1323,6 +1613,10 @@ function decide_response_action(int $responseId, bool $accept): never
     }
     if ($s['status'] !== 'sent') {
         redirect('/darbas/'.$r['id']);
+    }
+    if ($accept && $s['recheck_at']) {
+        flash('Kandidatas dar nepatvirtino naujų darbo sąlygų. Kai patvirtins, gausite laišką.');
+        redirect('/darbas/'.$r['id'].'#kandidatai');
     }
     $worker = sql('SELECT * FROM users WHERE id = ?', [$s['worker_id']])->fetch();
     $role = ROLES[$r['role']] ?? '';

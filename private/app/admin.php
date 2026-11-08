@@ -157,7 +157,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=57"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=59"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -336,6 +336,7 @@ function admin_delete_user(int $id): bool
         admin_delete_venue((int) $venueId, false);
     }
     admin_delete_contracts(sql('SELECT id FROM contracts WHERE worker_id = ?', [$id])->fetchAll(PDO::FETCH_COLUMN));
+    sql('DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE worker_id = ?)', [$id]);
     foreach (['availability' => 'user_id', 'worker_roles' => 'user_id', 'responses' => 'worker_id', 'invites' => 'worker_id'] as $table => $col) {
         sql("DELETE FROM $table WHERE $col = ?", [$id]);
     }
@@ -378,6 +379,7 @@ function admin_delete_requests(array $ids, bool $own = true): bool
     }
     $own && db()->beginTransaction();
     admin_delete_contracts(sql("SELECT id FROM contracts WHERE request_id IN ($in)")->fetchAll(PDO::FETCH_COLUMN));
+    sql("DELETE FROM response_notes WHERE response_id IN (SELECT id FROM responses WHERE request_id IN ($in))");
     sql("DELETE FROM responses WHERE request_id IN ($in)");
     sql("DELETE FROM invites WHERE request_id IN ($in)");
     sql("DELETE FROM requests WHERE id IN ($in)");

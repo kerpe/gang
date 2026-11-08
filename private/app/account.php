@@ -475,10 +475,12 @@ function worker_dashboard(array $u): string
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'worker\') AS reviewed FROM contracts c', CONTRACT_SELECT)
         .' WHERE c.worker_id = ? ORDER BY c.created_at DESC LIMIT 50', [$u['id']])->fetchAll());
     $contractHtml = implode('', array_map(fn ($c) => contract_card($c, 'worker', (bool) $c['reviewed']), $contracts));
-    $pending = sql(REQUEST_SELECT.' JOIN responses s ON s.request_id = r.id WHERE s.worker_id = ? AND s.status = \'sent\' AND r.status = \'open\' ORDER BY s.created_at DESC', [$u['id']])->fetchAll();
+    $pending = sql(str_replace(' FROM requests r', ', s.id AS response_id FROM requests r', REQUEST_SELECT).' JOIN responses s ON s.request_id = r.id WHERE s.worker_id = ? AND s.status = \'sent\' AND r.status = \'open\' ORDER BY s.created_at DESC', [$u['id']])->fetchAll();
     $pendingHtml = '';
     foreach ($pending as $r) {
-        $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>', false);
+        $add = response_notes_left((int) $r['response_id']) > 0
+            ? '<p class="card-extra"><a href="/darbas/'.(int) $r['id'].'#papildyti">Papildyti kandidatūrą žinute</a></p>' : '';
+        $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>'.$add, false);
     }
     // The one thing to do now, most urgent first.
     $upcoming = array_values(array_filter($contracts, fn ($c) => ($c['kind'] === 'nuolat' ? $c['start_date'] : ($c['end_date'] ?: $c['start_date'])) >= today()));
@@ -548,7 +550,7 @@ function manager_dashboard(array $u): string
         if ($hired) {
             $label .= '<p class="meta wait">Dar ieškome: '.e(open_period($r)).'</p>';
         }
-        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
+        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a> <a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
     }
     $openIds = array_column($open, 'id') ?: [0];
     $earlier = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND r.id NOT IN (".implode(',', array_map('intval', $openIds)).') ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
@@ -868,6 +870,7 @@ function account_export(): never
         'darbovietes' => $venues,
         'paieskos' => $rows("SELECT id, venue_id, role, kind, people, start_date, end_date, dates, pay, description, status, created_at FROM requests WHERE venue_id IN ($in)", []),
         'kandidaturos' => $rows('SELECT request_id, note, dates, status, created_at FROM responses WHERE worker_id = ?'),
+        'kandidaturu_papildymai' => $rows('SELECT s.request_id, n.body, n.created_at FROM response_notes n JOIN responses s ON s.id = n.response_id WHERE s.worker_id = ?'),
         'kontraktai' => $rows("SELECT id, request_id, venue_id, start_date, end_date, dates, created_at, cancelled_at, cancelled_by, cancel_reason, cancel_note, no_show_at FROM contracts WHERE id IN ($cin)", []),
         'mano_zinutes' => $rows('SELECT contract_id, body, created_at FROM messages WHERE sender_id = ?'),
         'mano_ivertinimai' => $rows("SELECT contract_id, rating, c1, c2, c3, text, created_at FROM reviews WHERE contract_id IN ($cin) AND author = ?", [$u['kind']]),
