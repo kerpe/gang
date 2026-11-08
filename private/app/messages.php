@@ -123,10 +123,45 @@ function lt_vocative(string $name): string
     return $name;
 }
 
-// The contract (with both sides) or null when the user is neither of them.
+// Before the employer decides, the employer and the candidate talk in the application's chat. It uses the
+// same tables with the application's id made negative as contract_id; on approval the messages move to the
+// new contract (application_chat_to_contract()), so the same conversation simply goes on.
+function application_chat(int $responseId): ?array
+{
+    $c = sql("SELECT s.id AS response_id, s.status AS response_status, s.request_id, s.worker_id, s.created_at,
+            r.role, r.kind, r.start_date, r.end_date, COALESCE(NULLIF(s.dates, ''), r.dates) AS dates, r.hours, r.status AS request_status,
+            v.name AS venue_name, v.address, v.city, v.manager_id, m.name AS manager_name, w.name AS worker_name
+        FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id JOIN users m ON m.id = v.manager_id JOIN users w ON w.id = s.worker_id
+        WHERE s.id = ?", [$responseId])->fetch();
+    if (!$c) {
+        return null;
+    }
+    return ['id' => -$responseId, 'application' => true, 'cancelled_at' => null] + $c;
+}
+
+// The employer approved the candidate: the talk so far becomes the contract's chat.
+function application_chat_to_contract(int $responseId, int $contractId): void
+{
+    foreach (['messages', 'chat_reads', 'message_reactions'] as $table) {
+        sql("UPDATE $table SET contract_id = ? WHERE contract_id = ?", [$contractId, -$responseId]);
+    }
+}
+
+// Why no new messages can be sent here, or null while the chat is open.
+function chat_closed_text(array $c): ?string
+{
+    if (!empty($c['application'])) {
+        return $c['response_status'] === 'sent' && $c['request_status'] === 'open' ? null
+            : 'Ši kandidatūra nebeaktyvi, todėl naujų žinučių siųsti nebegalima.';
+    }
+    return $c['cancelled_at'] ? 'Darbas atšauktas, todėl naujų žinučių siųsti nebegalima.' : null;
+}
+
+// The contract or application (with both sides), or null when the user is neither of them.
+// A negative id is an application still waiting for the employer's decision.
 function chat_contract(int $id, array $u): ?array
 {
-    $c = sql(CONTRACT_SELECT.' WHERE c.id = ?', [$id])->fetch();
+    $c = $id < 0 ? application_chat(-$id) : sql(CONTRACT_SELECT.' WHERE c.id = ?', [$id])->fetch();
     if (!$c || ((int) $c['worker_id'] !== (int) $u['id'] && (int) $c['manager_id'] !== (int) $u['id'])) {
         return null;
     }
@@ -206,12 +241,20 @@ function unread_messages_total(int $userId): int
 {
     return (int) sql('SELECT COUNT(*) FROM messages m JOIN contracts c ON c.id = m.contract_id JOIN venues v ON v.id = c.venue_id
         LEFT JOIN chat_reads cr ON cr.contract_id = m.contract_id AND cr.user_id = ?
-        WHERE (c.worker_id = ? OR v.manager_id = ?) AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)', [$userId, $userId, $userId, $userId])->fetchColumn();
+        WHERE (c.worker_id = ? OR v.manager_id = ?) AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)', [$userId, $userId, $userId, $userId])->fetchColumn()
+        // Chats on applications still waiting for the employer's decision.
+        + (int) sql("SELECT COUNT(*) FROM messages m JOIN responses s ON m.contract_id = -s.id JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id
+        LEFT JOIN chat_reads cr ON cr.contract_id = m.contract_id AND cr.user_id = ?
+        WHERE m.contract_id < 0 AND s.status = 'sent' AND r.status = 'open' AND (s.worker_id = ? OR v.manager_id = ?) AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)", [$userId, $userId, $userId, $userId])->fetchColumn();
 }
 
 // A ready first message, offered until the user has written anything in this chat.
 function chat_suggestion(array $c, string $side): string
 {
+    if (!empty($c['application'])) {
+        // The candidate already wrote with the application; the employer usually has a question.
+        return $side === 'manager' ? 'Labas, '.lt_vocative($c['worker_name']).'! Ačiū, kad atsiliepei. Norėčiau pasitikslinti kelis dalykus.' : '';
+    }
     if ($side === 'manager') {
         $name = lt_vocative($c['worker_name']);
         // "Malonu susipažinti" only when the two have not worked together or written to each other before.
@@ -268,7 +311,7 @@ function chat_list_html(array $c, int $userId, array $messages): string
         }
     }
     $reactions = chat_reactions((int) $c['id']);
-    $open = !$c['cancelled_at'];
+    $open = chat_closed_text($c) === null;
     $one = '<svg class="tick" viewBox="0 0 16 12" aria-hidden="true"><path d="M1.5 6.5 5 10l7-8.5"/></svg>';
     $two = '<svg class="tick" viewBox="0 0 20 12" aria-hidden="true"><path d="M1.5 6.5 5 10l7-8.5M8.6 9.4l.6.6 7-8.5"/></svg>';
     $html = '';
@@ -341,23 +384,30 @@ function chat_emoji_panel(): string
     return '<div class="emoji-panel" role="menu" hidden><p class="emoji-head"><span class="emoji-for">GANG emoji</span><button type="button" class="emoji-close" aria-label="Uždaryti">×</button></p><div class="emoji-grid">'.$out.'</div></div>';
 }
 
-// The chat window under a confirmed worker (employer) or a confirmed job (worker).
-function chat_box(array $c, array $u): string
+// The chat window under a candidate or confirmed worker (employer) or under the worker's application or confirmed job.
+// $hidden: the employer's chat with a candidate before anyone wrote in it, opened by "Parašyti" (not marked as seen until then).
+function chat_box(array $c, array $u, bool $hidden = false): string
 {
     $side = chat_side($c, $u);
     $id = (int) $c['id'];
     $messages = chat_messages($id);
-    chat_seen($id, (int) $u['id']);
+    if (!$hidden) {
+        chat_seen($id, (int) $u['id']);
+    }
     $other = $side === 'worker' ? $c['manager_name'] : $c['worker_name'];
     $sub = $side === 'worker' ? $c['venue_name'] : (ROLES[$c['role']] ?? '');
     $wrote = (bool) array_filter($messages, fn ($m) => (int) $m['sender_id'] === (int) $u['id']);
     $suggest = $wrote ? '' : chat_suggestion($c, $side);
-    $closed = (bool) $c['cancelled_at'];
-    $empty = '<p class="chat-empty">'.($side === 'worker'
-        ? 'Čia galite susirašinėti su darbdaviu: aptarti darbo laiką, aprangą, atvykimą ar kitus klausimus.'
-        : 'Čia galite susirašinėti su darbuotoju: aptarti darbo laiką, aprangą, atvykimą ar kitus klausimus.').'</p>';
+    $closedText = chat_closed_text($c);
+    $closed = $closedText !== null;
+    $empty = '<p class="chat-empty">'.match (true) {
+        empty($c['application']) && $side === 'worker' => 'Čia galite susirašinėti su darbdaviu: aptarti darbo laiką, aprangą, atvykimą ar kitus klausimus.',
+        empty($c['application']) => 'Čia galite susirašinėti su darbuotoju: aptarti darbo laiką, aprangą, atvykimą ar kitus klausimus.',
+        $side === 'worker' => 'Kol darbdavys priims sprendimą, čia galite jam parašyti ar atsakyti į jo klausimus.',
+        default => 'Prieš patvirtindami ar atsisakydami, čia galite pasitikslinti su kandidatu darbo laiką, patirtį ar kitus klausimus.',
+    }.'</p>';
     $form = $closed
-        ? '<p class="chat-closed meta">Darbas atšauktas, todėl naujų žinučių siųsti nebegalima.</p>'
+        ? '<p class="chat-closed meta">'.e($closedText).'</p>'
         : '<form class="chat-form" method="post" action="/kontraktas/'.$id.'/zinute">'.csrf_field()
             .'<label class="sr-only" for="chat-text-'.$id.'">Žinutė</label>'
             .'<textarea id="chat-text-'.$id.'" name="body" rows="1" maxlength="'.MESSAGE_MAX.'" '
@@ -365,7 +415,7 @@ function chat_box(array $c, array $u): string
             .'<button type="button" class="chat-emoji" aria-label="GANG emoji" title="GANG emoji" aria-haspopup="true">'.CHAT_SMILE.'</button>'
             .'<button class="chat-send" aria-label="Siųsti"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.2 15 12 3.4 13.8z" fill="currentColor"/></svg></button></form>';
     $here = chat_here($c, (int) $u['id']);
-    return '<section class="chat'.($here ? ' here' : '').'" id="pokalbis-'.$id.'" data-chat="'.$id.'" data-state="'.e(chat_state($c, (int) $u['id'], $messages)).'">'
+    return '<section class="chat'.($here ? ' here' : '').'" id="pokalbis-'.$id.'" data-chat="'.$id.'"'.($hidden ? ' hidden' : '').' data-state="'.e(chat_state($c, (int) $u['id'], $messages)).'">'
         .'<header class="chat-head"><span class="chat-dot" aria-hidden="true"></span><div><strong>'.e(first_name($other)).'</strong><span class="meta">'.e($sub)
         .'<span class="chat-presence"> · Dabar pokalbyje</span></span></div>'
         .'<span class="chat-label">Pokalbis per GANG</span></header>'
@@ -532,8 +582,17 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !panel.hidden) { var o = opener; closePanel(); o.focus(); } });
     list.addEventListener('scroll', function () { if (target) closePanel(); });
   }
+  // The employer's chat with a candidate opens from "Parašyti" next to "Patvirtinti" and "Atsisakyti".
+  document.querySelectorAll('[data-chat-open="' + id + '"]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var card = box.closest('.responder');
+      if (card) card.querySelectorAll('.who .note').forEach(function (n) { n.remove(); });
+      box.hidden = false; b.remove(); bottom(); poll();
+      if (ed) { ed.focus(); box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+    });
+  });
   function poll() {
-    if (document.hidden) return;
+    if (document.hidden || box.hidden) return;
     fetch('/kontraktas/' + id + '/zinutes?b=' + encodeURIComponent(box.dataset.state), { credentials: 'same-origin' })
       .then(function (r) { return r.ok ? r.json() : null; }).then(apply).catch(function () {});
   }
@@ -552,7 +611,7 @@ function chat_json(array $data): never
     exit;
 }
 
-// Where the chat lives: the job page (the employer sees it under the confirmed worker).
+// Where the chat lives: the job page (the employer sees it under the candidate or confirmed worker).
 function chat_url(array $c): string
 {
     return '/darbas/'.(int) $c['request_id'].'#pokalbis-'.(int) $c['id'];
@@ -566,6 +625,10 @@ function messages_poll(int $id): never
     if (!$c) {
         http_response_code(404);
         chat_json(['error' => 'not found']);
+    }
+    // An application decided meanwhile: its messages moved to the contract (or the chat closed); the page reloads itself.
+    if (!empty($c['application']) && chat_closed_text($c)) {
+        chat_json(['state' => (string) ($_GET['b'] ?? '')]);
     }
     $messages = chat_messages($id);
     chat_seen($id, (int) $u['id']);
@@ -598,8 +661,8 @@ function message_send_action(int $id): never
     if (!$c) {
         not_found();
     }
-    if ($c['cancelled_at']) {
-        $fail('Darbas atšauktas, todėl naujų žinučių siųsti nebegalima.');
+    if ($closed = chat_closed_text($c)) {
+        $fail($closed);
     }
     $body = trim(str_replace("\r\n", "\n", (string) ($_POST['body'] ?? '')));
     $body = preg_replace("/\n{3,}/", "\n\n", $body);
@@ -641,8 +704,8 @@ function message_react_action(int $id): never
         http_response_code(404);
         chat_json(['error' => 'not found']);
     }
-    if ($c['cancelled_at']) {
-        chat_json(['error' => 'Darbas atšauktas, todėl pokalbis uždarytas.']);
+    if (chat_closed_text($c)) {
+        chat_json(['error' => 'Pokalbis uždarytas.']);
     }
     $code = (string) ($_POST['code'] ?? '');
     $msgId = (int) ($_POST['message'] ?? 0);
@@ -679,10 +742,11 @@ function chat_notify(array $c, string $side, string $body, int $msgId): void
     $from = $side === 'worker' ? first_name($c['worker_name']) : first_name($c['manager_name']).' ('.$c['venue_name'].')';
     $body = chat_plain($body);
     $short = mb_strlen($body) > 600 ? rtrim(mb_substr($body, 0, 600)).'…' : $body;
+    $about = empty($c['application']) ? 'dėl darbo' : ($side === 'worker' ? 'dėl savo kandidatūros' : 'dėl jūsų kandidatūros');
     send_mail($email, 'Nauja žinutė: '.($side === 'worker' ? first_name($c['worker_name']) : $c['venue_name']), [
         'kicker' => 'Nauja žinutė',
         'title' => $role,
-        'lead' => '**'.$from.'** parašė jums žinutę dėl darbo ('.period($c).').',
+        'lead' => '**'.$from.'** parašė jums žinutę '.$about.' ('.period($c).').',
         'note' => ['label' => 'Žinutė', 'text' => $short],
         'cta' => ['Atsakyti', url('/pokalbis/'.(int) $c['id'])],
         'footnote' => 'Į žinutę atsakykite gang.lt pokalbyje: atsakymas į šį laišką žinutės gavėjo nepasieks.',
@@ -698,6 +762,11 @@ function chat_link_page(int $id): never
     if (!$c) {
         flash('Šis pokalbis skirtas kitai paskyrai. Prisijunkite paskyra, kuriai buvo išsiųstas laiškas.');
         redirect('/mano');
+    }
+    // An application approved since the email: the talk went on in the contract's chat.
+    if (!empty($c['application']) && $c['response_status'] === 'accepted'
+        && ($cid = sql('SELECT id FROM contracts WHERE request_id = ? AND worker_id = ? ORDER BY id DESC', [$c['request_id'], $c['worker_id']])->fetchColumn())) {
+        $c['id'] = (int) $cid;
     }
     redirect(chat_url($c));
 }

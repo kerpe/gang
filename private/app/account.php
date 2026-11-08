@@ -469,8 +469,9 @@ function worker_dashboard(array $u): string
     $pending = sql(str_replace(' FROM requests r', ', s.id AS response_id FROM requests r', REQUEST_SELECT).' JOIN responses s ON s.request_id = r.id WHERE s.worker_id = ? AND s.status = \'sent\' AND r.status = \'open\' ORDER BY s.created_at DESC', [$u['id']])->fetchAll();
     $pendingHtml = '';
     foreach ($pending as $r) {
-        $add = response_notes_left((int) $r['response_id']) > 0
-            ? '<p class="card-extra"><a href="/darbas/'.(int) $r['id'].'#papildyti">Papildyti kandidatūrą žinute</a></p>' : '';
+        // The employer wrote before deciding: the card says so and opens the chat.
+        $unread = chat_unread(-(int) $r['response_id'], (int) $u['id']);
+        $add = $unread ? '<p class="card-extra"><a href="'.e(chat_url(['request_id' => $r['id'], 'id' => -(int) $r['response_id']])).'">Nauja žinutė nuo darbdavio'.($unread > 1 ? ' ('.$unread.')' : '').'</a></p>' : '';
         $pendingHtml .= request_card($r, '<p class="meta wait">Laukiama darbdavio sprendimo</p>'.$add, false);
     }
     // The one thing to do now, most urgent first.
@@ -519,6 +520,11 @@ function manager_open_requests(string $in): array
         // No "Pakartoti" anywhere for now, and no "Redaguoti" once someone is confirmed (Vilius 2026-11-08: as few buttons as possible).
         $hired = sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.cancelled_at IS NULL ORDER BY c.created_at', [$r['id']])->fetchAll();
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : ($hired ? '' : '<p class="meta wait">Kandidatūrų dar negauta</p>');
+        // Candidates who wrote in the chat before the decision.
+        $news = $n ? (int) sql("SELECT COUNT(*) FROM messages m JOIN responses s ON m.contract_id = -s.id
+            LEFT JOIN chat_reads cr ON cr.contract_id = m.contract_id AND cr.user_id = ?
+            WHERE m.contract_id < 0 AND s.request_id = ? AND s.status = 'sent' AND m.sender_id = s.worker_id AND m.id > COALESCE(cr.last_id, 0)", [$r['manager_id'], $r['id']])->fetchColumn() : 0;
+        $label .= $news ? '<p class="meta new"><a href="/darbas/'.(int) $r['id'].'#kandidatai">Naujos kandidatų žinutės: '.$news.'</a></p>' : '';
         foreach ($hired as $c) {
             $label .= '<p class="meta done">Patvirtinta: '.e(first_name($c['worker_name'])).', '.e(period($c)).'</p>';
         }
