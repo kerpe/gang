@@ -124,7 +124,7 @@ function profile_page(): never
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
-    $phoneNote = $worker ? 'Numerį darbdavys matys tik patvirtinęs jus darbui.' : 'Numerį darbuotojas matys tik po jūsų patvirtinimo.';
+    $phoneNote = 'Kitiems nariams nerodomas. Su '.($worker ? 'darbdaviu' : 'darbuotoju').' bendrausite GANG žinutėmis.';
     $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
     page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
@@ -323,11 +323,6 @@ function sort_contracts(array $contracts): array
     return [...$upcoming, ...$past];
 }
 
-function tel_link(string $phone, string $label, string $class = 'btn small'): string
-{
-    return '<a class="'.$class.'" href="tel:'.e(preg_replace('/[^0-9+]/', '', $phone)).'">'.e($label).'</a>';
-}
-
 // Street address with the city added unless it is already there.
 function full_address(array $c): string
 {
@@ -336,7 +331,7 @@ function full_address(array $c): string
     return $address === '' ? $city : ($city === '' || mb_stripos($address, $city) !== false ? $address : $address.', '.$city);
 }
 
-// One GANG contract with what each side needs next: who to call, where to go, the dates in a calendar.
+// One GANG contract with what each side needs next: the chat, where to go, the dates in a calendar.
 function contract_card(array $c, string $side, bool $reviewed): string
 {
     $worker = $side === 'worker';
@@ -352,14 +347,15 @@ function contract_card(array $c, string $side, bool $reviewed): string
         $stepper .= '<li'.($state ? ' class="'.$state.'"' : '').'>'.$label.'</li>';
     }
     $stepper .= '</ol>';
-    $place = trim($c['address'] !== '' ? $c['address'] : (CITIES[$c['city']] ?? ''));
+    // Phone numbers stay hidden: the two sides talk in the GANG chat and swap numbers there if they want to.
+    $place = full_address($c);
     $info = $worker
-        ? '<div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).' · '.e($c['manager_phone']).'</dd></div>'
-        : '<div><dt>Darbuotojas</dt><dd><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a> · '.e($c['worker_phone']).'</dd></div><div><dt>Darbovietė</dt><dd>'.e($c['venue_name']).'</dd></div>';
-    $actions = tel_link($worker ? $c['manager_phone'] : $c['worker_phone'], 'Skambinti');
+        ? '<div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).'</dd></div>'
+        : '<div><dt>Darbuotojas</dt><dd><a href="/darbuotojas/'.(int) $c['worker_id'].'">'.e($c['worker_name']).'</a></dd></div><div><dt>Darbovietė</dt><dd>'.e($c['venue_name']).'</dd></div>';
+    $actions = '';
     $me = (int) ($worker ? $c['worker_id'] : $c['manager_id']);
     $unread = chat_unread((int) $c['id'], $me);
-    $actions .= '<a class="btn small'.($unread ? '' : ' ghost').'" href="'.e(chat_url($c)).'">Žinutės'.($unread ? ' <span class="count">'.$unread.'</span>' : '').'</a>';
+    $actions .= '<a class="btn small" href="'.e(chat_url($c)).'">Žinutės'.($unread ? ' <span class="count">'.$unread.'</span>' : '').'</a>';
     if ($worker && $place !== '') {
         $query = full_address($c);
         $actions .= '<a class="btn small ghost" href="https://www.google.com/maps/search/?api=1&amp;query='.rawurlencode($query).'" target="_blank" rel="noopener">Maršrutas</a>';
@@ -413,7 +409,7 @@ function contract_ics(int $id): never
     $role = ROLES[$c['role']] ?? $c['role'];
     $place = full_address($c);
     $about = ($c['hours'] !== '' ? 'Darbo laikas: '.$c['hours']."\n" : '')
-        .($worker ? 'Kontaktas: '.$c['manager_name'].', '.$c['manager_phone'] : 'Darbuotojas: '.$c['worker_name'].', '.$c['worker_phone'])
+        .($worker ? 'Kontaktas: '.$c['manager_name'] : 'Darbuotojas: '.$c['worker_name'])
         ."\n".url('/darbas/'.$c['request_id']);
     $lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//GANG//gang.lt//LT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
     foreach ($ranges as $i => [$from, $to]) {
@@ -550,7 +546,7 @@ function manager_dashboard(array $u): string
     $alert = sql(SHIFT_SELECT.' WHERE c.venue_id IN ('.$in.') AND s.shift_date >= ? AND s.confirmed_at IS NULL AND (s.declined_at IS NOT NULL OR s.alerted_at IS NOT NULL) ORDER BY s.shift_date LIMIT 1', [today()])->fetch();
     $candidates = array_sum(array_column($waiting, 1));
     $next = match (true) {
-        (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Paskambinkite darbuotojui arba raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
+        (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Parašykite darbuotojui arba raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
         (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. Pirmoji paieška: '.(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
         (bool) $toReview => ['', 'Įvertinkite darbuotoją', $toReview[0]['worker_name'].' · '.(ROLES[$toReview[0]['role']] ?? '').'. Įvertinimas padeda kitiems darbdaviams.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         !$open => ['', 'Aktyvių paieškų nėra', 'Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką.', '/poreikis/naujas', '+ Paskelbti paiešką'],

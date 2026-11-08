@@ -123,7 +123,7 @@ function venue_form_page(?int $id = null): never
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
             .$field('Koncepcija ar virtuvė'.$optional, $text('concept', 120, 'Pavyzdžiui: itališka virtuvė'), 'concept').'</div>'
             .$logoField)
-        .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje. Telefono numerį darbuotojas mato tik po jūsų patvirtinimo.',
+        .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje. Telefono numeris darbuotojams nerodomas.',
             '<div class="row">'.$field('Miestas', '<select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>', 'city')
             .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
             .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
@@ -988,7 +988,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
-        .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
+        .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numeris nerodomas: patvirtinus kandidatūrą bendrausite GANG žinutėse.</p></div>';
 }
 
 // The employer changed the dates or pay after the worker applied: "Tinka" or "Atsiimti kandidatūrą".
@@ -1094,7 +1094,7 @@ function owner_panel(array $r, bool $isOpen): string
         }
         $badges[] = '<span class="badge">'.gang_jobs_text((int) $s['worker_id']).'</span>';
         $buttons = $s['status'] === 'accepted'
-            ? '<p class="ok-text">Patvirtinta</p>'.tel_link($s['phone'], 'Skambinti '.$s['phone'])
+            ? '<p class="ok-text">Patvirtinta</p>'
             : ($s['recheck_at'] ? '' : ($take === [] ? '<p class="meta">Nurodytos dienos jau užpildytos</p>' : post_button('/atsiliepimas/'.(int) $s['id'].'/patvirtinti', 'Patvirtinti', [], 'btn small')))
                 .post_button('/atsiliepimas/'.(int) $s['id'].'/atmesti', 'Atsisakyti', [], 'btn small ghost');
         // A confirmed worker: the chat with them right under their card.
@@ -1653,17 +1653,17 @@ function decide_response_action(int $responseId, bool $accept): never
         'lead' => "**{$r['venue_name']}** patvirtino jūsų kandidatūrą".($partial ? ' šioms dienoms: **'.$when.'** ' : '. ').'Sveikiname!',
         'facts' => [
             'Kada' => $when.($r['hours'] !== '' ? ", {$r['hours']}" : ''),
-            'Kur' => $r['address'] ?: CITIES[$r['city']],
-            'Kontaktas' => "{$u['name']}, {$u['phone']}",
+            'Kur' => full_address($r),
+            'Kontaktas' => $u['name'],
         ],
         'body' => [
-            'Rekomenduojame susisiekti su darbdaviu ir aptarti darbo detales. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
+            'Darbo detales aptarkite su darbdaviu GANG žinutėse: jas rasite skiltyje „Mano GANG“. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
             '**Atvykimo patvirtinimas.** '.shift_notice(),
         ],
         'cta' => ['Mano GANG', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
-    $contact = ' Darbuotojo kontaktai: '.first_name($worker['name']).', '.$worker['phone'].'.';
+    $contact = ' Su '.first_name($worker['name']).' galite susirašinėti GANG žinutėse.';
     $need = request_needs($r);
     if (!$need) {
         sql("UPDATE requests SET status = 'filled', filled_at = ? WHERE id = ?", [now(), $r['id']]);
