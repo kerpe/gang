@@ -1025,3 +1025,13 @@ table.data td.actions form + form { margin-left: 6px; }
 .overlap ul { margin: 6px 0; padding-left: 20px; }
 .overlap p { margin: 4px 0; }
 .day-checks small.busy { color: var(--orange); }
+
+/* Account card at the top of Mano GANG; "Atsijungti" sits in the header */
+.account-bar { margin: 8px 0 28px; }
+.top nav form.inline { margin: 0; }
+.top nav .mnav-links form { margin: 0; }
+.mnav-logout { width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; background: none; border: 0; color: var(--ink); font: inherit; font-size: .95rem; cursor: pointer; }
+.mnav-logout:hover { background: var(--surface-2); }
+@media (max-width: 520px) { .top nav > form.inline { display: none; } }
+.account-who h1.account-name { font-family: inherit; font-size: 1.1rem; font-weight: 700; letter-spacing: 0; text-transform: none; line-height: 1.3; margin: 0; }
+.account-rating { margin-top: 2px; }

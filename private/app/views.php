@@ -18,13 +18,13 @@ function page(string $title, string $body, array $opt = []): never
     $unread = $user ? unread_messages_total((int) $user['id']) : 0;
     $badge = $unread ? ' <span class="count" aria-label="Naujos žinutės: '.$unread.'">'.$unread.'</span>' : '';
     if ($user) {
-        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>';
+        $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small" href="/mano">Mano GANG'.$badge.'</a>'.post_button('/atsijungti', 'Atsijungti', [], 'btn small ghost');
     } else {
         $nav = '<a class="hide-sm" href="/darbai">Darbai</a><a class="hide-sm" href="/kaip-veikia">Kaip veikia</a><a class="hide-sm" href="/apie">Apie</a><a class="btn small ghost" href="/prisijungti">Prisijungti</a><a class="btn small hide-sm" href="/prisijungti?registruotis">Registruotis</a>';
     }
     // Phones: a guest menu behind one button; signed-in members get a bottom tab bar.
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
-    $menuLinks = '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? '' : '<a href="/prisijungti?registruotis">Registruotis</a>');
+    $menuLinks = '<a href="/darbai">Darbai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? post_button('/atsijungti', 'Atsijungti', [], 'mnav-logout') : '<a href="/prisijungti?registruotis">Registruotis</a>');
     $nav .= '<details class="mnav"><summary aria-label="Meniu"><span></span><span></span><span></span></summary><div class="mnav-links">'.$menuLinks.'</div></details>';
     $tabbar = '';
     if ($user && profile_complete($user)) {
@@ -85,7 +85,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=61">
+<link rel="stylesheet" href="/style.css?v=62">
 $head
 </head>
 <body$bodyClass>
