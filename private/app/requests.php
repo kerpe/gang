@@ -841,9 +841,10 @@ function request_page(int $id): never
     // Dates and working hours sit in the facts card instead of a separate "Kada" section.
     $facts = '<dl class="job-facts">'
         .'<div><dt>Kada</dt><dd>'.$chips.'</dd></div>'
-        .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
+        // The owner chose the duration and the experience themselves; workers need them to decide.
+        .($owner ? '' : '<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>')
         .($r['hours'] !== '' ? '<div><dt>Darbo laikas</dt><dd>'.e($r['hours']).'</dd></div>' : '')
-        .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
+        .($owner ? '' : '<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>')
         .'<div><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
         .'<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
         .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>'
@@ -1209,13 +1210,8 @@ function owner_panel(array $r, bool $isOpen): string
         ? '<div class="notice ok team-only"><p><strong>Šiuo metu paieška matoma tik jūsų komandai.</strong> Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime '.e(when_lt($r['public_at'])).', jei vietos dar nebus užimtos.</p>'
             .post_button('/darbas/'.(int) $r['id'].'/skelbti', 'Paskelbti visiems dabar', [], 'btn small').'</div>'
         : '';
-    // Early days: nobody matches yet, so the employer's own people are the quickest way to fill GANG.
-    $invite = $isOpen && $responses === [] && $total === 0
-        ? '<div class="notice tip invite-nudge"><p><strong>Tinkamų darbuotojų GANG dar nedaug.</strong> Pakvieskite savo darbuotojus ir pažįstamus: prisijungę jie atsiras jūsų komandoje, o tinkantys gaus šį pasiūlymą.</p>'
-            .share_link(url('/k/'.invite_code(current_user())), 'Prisijunkite prie mūsų komandos GANG platformoje').'</div>'
-        : '';
     $leftover = leftover_question($r, $isOpen);
-    $reach = $teamOnly.$invite.$leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
+    $reach = $teamOnly.$leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     // Once a worker is confirmed the search is settled: dates and pay are agreed, the talk is in the chat.
     // No "Redaguoti", "Uždaryti paiešką" or "Pakartoti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
