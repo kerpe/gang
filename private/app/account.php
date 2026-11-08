@@ -509,6 +509,7 @@ function manager_dashboard(array $u): string
             $waiting[] = [$r, $n];
         }
         // Confirmed workers stay on the card: a request with some days (or places) still open keeps showing here.
+        // No "Pakartoti" anywhere for now, and no "Redaguoti" once someone is confirmed (Vilius 2026-11-08: as few buttons as possible).
         $hired = sql(CONTRACT_SELECT.' WHERE c.request_id = ? AND c.cancelled_at IS NULL ORDER BY c.created_at', [$r['id']])->fetchAll();
         $label = $n ? "<p class=\"meta new\">Gauta kandidatūrų: $n. Peržiūrėkite</p>" : ($hired ? '' : '<p class="meta wait">Kandidatūrų dar negauta</p>');
         foreach ($hired as $c) {
@@ -517,15 +518,14 @@ function manager_dashboard(array $u): string
         if ($hired) {
             $label .= '<p class="meta wait">Dar ieškome: '.e(open_period($r)).'</p>';
         }
-        $openHtml .= request_card($r, $label.'<p class="card-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a> <a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></p>', false);
+        $openHtml .= request_card($r, $label.($hired ? '' : '<p class="card-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a></p>'), false);
     }
     $openIds = array_column($open, 'id') ?: [0];
     $earlier = sql(REQUEST_SELECT." WHERE r.venue_id IN ($in) AND r.id NOT IN (".implode(',', array_map('intval', $openIds)).') ORDER BY r.created_at DESC LIMIT 6')->fetchAll();
     $earlierHtml = '';
     foreach ($earlier as $r) {
         $earlierHtml .= '<div class="row-item"><div><strong><a href="/darbas/'.(int) $r['id'].'">'.e(ROLES[$r['role']] ?? '').'</a> · '.e($r['venue_name']).'</strong>'
-            .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').($r['pay'] !== '' ? ' · '.e($r['pay']) : '').'</p></div>'
-            .'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti</a></div>';
+            .'<p class="meta">'.e(period($r)).($r['hours'] !== '' ? ' · '.e($r['hours']) : '').($r['pay'] !== '' ? ' · '.e($r['pay']) : '').'</p></div></div>';
     }
     $contracts = sort_contracts(sql(str_replace(' FROM contracts c', ', (SELECT COUNT(*) FROM reviews rv WHERE rv.contract_id = c.id AND rv.author = \'manager\') AS reviewed FROM contracts c', CONTRACT_SELECT)
         .' WHERE c.venue_id IN ('.$in.') ORDER BY c.created_at DESC LIMIT 50')->fetchAll());
@@ -564,7 +564,7 @@ function manager_dashboard(array $u): string
             .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>')
         .$team
         .($contractHtml ? '<h2 id="kontraktai">GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
-        .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><p class="meta">Paspaudę „Pakartoti“ gausite užpildytą formą: liks pasirinkti tik datas.</p><div class="rows">'.$earlierHtml.'</div>' : '')
+        .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų restoranas, kavinė, baras ar klubas</span></a></div>'
         .team_invite_box($u);
