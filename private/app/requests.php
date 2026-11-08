@@ -1125,10 +1125,20 @@ function owner_panel(array $r, bool $isOpen): string
         : '';
     $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
-    $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
+    // Someone is already confirmed but more people are still needed: say what is still being looked for,
+    // and make clear that closing keeps the confirmed workers. Their dates and pay are fixed, so only the description can be edited.
+    $confirmed = in_array('accepted', array_column($responses, 'status'), true);
+    $still = '';
+    if ($isOpen && $confirmed && ($need = request_needs($r))) {
+        $more = max($need) > 1 ? ' (iki '.max($need).' darbuotojų)' : '';
+        $still = '<p class="meta still-looking">'.($r['kind'] === 'nuolat' ? 'Dar ieškome darbuotojų'.$more.'.' : 'Dar ieškome: '.e(days_text(array_keys($need))).e($more).'.').'</p>';
+    }
+    $close = $isOpen ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', $confirmed
+        ? 'Daugiau darbuotojų neieškosime ir skelbimas nebebus matomas. Patvirtinti darbuotojai ir pokalbiai su jais lieka.'
+        : 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
-        .'<div class="owner-actions">'.($isOpen ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
+        .$still.'<div class="owner-actions">'.($isOpen ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">'.($confirmed ? 'Redaguoti aprašymą' : 'Redaguoti').'</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
 }
 
 // After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"
