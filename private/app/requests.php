@@ -1126,7 +1126,7 @@ function owner_panel(array $r, bool $isOpen): string
     $reach = $teamOnly.$invite.leftover_question($r, $isOpen).'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
     // Once a worker is confirmed the search is settled: dates and pay are agreed, the talk is in the chat.
-    // No "Redaguoti" or "Uždaryti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
+    // No "Redaguoti", "Uždaryti paiešką" or "Pakartoti paiešką" then: a job is cancelled per worker ("Atšaukti darbą", with a reason).
     // If some days are still open, a quiet line says so and lets the employer stop looking for them.
     $confirmed = in_array('accepted', array_column($responses, 'status'), true);
     $still = '';
@@ -1138,7 +1138,7 @@ function owner_panel(array $r, bool $isOpen): string
     $close = $isOpen && !$confirmed ? post_button('/darbas/'.$r['id'].'/uzdaryti', 'Uždaryti paiešką', [], 'btn small ghost', 'Ar tikrai norite uždaryti šią paiešką? Darbuotojai jos nebematys.') : '';
     return '<div class="panel owner" id="kandidatai"><div class="owner-head"><h2>Atsiliepę darbuotojai</h2><span class="tag'.($isOpen ? ' live' : '').'">'.e($isOpen ? 'Aktyvi' : $status).'</span></div>'.$reach
         .($list ?: '<p class="empty">Atsiliepusių darbuotojų dar nėra. Kai kas nors atsilieps, informuosime jus el. paštu.</p>').$teamHtml
-        .$still.'<div class="owner-actions">'.($isOpen && !$confirmed ? '<a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>' : '').$close.'<a class="btn small ghost" href="/poreikis/naujas?pagal='.(int) $r['id'].'">Pakartoti paiešką</a></div></div>';
+        .$still.($isOpen && !$confirmed ? '<div class="owner-actions"><a class="btn small ghost" href="/darbas/'.(int) $r['id'].'/redaguoti">Redaguoti</a>'.$close.'</div>' : '').'</div>';
 }
 
 // After approving a worker for only some days: "Ar skelbime paliekame tik gruodžio 31 d.?"
