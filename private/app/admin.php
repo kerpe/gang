@@ -153,7 +153,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=67"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=69"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -259,7 +259,7 @@ function admin_attention(): string
 {
     [$where, $params] = open_where();
     $items = [];
-    $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind = 'skubu' AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", $params)->fetchColumn();
+    $urgent = (int) sql("SELECT COUNT(*) FROM requests r WHERE $where AND r.kind <> 'nuolat' AND r.start_date <= ? AND NOT EXISTS (SELECT 1 FROM responses s WHERE s.request_id = r.id)", [...$params, urgent_until()])->fetchColumn();
     if ($urgent) {
         $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
     }
