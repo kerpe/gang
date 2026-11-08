@@ -900,9 +900,6 @@ table.data td.actions form + form { margin-left: 6px; }
 .invite-box h3 { margin: 0 0 6px; }
 .share-link { display: flex; gap: 8px; margin: 12px 0 4px; }
 .share-link input { flex: 1; min-width: 0; font-size: .9rem; }
-.invite-mail { margin-top: 12px; }
-.invite-mail summary { cursor: pointer; color: var(--muted); }
-.invite-mail .form { margin-top: 10px; }
 .invite-landing { text-align: left; }
 .invite-logo { margin: 8px 0 18px; }
 .criteria-input .criterion { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }

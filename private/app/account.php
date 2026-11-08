@@ -503,7 +503,7 @@ function worker_dashboard(array $u): string
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .$calendar
-        .referral_box($u);
+        .invite_box($u);
 }
 
 // The manager's open requests as cards, with candidates and confirmed workers. $in: the manager's venue ids, comma-separated.
@@ -613,7 +613,7 @@ function manager_dashboard(array $u): string
         .($earlierHtml ? '<h2>Ankstesnės paieškos</h2><div class="rows">'.$earlierHtml.'</div>' : '')
         .'<h2>Mano darbovietės</h2><div class="venue-grid">'.$venueHtml
         .'<a class="venue-card add" href="/darboviete/nauja"><span class="plus" aria-hidden="true">+</span><strong>Pridėti darbovietę</strong><span class="meta">Kitas jūsų restoranas, kavinė, baras ar klubas</span></a></div>'
-        .team_invite_box($u);
+        .invite_box($u);
 }
 
 // "Kitas žingsnis": the one thing to do now, on top of Mano GANG. $tone: '' | warn | calm.

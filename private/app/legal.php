@@ -188,14 +188,12 @@ function privacy_page(): never
                 .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos ir komanda.</li>'
                 .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
                 .'<li><strong>Pokalbio duomenys:</strong> žinutės tarp darbdavio ir darbuotojo, jų išsiuntimo laikas ir žyma, ar žinutė perskaityta. Kai gaunate naują žinutę, el. laiške siunčiame jos ištrauką.</li>'
-                .'<li><strong>Kitų asmenų kontaktai:</strong> jei darbdavys pakviečia savo darbuotojus el. paštu, tvarkome jo įvestus el. pašto adresus, kad išsiųstume vieną kvietimą ir jo nesiųstume pakartotinai.</li>'
                 .'<li><strong>Laukiančiųjų sąrašas:</strong> iki platformos paleidimo užsiregistravusių asmenų el. pašto adresas, miestas ir užšifruota IP adreso santrauka.</li>'
                 .'<li><strong>Techniniai duomenys:</strong> prisijungimo kodai (saugomi tik užšifruoti) ir užšifruota IP adreso santrauka, pagal kurią ribojame kodų siuntimą, sesijos slapukas, IP adresas ir naršyklės informacija, užfiksuoti sutinkant su taisyklėmis, serverio žurnalai.</li></ul>'],
             ['tikslai', 'Kam naudojame duomenis ir kuo remiamės', '<ul>'
                 .'<li><strong>Paskyrai sukurti ir platformai teikti</strong> (sutarties vykdymas, BDAR 6 str. 1 d. b p.): prisijungimas, profilis, paieškos, kandidatūros, kontraktai, pranešimai el. paštu ar SMS apie tinkamus pasiūlymus, kandidatūras ir pamainas.</li>'
                 .'<li><strong>Pasitikėjimui ir saugumui užtikrinti</strong> (teisėtas interesas, 6 str. 1 d. f p.): įvertinimai, patikimumo rodikliai, piktnaudžiavimo prevencija, paskyrų blokavimas, sistemos apsauga.</li>'
                 .'<li><strong>Sutikimui su taisyklėmis įrodyti</strong> (teisėtas interesas): taisyklių redakcija, sutikimo laikas, IP adresas ir naršyklės informacija.</li>'
-                .'<li><strong>Darbdavio kvietimams darbuotojams išsiųsti</strong> (teisėtas interesas, 6 str. 1 d. f p.): darbdavio įvestu adresu išsiunčiame vieną kvietimą prisijungti prie jo komandos. Daugiau laiškų šiuo adresu nesiunčiame, nebent asmuo pats užsiregistruoja. Darbdavys patvirtina, kad turi teisę šiuo adresu susisiekti.</li>'
                 .'<li><strong>Teisės aktų reikalavimams vykdyti</strong> (teisinė prievolė, 6 str. 1 d. c p.), pavyzdžiui, atsakant į kompetentingų institucijų užklausas.</li>'
                 .'<li><strong>Naujienoms siųsti</strong> – tik jei tam atskirai sutiksite (sutikimas, 6 str. 1 d. a p.). Sutikimą galėsite bet kada atšaukti.</li></ul>'
                 .'<p>Duomenų neparduodame ir reklamos tikslais tretiesiems asmenims neperduodame.</p>'],
@@ -215,7 +213,6 @@ function privacy_page(): never
             ['terminai', 'Kiek laiko saugome', '<ul>'
                 .'<li>Paskyros, profilio ir veiklos duomenis – kol turite paskyrą. Paskyrą ištrynus, duomenys ištrinami per 30 dienų.</li>'
                 .'<li>Prisijungimo kodai galioja 15 minučių, o jų įrašai ištrinami po paros.</li>'
-                .'<li>Komandos kvietimų adresus – kol jų reikia, kad kvietimas nebūtų siunčiamas pakartotinai. Darbdavio paskyrą ištrynus, ištrinami ir jo įvesti adresai.</li>'
                 .'<li>Laukiančiųjų sąrašo įrašus – kol asmuo paprašo juos ištrinti arba ištrina savo GANG paskyrą.</li>'
                 .'<li>Sutikimo su taisyklėmis įrašus – kol turite paskyrą.</li>'
                 .'<li>Serverio žurnalus – ne ilgiau, nei jie saugomi prieglobos paslaugų teikėjo sistemose saugumo tikslais.</li></ul>'],
