@@ -130,14 +130,14 @@ function alert_manager(array $s, bool $declined): void
         'kicker' => 'Rytojaus pamaina',
         'title' => $declined ? 'Darbuotojas neatvyks' : 'Atvykimas nepatvirtintas',
         'lead' => "$what.",
-        'facts' => ['Darbuotojas' => "$who, $role", 'Telefonas' => $s['worker_phone'], 'Darbovietė' => $s['venue_name']],
+        'facts' => ['Darbuotojas' => "$who, $role", 'Darbovietė' => $s['venue_name']],
         'body' => [
-            $declined ? '' : 'Rekomenduojame pirmiausia paskambinti darbuotojui ir įsitikinti, kad rytoj atvyks. Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.',
+            $declined ? '' : 'Rekomenduojame pirmiausia parašyti darbuotojui GANG žinutėse ir įsitikinti, kad rytoj atvyks. Jei darbuotojas atvykimą patvirtins vėliau, apie tai jus informuosime.',
             ($declined ? 'Jei reikalingas' : 'Jei paaiškės, kad reikalingas').' pakaitinis darbuotojas, skubią paiešką rytojui paskelbsite vienu paspaudimu. Forma bus užpildyta pagal šį darbą, o jūsų komandos nariai gaus asmeninį kvietimą.',
         ],
         'cta' => ['Rasti pakaitinį darbuotoją', $link],
     ]);
-    send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks. Pakaitinis darbuotojas: '.$link : ' nepatvirtino rytojaus pamainos. Paskambinkite: '.sms_phone($s['worker_phone']).'. Pakaitinis: '.$link));
+    send_sms($s['manager_phone'], 'GANG: '.ascii($who).($declined ? ' rytoj neatvyks. Pakaitinis darbuotojas: '.$link : ' nepatvirtino rytojaus pamainos. Pakaitinis: '.$link));
 }
 
 // SMS text without Lithuanian letters fits one 160-character message.
@@ -171,7 +171,7 @@ function shift_page(string $token): never
         } elseif (input('answer') === 'no' && !$s['declined_at']) {
             sql('UPDATE shift_checks SET declined_at = ?, confirmed_at = NULL WHERE id = ?', [now(), $s['id']]);
             alert_manager($s, true);
-            flash('Darbdavys informuotas, kad negalėsite atvykti. Prašome jam ir paskambinti: '.$s['manager_phone']);
+            flash('Darbdavys informuotas, kad negalėsite atvykti. Jei norite, parašykite jam ir GANG žinutėse.');
         }
         redirect('/pamaina/'.$token);
     }
@@ -187,7 +187,7 @@ function shift_page(string $token): never
         .'</div>';
     page('Pamainos patvirtinimas', '<section class="wrap narrow"><p class="eyebrow">Pamainos patvirtinimas</p><h1>'.e(ROLES[$s['role']] ?? '').'</h1>'
         .'<ul class="facts"><li><b>Kada</b>'.e(date_lt($s['shift_date'])).'</li><li><b>Kur</b>'.e($s['venue_name']).', '.e(full_address($s)).'</li>'
-        .'<li><b>Kontaktas</b>'.e($s['manager_name']).' · '.e($s['manager_phone']).'</li></ul>'
+        .'<li><b>Kontaktas</b>'.e($s['manager_name']).'</li></ul>'
         .$status.$buttons.'<p class="meta"><a href="/darbas/'.(int) $s['request_id'].'">Darbo pasiūlymo informacija</a></p></section>', ['noindex' => true]);
 }
 
@@ -207,11 +207,12 @@ function shift_status(array $c, string $side): string
             ? '<p class="shift-status warn">Pranešėte, kad '.$day.' neatvyksite</p>'
             : '<p class="shift-status wait">Patvirtinkite, ar atvyksite '.$day.' <a class="btn small" href="/pamaina/'.e($s['token']).'">Patvirtinti</a></p>';
     }
-    $replace = tel_link($s['worker_phone'], 'Skambinti').'<a class="btn small ghost" href="'.e(replacement_url($s)).'">Rasti pakaitinį</a>';
+    $replace = '<a class="btn small" href="'.e(chat_url(['request_id' => $s['request_id'], 'id' => $s['contract_id']])).'">Parašyti</a>'
+        .'<a class="btn small ghost" href="'.e(replacement_url($s)).'">Rasti pakaitinį</a>';
     if ($s['declined_at']) {
         return '<p class="shift-status warn">Darbuotojas pranešė, kad '.$day.' neatvyks '.$replace.'</p>';
     }
     return $s['alerted_at']
-        ? '<p class="shift-status warn">Atvykimas '.$day.' nepatvirtintas. Paskambinkite darbuotojui '.$replace.'</p>'
+        ? '<p class="shift-status warn">Atvykimas '.$day.' nepatvirtintas '.$replace.'</p>'
         : '<p class="shift-status wait">Laukiama, kol darbuotojas patvirtins atvykimą (iki '.SHIFT_ALERT_HOUR.' val.)</p>';
 }

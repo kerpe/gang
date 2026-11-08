@@ -64,8 +64,8 @@ function contract_cancel_page(int $id): never
         : ($late ? 'Iki darbo pradžios liko mažiau nei para. Toks atšaukimas mažina darbovietės patikimumo rodiklį, kurį mato darbuotojai. Jei susitarėte su darbuotoju, pasirinkite atitinkamą priežastį.'
         : ($worker ? 'Atšaukus likus daugiau nei parai iki darbo pradžios, jūsų patikimumo rodiklis nemažėja.' : 'Atšaukus likus daugiau nei parai iki darbo pradžios, darbovietės patikimumo rodiklis nemažėja.'));
     $after = $worker
-        ? 'Darbdavys gaus pranešimą el. paštu, o paieška vėl taps aktyvi, kad jis galėtų rasti kitą darbuotoją. Rekomenduojame jam ir paskambinti: '.$c['manager_phone'].'.'
-        : 'Darbuotojas gaus pranešimą el. paštu. Rekomenduojame jam ir paskambinti: '.$c['worker_phone'].'.';
+        ? 'Darbdavys gaus pranešimą el. paštu, o paieška vėl taps aktyvi, kad jis galėtų rasti kitą darbuotoją. Jei norite, parašykite jam ir GANG žinutėse.'
+        : 'Darbuotojas gaus pranešimą el. paštu. Jei norite, parašykite jam ir GANG žinutėse.';
     page('Atšaukti darbą', '<section class="wrap narrow"><p class="eyebrow">GANG kontraktas</p><h1>Atšaukti darbą</h1>'
         .'<p class="meta">'.e(ROLES[$c['role']] ?? '').' · '.e($other).' · '.e(period($c)).'</p>'
         .'<p class="notice '.($late ? 'tip' : 'ok').'">'.e($warning).'</p>'
@@ -92,7 +92,7 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
             'kicker' => 'GANG kontraktas atšauktas',
             'title' => 'Darbuotojas neatvyks',
             'lead' => '**'.first_name($c['worker_name']).'** atšaukė darbą jūsų darbovietėje **'.$c['venue_name'].'**.',
-            'facts' => $facts + ['Telefonas' => $c['worker_phone']],
+            'facts' => $facts,
             'note' => $noteBlock,
             'body' => $reopened
                 ? 'Paieška vėl aktyvi: apie laisvą vietą informavome kitus tinkamus darbuotojus. Paieškos puslapyje galite asmeniškai pakviesti savo komandos narius.'
@@ -106,7 +106,7 @@ function cancel_contract(array $c, string $side, string $reason, string $note): 
         'kicker' => 'GANG kontraktas atšauktas',
         'title' => 'Darbas atšauktas',
         'lead' => "**{$c['venue_name']}** atšaukė jūsų darbą.",
-        'facts' => $facts + ['Kontaktas' => $c['manager_name'].', '.$c['manager_phone']],
+        'facts' => $facts,
         'note' => $noteBlock,
         'body' => 'Kviečiame peržiūrėti kitus aktualius darbo pasiūlymus.',
         'cta' => ['Darbo pasiūlymai', url('/darbai')],
@@ -161,7 +161,7 @@ function no_show_action(int $id): never
             'lead' => "**{$c['venue_name']}** pažymėjo, kad neatvykote į sutartą darbą (".period($c).').',
             'body' => [
                 'Neatvykimas mažina jūsų patikimumo rodiklį, kurį mato darbdaviai. Jei negalite atvykti, visada atšaukite darbą savo paskyroje kuo anksčiau.',
-                'Jei manote, kad tai klaida, susisiekite su darbdaviu: '.$c['manager_name'].', '.$c['manager_phone'].'. Darbdavys žymą gali pašalinti per '.NO_SHOW_DAYS.' dienas. Taip pat galite parašyti mums [hello@gang.lt](mailto:hello@gang.lt).',
+                'Jei manote, kad tai klaida, parašykite darbdaviui GANG žinutėse ([Mano GANG]('.url('/mano').')). Darbdavys žymą gali pašalinti per '.NO_SHOW_DAYS.' dienas. Taip pat galite parašyti mums [hello@gang.lt](mailto:hello@gang.lt).',
             ],
             'cta' => ['Mano GANG', url('/mano')],
         ]);
