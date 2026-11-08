@@ -155,8 +155,21 @@ function open_requests(array $filters = [], int $limit = 200): array
     // Team first: until public_at only the invited team sees the request.
     $where .= ' AND (r.public_at IS NULL OR r.public_at <= ?)';
     $params[] = now();
-    $order = "CASE WHEN r.kind = 'skubu' THEN 0 ELSE 1 END, r.created_at DESC";
+    $order = "CASE WHEN r.kind <> 'nuolat' AND r.start_date <= ? THEN 0 ELSE 1 END, r.created_at DESC";
+    $params[] = urgent_until();
     return sql(REQUEST_SELECT." WHERE $where ORDER BY $order LIMIT $limit", $params)->fetchAll();
+}
+
+// Last start date that still counts as urgent.
+function urgent_until(): string
+{
+    return date('Y-m-d', strtotime('+'.URGENT_DAYS.' days'));
+}
+
+// A short job starting within URGENT_DAYS: listed and emailed first.
+function request_urgent(array $r): bool
+{
+    return $r['kind'] !== 'nuolat' && (string) $r['start_date'] !== '' && $r['start_date'] <= urgent_until();
 }
 
 // A review shows once the other side has rated too, or REVIEW_HIDE_DAYS after it was written.
@@ -261,7 +274,7 @@ function notify_workers(array $r, array $skip = []): int
     [$subject, $mail] = job_offer_mail($r);
     foreach ($workers as $w) {
         // Urgent offers first.
-        $priority = $r['kind'] === 'skubu' ? 0 : 10;
+        $priority = request_urgent($r) ? 0 : 10;
         queue_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), job_mail_headers($w), $priority);
         job_mailed((int) $r['id'], (int) $w['id']);
     }
@@ -279,9 +292,9 @@ function job_offer_mail(array $r): array
 {
     $role = ROLES[$r['role']] ?? $r['role'];
     $city = CITIES[$r['city']] ?? '';
-    $subject = ($r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
+    $subject = (request_urgent($r) ? 'Skubus darbo pasiūlymas: ' : 'Darbo pasiūlymas: ').$role.' – '.$r['venue_name'].', '.$city;
     $mail = [
-        'kicker' => $r['kind'] === 'skubu' ? 'Skubus darbo pasiūlymas' : 'Darbo pasiūlymas',
+        'kicker' => request_urgent($r) ? 'Skubus darbo pasiūlymas' : 'Darbo pasiūlymas',
         'title' => $role,
         'lead' => "**{$r['venue_name']}** ($city) ieško darbuotojo. Jei pasiūlymas jums tinka, pateikite kandidatūrą.",
         'facts' => array_filter([
@@ -438,7 +451,7 @@ function worker_durations(array $u): array
     return from_list($u['durations'] ?? '') ?: array_keys(KINDS);
 }
 
-// "Skubiai, trumpam, sezonui, nuolat"
+// "Trumpam, sezonui, nuolat"
 function durations_text(array $u): string
 {
     $names = array_map(fn ($k) => KINDS[$k] ?? $k, worker_durations($u));

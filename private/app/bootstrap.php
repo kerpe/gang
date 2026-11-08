@@ -21,15 +21,13 @@ const ROLES = [
     'someljee' => 'Restorano vadovas',
 ];
 const KINDS = [
-    'skubu' => 'Skubiai',
     'trumpai' => 'Trumpam',
     'sezonas' => 'Sezonui',
     'nuolat' => 'Nuolat',
 ];
 // Shown under each duration option in the request form.
 const KIND_HINTS = [
-    'skubu' => 'Diena ar kelios',
-    'trumpai' => 'Savaitė ar mėnuo',
+    'trumpai' => 'Iki mėnesio',
     'sezonas' => 'Keli mėnesiai',
     'nuolat' => 'Ilgalaikis darbas',
 ];
@@ -105,7 +103,11 @@ const CANCEL_REASONS = [
 // After the work ends, the employer can mark a no-show for this many days.
 const NO_SHOW_DAYS = 7;
 // Team first: other workers get the request this many hours after the team, unless it is filled by then.
-const TEAM_FIRST_HOURS = ['skubu' => 1, 'trumpai' => 12, 'sezonas' => 24, 'nuolat' => 24];
+const TEAM_FIRST_HOURS = ['trumpai' => 12, 'sezonas' => 24, 'nuolat' => 24];
+// A job that starts within this many days counts as urgent: listed and emailed first,
+// and "Pirmiausia pasiūlyti komandai" holds it back for one hour only.
+const URGENT_DAYS = 2;
+const URGENT_TEAM_HOURS = 1;
 // Review criteria by author: the employer rates the worker, the worker rates the employer.
 const REVIEW_CRITERIA = [
     'manager' => ['c1' => 'Punktualumas', 'c2' => 'Darbo kokybė', 'c3' => 'Bendradarbiavimas'],

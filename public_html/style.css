@@ -630,8 +630,8 @@ h2[id] { scroll-margin-top: 84px; }
 @media (max-width: 600px) { .responder.accepted .actions { align-items: flex-start; } }
 
 /* Duration options with a short explanation under each name */
-.kind-choices { display: grid; grid-template-columns: repeat(4, 1fr); }
-@media (max-width: 600px) { .kind-choices { grid-template-columns: 1fr 1fr; } }
+.kind-choices { display: grid; grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 600px) { .kind-choices { gap: 8px; } .kind-choices .choice { padding: 10px; } }
 .kind-choices .choice { align-items: flex-start; padding: 12px 14px; }
 .kind-choices .choice input { margin-top: 4px; }
 .kind-choices .choice > span { display: grid; gap: 2px; line-height: 1.3; }

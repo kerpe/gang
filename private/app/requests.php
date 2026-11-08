@@ -419,7 +419,7 @@ function request_form_page(): never
         page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į Mano GANG</a></p></section>', ['noindex' => true]);
     }
     $venueOptions = array_column($venues, 'name', 'id');
-    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'skubu', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => '', 'team_first' => ''];
+    $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => '', 'team_first' => ''];
     // Events: more roles on the same dates, each [role, people, pay]; every role becomes its own request.
     $extras = [];
     // "Pakartoti": the form comes filled in from an earlier request; only the dates are picked again.
@@ -448,7 +448,7 @@ function request_form_page(): never
     // "Rasti pakaitinį": a worker will not come tomorrow. Urgent request for tomorrow, the rest of the team invited.
     $replacing = $from && (int) $from['manager_id'] === (int) $u['id'] && ctype_digit($_GET['pakeisti'] ?? '') ? (int) $_GET['pakeisti'] : 0;
     if ($replacing) {
-        $v['kind'] = 'skubu';
+        $v['kind'] = 'trumpai';
         $v['dates'] = tomorrow().':'.tomorrow();
         $invite = array_values(array_diff(array_keys($team), [$replacing]));
     }
@@ -522,7 +522,7 @@ function request_form_page(): never
         }
         if (!$errors) {
             $lines = [['role' => $v['role'], 'people' => $people, 'pay' => $v['pay']], ...$extras];
-            $publicAt = $teamFirst ? date('Y-m-d H:i:s', time() + TEAM_FIRST_HOURS[$v['kind']] * 3600) : null;
+            $publicAt = $teamFirst ? date('Y-m-d H:i:s', time() + team_first_hours($v['kind'], $ranges[0][0]) * 3600) : null;
             $ids = [];
             foreach ($lines as $line) {
                 $ids[] = insert('requests', [
@@ -627,13 +627,19 @@ function team_invite_fieldset(array $team, array $checked, bool $teamFirst = fal
         .'<p class="hint">Pažymėti jūsų komandos nariai gaus asmeninį kvietimą el. paštu ir matys jį savo paskyroje.</p>'
         .'<div class="choices">'.$items.'</div>'
         .'<label class="choice team-first"><input type="checkbox" name="team_first" value="1"'.($teamFirst ? ' checked' : '').'>'
-        .'<span><span class="choice-name">Pirmiausia pasiūlyti komandai</span><small>Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime tik po '.TEAM_FIRST_HOURS['skubu'].' val. skubiam darbui, po '.TEAM_FIRST_HOURS['trumpai'].' val. trumpam ir po '.TEAM_FIRST_HOURS['sezonas'].' val. sezoniniam ar nuolatiniam darbui, jei vietos dar nebus užimtos. Neprivaloma.</small></span></label>'
+        .'<span><span class="choice-name">Pirmiausia pasiūlyti komandai</span><small>Kitiems tinkamiems darbuotojams pasiūlymą išsiųsime tik po '.TEAM_FIRST_HOURS['trumpai'].' val. trumpam darbui (po '.URGENT_TEAM_HOURS.' val., jei darbas prasideda per '.URGENT_DAYS.' d.) ir po '.TEAM_FIRST_HOURS['sezonas'].' val. sezoniniam ar nuolatiniam darbui, jei vietos dar nebus užimtos. Neprivaloma.</small></span></label>'
         .err($errors, 'team_first').'</fieldset>';
 }
 
+// Hours "Pirmiausia pasiūlyti komandai" keeps a request for the team: one hour when the job starts within URGENT_DAYS.
+function team_first_hours(string $kind, string $start): int
+{
+    return $kind !== 'nuolat' && $start <= urgent_until() ? URGENT_TEAM_HOURS : TEAM_FIRST_HOURS[$kind];
+}
+
 const EVENT_MAX_ROLES = 6;
-// Several roles for one event only with "Skubiai": a one-day, repeated one-day or few-day event.
-const EVENT_KINDS = ['skubu'];
+// Several roles for one event only with "Trumpam": a one-day, repeated one-day or few-day event.
+const EVENT_KINDS = ['trumpai'];
 
 // Events need several roles on the same dates: one row per extra role, each posted as its own request.
 function event_roles_fieldset(array $extras, string $title, array $errors, bool $shown = true): string
@@ -675,7 +681,7 @@ function request_preview_script(): string
     el('when').textContent = (dates && dates.dataset.label) || 'Datos nepažymėtos';
     var k = el('kind');
     k.textContent = kind ? kind.parentNode.querySelector('.choice-name').textContent : '';
-    k.className = 'tag' + (kind ? ' k-' + kind.value : '') + (kind && kind.value === 'skubu' ? ' urgent' : '');
+    k.className = 'tag' + (kind ? ' k-' + kind.value : '');
     var pay = val('pay').trim().replace('.', ','), ok = payOk(pay);
     el('pay').hidden = !ok;
     el('pay').firstChild.textContent = pay + ' €';
@@ -740,10 +746,10 @@ function request_preview_script(): string
     box.classList.toggle('on', tick.checked);
     box.querySelector('[data-add-role]').hidden = rows.children.length >= 5;
   }
-  // Only for Skubiai: for any other kind the part is hidden and switched off.
+  // Only for Trumpam: for any other kind the part is hidden and switched off.
   f.querySelectorAll('input[name=kind]').forEach(function (k) {
     k.addEventListener('change', function () {
-      var shown = k.value === 'skubu';
+      var shown = k.value === 'trumpai';
       box.hidden = !shown;
       if (!shown && tick.checked) tick.checked = false;
       syncEvent(); update();
@@ -874,7 +880,7 @@ function request_page(int $id): never
             'description' => nl2br(e($r['description'])),
             'datePosted' => substr($r['created_at'], 0, 10),
             'validThrough' => ($r['end_date'] ?: ($r['kind'] === 'nuolat' ? date('Y-m-d', strtotime($r['created_at'].' +30 days')) : $r['start_date'])).'T23:59:00+02:00',
-            'employmentType' => ['skubu' => 'PER_DIEM', 'trumpai' => 'TEMPORARY', 'sezonas' => 'TEMPORARY', 'nuolat' => 'FULL_TIME'][$r['kind']],
+            'employmentType' => ['trumpai' => 'TEMPORARY', 'sezonas' => 'TEMPORARY', 'nuolat' => 'FULL_TIME'][$r['kind']],
             'hiringOrganization' => ['@type' => 'Organization', 'name' => $r['venue_name']]
                 + ($r['venue_website'] ? ['sameAs' => $r['venue_website']] : [])
                 + ($r['venue_logo'] ? ['logo' => rtrim(config()['public_url'], '/').venue_logo_url(['id' => $r['venue_id'], 'logo' => $r['venue_logo']])] : []),
