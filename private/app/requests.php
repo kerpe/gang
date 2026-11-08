@@ -969,7 +969,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     return '<div class="panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2>'.$again.$invited.$below
         .'<form method="post" action="/darbas/'.(int) $r['id'].'/atsiliepti" class="form">'.csrf_field()
         .days_fieldset($r)
-        .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
+        .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<p class="notice ok shift-note"><strong>Atvykimo patvirtinimas.</strong> '.e(shift_notice()).'</p>'
         .'<button class="btn">Pateikti kandidatūrą</button></form>'
         .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus. Telefono numerį – tik patvirtinęs jūsų kandidatūrą.</p></div>';
