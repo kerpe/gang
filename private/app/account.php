@@ -475,11 +475,11 @@ function worker_dashboard(array $u): string
         .'<p class="meta">Jūsų įvertinimas: '.stars($avg, $n).' · '.gang_jobs_text((int) $u['id']).'</p></div></div>'
         .next_step(...$next).$tiles
         .($inviteHtml ? '<h2>Asmeniniai kvietimai</h2><div class="cards">'.$inviteHtml.'</div>' : '')
-        .$calendar
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
         .'<h2 id="pasiulymai">Jums tinkantys darbo pasiūlymai</h2>'.$jobCards
-        .referral_box($u);
+        .referral_box($u)
+        .$calendar;
 }
 
 function manager_dashboard(array $u): string
