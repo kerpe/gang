@@ -721,7 +721,9 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .job-sec h2 { margin: 0 0 10px; font-family: inherit; }
 .date-chips { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .date-chips li { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; }
-.job-hours { margin: 12px 0 0; }
+.job-facts .date-chips { gap: 2px 8px; }
+.job-facts .date-chips li:not(:last-child)::after { content: ","; }
+.job-facts .date-chips li { background: none; border: 0; border-radius: 0; padding: 0; }
 .job-main .panel { margin-top: 0; }
 @media (min-width: 900px) {
   .job-grid { grid-template-columns: minmax(0, 1fr) 320px; gap: 36px; }

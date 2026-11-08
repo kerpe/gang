@@ -838,17 +838,20 @@ function request_page(int $id): never
             ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).'&nbsp;€</strong><p class="pay-unit"><span class="unit">už valandą</span>'.($showGood ? '<span class="tag good">Geras atlygis</span>' : '').'</p></div>'
             : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
     }
+    // Dates and working hours sit in the facts card instead of a separate "Kada" section.
     $facts = '<dl class="job-facts">'
+        .'<div><dt>Kada</dt><dd>'.$chips.'</dd></div>'
         .'<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>'
+        .($r['hours'] !== '' ? '<div><dt>Darbo laikas</dt><dd>'.e($r['hours']).'</dd></div>' : '')
         .'<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>'
         .'<div><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
         .'<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
         .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>'
         .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '').'</dl>';
-    $when = '<section class="job-sec"><h2>Kada</h2>'.$chips.($r['hours'] !== '' ? '<p class="job-hours"><b>Darbo laikas:</b> '.e($r['hours']).'</p>' : '').'</section>';
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
     $venueUrl = '/darboviete/'.(int) $r['venue_id'];
-    $venueSec = venue_section_html($venue, $venueUrl, $city, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
+    // The employer doesn't need to read about their own venue (e.g. when they come to approve a worker).
+    $venueSec = $owner ? '' : venue_section_html($venue, $venueUrl, $city, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
     $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     $desc = nl2br(e($r['description']));
@@ -892,7 +895,6 @@ function request_page(int $id): never
     <div class="job-side">$payBox$facts</div>
     <div class="job-main">
       $venueSec
-      $when
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
       $event
       $action
