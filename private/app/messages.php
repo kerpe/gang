@@ -364,7 +364,17 @@ document.querySelectorAll('[data-chat]').forEach(function (box) {
     }
     box.dataset.state = d.state;
     if (d.here !== undefined) box.classList.toggle('here', !!d.here);
+    if (d.unread !== undefined) badges(d.unread);
   }
+  // The open chat is read: its "Žinutės" count goes, and "Mano GANG" shows only what is unread elsewhere.
+  function badges(total) {
+    document.querySelectorAll('[data-chat-link="' + id + '"] .count').forEach(function (b) { b.remove(); });
+    if (total === undefined) return;
+    document.querySelectorAll('[data-unread-total]').forEach(function (b) {
+      if (total > 0) { b.textContent = total; b.setAttribute('aria-label', 'Naujos žinutės: ' + total); } else b.remove();
+    });
+  }
+  badges();
   bottom();
   // The field: text with GANG emoji inside it. It is written to the hidden textarea as "[gang:kava]" when sent.
   var ed = null, saved = null, uid = 0;
@@ -535,10 +545,11 @@ function messages_poll(int $id): never
     chat_seen($id, (int) $u['id']);
     $state = chat_state($c, (int) $u['id'], $messages);
     $here = chat_here($c, (int) $u['id']);
+    $unread = unread_messages_total((int) $u['id']);
     if ((string) ($_GET['b'] ?? '') === $state) {
-        chat_json(['state' => $state, 'here' => $here]);
+        chat_json(['state' => $state, 'here' => $here, 'unread' => $unread]);
     }
-    chat_json(['state' => $state, 'here' => $here, 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
+    chat_json(['state' => $state, 'here' => $here, 'unread' => $unread, 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
 }
 
 // /kontraktas/{id}/zinute: send a message (fetch from the chat, or a plain form post without JavaScript).
@@ -587,7 +598,7 @@ function message_send_action(int $id): never
     chat_notify($c, $side, $body, $msgId);
     if ($ajax) {
         $messages = chat_messages($id);
-        chat_json(['state' => chat_state($c, (int) $u['id'], $messages), 'here' => chat_here($c, (int) $u['id']), 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
+        chat_json(['state' => chat_state($c, (int) $u['id'], $messages), 'here' => chat_here($c, (int) $u['id']), 'unread' => unread_messages_total((int) $u['id']), 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
     }
     redirect(chat_url($c));
 }
@@ -618,7 +629,7 @@ function message_react_action(int $id): never
         insert('message_reactions', ['contract_id' => $id, 'message_id' => $msgId, 'user_id' => $u['id'], 'code' => $code, 'created_at' => now()]);
     }
     $messages = chat_messages($id);
-    chat_json(['state' => chat_state($c, (int) $u['id'], $messages), 'here' => chat_here($c, (int) $u['id']), 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
+    chat_json(['state' => chat_state($c, (int) $u['id'], $messages), 'here' => chat_here($c, (int) $u['id']), 'unread' => unread_messages_total((int) $u['id']), 'html' => chat_list_html($c, (int) $u['id'], $messages)]);
 }
 
 // Email the other side about a new message, unless they have the chat open right now

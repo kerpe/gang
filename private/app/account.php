@@ -355,7 +355,7 @@ function contract_card(array $c, string $side, bool $reviewed): string
     $actions = '';
     $me = (int) ($worker ? $c['worker_id'] : $c['manager_id']);
     $unread = chat_unread((int) $c['id'], $me);
-    $actions .= '<a class="btn small" href="'.e(chat_url($c)).'">Žinutės'.($unread ? ' <span class="count">'.$unread.'</span>' : '').'</a>';
+    $actions .= '<a class="btn small" href="'.e(chat_url($c)).'" data-chat-link="'.(int) $c['id'].'">Žinutės'.($unread ? ' <span class="count">'.$unread.'</span>' : '').'</a>';
     if ($worker && $place !== '') {
         $query = full_address($c);
         $actions .= '<a class="btn small ghost" href="https://www.google.com/maps/search/?api=1&amp;query='.rawurlencode($query).'" target="_blank" rel="noopener">Maršrutas</a>';
