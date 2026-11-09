@@ -250,11 +250,19 @@ function labels(?string $list, array $names): string
     return implode(', ', array_map(fn ($k) => $names[$k] ?? $k, from_list($list)));
 }
 
+// Signed-in members stay signed in this long after their last visit (see keep_signed_in()).
+const SESSION_DAYS = 60;
+
+function session_cookie_options(): array
+{
+    return ['path' => '/', 'httponly' => true, 'samesite' => 'Lax', 'secure' => str_starts_with(config()['public_url'], 'https://')];
+}
+
 function start_session(): void
 {
     if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_set_cookie_params(['lifetime' => 60 * 60 * 24 * 60, 'httponly' => true, 'samesite' => 'Lax', 'secure' => str_starts_with(config()['public_url'], 'https://')]);
-        ini_set('session.gc_maxlifetime', (string) (60 * 60 * 24 * 60));
+        session_set_cookie_params(['lifetime' => SESSION_DAYS * 86400] + session_cookie_options());
+        ini_set('session.gc_maxlifetime', (string) (SESSION_DAYS * 86400));
         // Never adopt a session id the server did not create (session fixation).
         ini_set('session.use_strict_mode', '1');
         session_start();

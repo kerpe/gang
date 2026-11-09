@@ -115,7 +115,9 @@ function admin_login_page(): never
             $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
         } elseif ($pending) {
             $check = check_login_code('admin:'.admin_email(), input('code'));
-            if ($check === 'expired') {
+            if ($check === 'locked') {
+                $error = 'Per daug neteisingų bandymų. Bandykite rytoj.';
+            } elseif ($check === 'expired') {
                 $error = 'Kodas nebegalioja. Prisijunkite iš naujo.';
             } elseif ($check === 'wrong') {
                 $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';

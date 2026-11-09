@@ -44,11 +44,18 @@ const CONSENT_ERROR = 'Norėdami tęsti, pažymėkite, kad sutinkate su Naudojim
 // The visitor's address. gang.lt sits behind Hostinger's CDN (server: hcdn), so REMOTE_ADDR can be the
 // CDN's own server; the CDN passes the visitor's address first in X-Forwarded-For. Only used as consent
 // metadata, never for access decisions.
+// gang.lt sits behind Hostinger's CDN, which adds the visitor's address to the END of X-Forwarded-For.
+// Anything before it is whatever the visitor's browser sent and can be made up, so the rightmost
+// public address is the one to trust (internal hops have private addresses and are skipped).
 function client_ip(): string
 {
-    $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
-    $first = trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))[0]);
-    return substr(filter_var($first, FILTER_VALIDATE_IP) ? $first : $remote, 0, 45);
+    $hops = array_reverse(array_map('trim', explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? ''))));
+    foreach ($hops as $ip) {
+        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return substr($ip, 0, 45);
+        }
+    }
+    return substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
 }
 
 function record_consent(int $userId): void
@@ -88,9 +95,9 @@ function consent_page(): never
             if (!profile_complete($user)) {
                 redirect('/profilis');
             }
-            $next = $_SESSION['after_login'] ?? '/mano';
+            $next = safe_next($_SESSION['after_login'] ?? null);
             unset($_SESSION['after_login']);
-            redirect(str_starts_with($next, '/') && !str_starts_with($next, '//') ? $next : '/mano');
+            redirect($next);
         }
         $error = CONSENT_ERROR;
     }
