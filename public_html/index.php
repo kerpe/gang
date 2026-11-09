@@ -11,7 +11,7 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header("Content-Security-Policy: base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
 header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
 
-foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'photos', 'shifts', 'contracts', 'team', 'legal', 'messages'] as $file) {
+foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'analytics', 'photos', 'shifts', 'contracts', 'team', 'legal', 'messages'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }
 
