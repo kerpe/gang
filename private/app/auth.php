@@ -89,8 +89,8 @@ const LOGIN_CODE_TRIES = 5;
 // guessing at another person's codes then has a negligible chance (6 digits = 900 000 options),
 // while a member who mistypes a few times never notices.
 const LOGIN_CODES_PER_EMAIL_HOUR = 5;
-const LOGIN_CODES_PER_EMAIL_DAY = 10;
-const LOGIN_GUESSES_PER_DAY = 20;
+const LOGIN_CODES_PER_EMAIL_DAY = 5;
+const LOGIN_GUESSES_PER_DAY = 10;
 
 // The code input: digits only, so a pasted code with spaces or a line break still fits.
 function login_code_input(): string
