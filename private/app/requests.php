@@ -11,6 +11,10 @@ function venue_form_page(?int $id = null): never
     if ($id && !$venue) {
         not_found();
     }
+    // The employer's own name and phone come first: a venue without them would reach GANG for checking half-done.
+    if (!$venue && !profile_complete($u)) {
+        redirect('/profilis');
+    }
     $v = array_fill_keys(VENUE_FIELDS, '') + ['logo' => null, 'id' => 0];
     if ($venue) {
         $v = array_merge($v, array_intersect_key($venue, $v));
@@ -130,8 +134,10 @@ function venue_form_page(?int $id = null): never
             .$field('Instagram'.$optional, $text('instagram', 255, '@jusu_baras'), 'instagram').'</div>'
             .'<div class="row">'.$field('Facebook'.$optional, $text('facebook', 255, 'facebook.com/jusubaras', ' inputmode="url"'), 'facebook')
             .$field('TikTok'.$optional, $text('tiktok', 255, '@jusu_baras'), 'tiktok').'</div>');
-    $cancel = '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
-    $step = !$venue && !sql('SELECT 1 FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn() ? onboarding_step(2) : '';
+    // While signing up there is nowhere to go back to: the account is ready only with a venue.
+    $first = !$venue && !sql('SELECT 1 FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn();
+    $cancel = $first ? '' : '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
+    $step = $first ? onboarding_step(2) : '';
     page($title, '<section class="wrap venue-edit">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
