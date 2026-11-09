@@ -155,7 +155,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=86"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=89"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -618,7 +618,7 @@ function admin_user(int $id): string
         $facts['Patvirtinimas'] = match (true) {
             (bool) $u['verified_at'] => 'Patvirtintas '.e(substr($u['verified_at'], 0, 10)),
             (bool) $missing => 'Nebaigė registracijos<br><small>Trūksta: '.e(implode(', ', $missing)).'. Patvirtinti galėsite, kai darbdavys užpildys savo duomenis ir užregistruos darbovietę – tada gausite laišką.</small>',
-            default => '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.'),
+            default => '<strong>Laukia patvirtinimo</strong>',
         };
     }
     if ($worker) {
@@ -640,7 +640,19 @@ function admin_user(int $id): string
         $venues = sql('SELECT v.*, (SELECT COUNT(*) FROM requests r WHERE r.venue_id = v.id) AS requests FROM venues v WHERE v.manager_id = ? ORDER BY v.id', [$id])->fetchAll();
         $html .= '<h3>Darbovietės</h3>'.($venues ? '' : '<p class="meta">Darbovietės dar neužregistruotos.</p>');
         foreach ($venues as $v) {
-            $html .= '<p><a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a>, '.e(CITIES[$v['city']] ?? '').($v['address'] ? ', '.e($v['address']) : '').' · paieškų: '.(int) $v['requests'].'</p>';
+            // Before approval the public venue page does not exist yet, so everything to check is shown here.
+            $name = $u['verified_at'] ? '<a href="/darboviete/'.(int) $v['id'].'">'.e($v['name']).'</a>' : e($v['name']);
+            $html .= '<div class="admin-venue"><div class="venue-card-head">'.venue_logo($v, 'small').'<strong>'.$name.'</strong></div><dl class="admin-facts">'
+                .'<dt>Tipas</dt><dd>'.e(venue_type_text($v) ?: '–').'</dd>'
+                .'<dt>Adresas</dt><dd>'.e(full_address($v) ?: '–').'</dd>'
+                .($v['hours'] !== '' ? '<dt>Darbo laikas</dt><dd>'.e($v['hours']).'</dd>' : '')
+                .(isset(TEAM_SIZES[$v['team_size']]) ? '<dt>Komanda</dt><dd>'.e(TEAM_SIZES[$v['team_size']]).'</dd>' : '')
+                .'<dt>Paieškų</dt><dd>'.(int) $v['requests'].'</dd></dl>'
+                .($v['about'] !== '' ? '<p>'.nl2br(e($v['about'])).'</p>' : '').venue_links_html($v).'</div>';
+        }
+        if (!$u['verified_at'] && $venues && signup_step_url($u) === '') {
+            $html .= '<div class="admin-decision"><p><strong>Ar darbovietė tikra?</strong> Patvirtintas darbdavys galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.</p>'
+                .post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn', 'Patvirtinti šį darbdavį?').'</div>';
         }
     }
     $html .= '<h3>Parašyti laišką</h3><form method="post" action="'.e($back).'" class="form admin-message">'.csrf_field()

@@ -358,7 +358,7 @@ function venue_page(int $id): never
 {
     $u = current_user();
     $venue = sql('SELECT v.*, m.verified_at FROM venues v JOIN users m ON m.id = v.manager_id WHERE v.id = ?', [$id])->fetch();
-    if (!$venue || (!$venue['verified_at'] && !($u && ((int) $venue['manager_id'] === (int) $u['id'] || is_admin($u))))) {
+    if (!$venue || (!$venue['verified_at'] && !(is_admin() || ($u && (int) $venue['manager_id'] === (int) $u['id'])))) {
         not_found();
     }
     $private = sees_venue_reviews($u, $venue);

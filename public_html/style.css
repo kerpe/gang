@@ -720,6 +720,11 @@ body.has-tabbar .toast { bottom: calc(var(--tabbar-h, 0px) + 14px + env(safe-are
 .admin-facts { display: grid; grid-template-columns: max-content 1fr; gap: 8px 20px; margin: 0 0 20px; }
 .admin-facts dt { color: var(--muted); }
 .admin-facts dd { margin: 0; }
+.admin-venue { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin: 0 0 14px; }
+.admin-venue .venue-card-head { margin-bottom: 12px; }
+.admin-venue .admin-facts { margin-bottom: 10px; }
+.admin-decision { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; border: 1px solid var(--lime); border-radius: 12px; padding: 16px; margin: 0 0 24px; }
+.admin-decision p { margin: 0; flex: 1 1 280px; }
 .admin-message { max-width: 640px; }
 table.data td.actions { white-space: nowrap; }
 table.data td.actions form + form { margin-left: 6px; }
