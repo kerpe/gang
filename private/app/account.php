@@ -135,7 +135,7 @@ function profile_page(): never
     page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
-        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" autocomplete="name" required>'.err($errors, 'name').'</label>'
+        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required>'.err($errors, 'name').'</label>'
         .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" required placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
