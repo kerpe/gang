@@ -253,7 +253,7 @@ function labels(?string $list, array $names): string
 // Visitor statistics. Both load only after the visitor presses „Sutinku“ on the cookie banner
 // (see analytics_consent() in views.php). An empty id switches that service off.
 const GOOGLE_TAG_ID = 'GTM-TQRBP4RH';
-const CLARITY_ID = '';
+const CLARITY_ID = 'zax0thfuru';
 
 // Signed-in members stay signed in this long after their last visit (see keep_signed_in()).
 const SESSION_DAYS = 60;
