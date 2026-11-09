@@ -6,6 +6,7 @@ const VENUE_FIELDS = ['name', 'type', 'concept', 'city', 'address', 'hours', 'ab
 
 // Venue name length: short enough for job cards and the chat header.
 const VENUE_NAME_MAX = 50;
+const VENUE_ABOUT_MAX = 500;
 
 function venue_form_page(?int $id = null): never
 {
@@ -50,8 +51,8 @@ function venue_form_page(?int $id = null): never
         }
         if (mb_strlen($v['about']) < VENUE_ABOUT_MIN) {
             $errors['about'] = 'Aprašymas padeda darbuotojams apsispręsti. Parašykite bent '.VENUE_ABOUT_MIN.' simbolių: kokia tai vieta, kokia komanda ir kokios darbo sąlygos.';
-        } elseif (mb_strlen($v['about']) > 2000) {
-            $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
+        } elseif (mb_strlen($v['about']) > VENUE_ABOUT_MAX) {
+            $errors['about'] = 'Aprašymas gali būti iki '.VENUE_ABOUT_MAX.' simbolių.';
         }
         if ($v['team_size'] !== '' && !isset(TEAM_SIZES[$v['team_size']])) {
             $v['team_size'] = '';
@@ -131,7 +132,7 @@ function venue_form_page(?int $id = null): never
             .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
             .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
         .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
-            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
+            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="'.VENUE_ABOUT_MAX.'" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
         .$section('Komanda', 'Kiek žmonių dirba kartu. Ką siūlote darbuotojams, pažymėsite kiekviename skelbime atskirai.',
             '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
         .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
