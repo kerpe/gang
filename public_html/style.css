@@ -869,6 +869,8 @@ table.data td.actions form + form { margin-left: 6px; }
 .venue-box .venue-facts > div { background: var(--surface-2); }
 .venue-box h3 { margin: 18px 0 8px; font-family: inherit; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
 .venue-box .perk-list { margin: 0; }
+.job-perks .perk-list { margin: 8px 0 2px; gap: 6px; }
+.job-perks .perk-list li { padding: 5px 11px; font-size: .86rem; }
 .venue-more { margin: 16px 0 0; font-size: .92rem; }
 .venue-join { margin-top: 26px; }
 

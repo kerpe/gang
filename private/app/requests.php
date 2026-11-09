@@ -786,6 +786,7 @@ function request_page(int $id): never
             ? '<div class="pay-box"><span class="label">Atlygis į rankas</span><strong>'.e($m[1]).'&nbsp;€</strong><p class="pay-unit"><span class="unit">už valandą</span>'.($showGood ? '<span class="tag good">Geras atlygis</span>' : '').'</p></div>'
             : '<div class="pay-box"><span class="label">Atlygis</span><strong class="text">'.e($r['pay']).'</strong></div>';
     }
+    $perks = perks_html($r['perks'], '');
     // Dates and working hours sit in the facts card instead of a separate "Kada" section.
     $facts = '<dl class="job-facts">'
         .'<div><dt>Kada</dt><dd>'.$chips.'</dd></div>'
@@ -797,7 +798,9 @@ function request_page(int $id): never
         // Workers see the venue's name and address in the "Apie darbovietę" card; the owner has no such card.
         .($owner ? '<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
             .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>' : '')
-        .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '').'</dl>';
+        .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '')
+        // What the job offers closes the facts card, so the right column reads as one whole.
+        .($perks !== '' ? '<div class="job-perks"><dt>Darbuotojams siūlome</dt><dd>'.$perks.'</dd></div>' : '').'</dl>';
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
     $venueUrl = '/darboviete/'.(int) $r['venue_id'];
     // The employer doesn't need to read about their own venue (e.g. when they come to approve a worker).
@@ -813,8 +816,6 @@ function request_page(int $id): never
             .' new IntersectionObserver(function (e) { bar.classList.toggle("off", e[0].isIntersecting || e[0].boundingClientRect.top < 0); }).observe(panel); })();</script>';
     }
     $desc = nl2br(e($r['description']));
-    $perks = perks_html($r['perks'], '');
-    $perks = $perks !== '' ? '<section class="job-sec"><h2>Darbuotojams siūlome</h2>'.$perks.'</section>' : '';
     $e = 'e';
     $ld = '';
     // Other roles of the same event.
@@ -853,7 +854,6 @@ function request_page(int $id): never
     <div class="job-main">
       $venueSec
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
-      $perks
       $event
       $action
     </div>
