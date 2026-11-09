@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 const VENUE_FIELDS = ['name', 'type', 'concept', 'city', 'address', 'hours', 'about', 'team_size', 'website', 'instagram', 'facebook', 'tiktok'];
 
+// Venue name length: short enough for job cards and the chat header.
+const VENUE_NAME_MAX = 50;
+
 function venue_form_page(?int $id = null): never
 {
     $u = require_user('manager');
@@ -25,8 +28,10 @@ function venue_form_page(?int $id = null): never
         foreach (VENUE_FIELDS as $field) {
             $v[$field] = input($field);
         }
-        if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
+        if (mb_strlen($v['name']) < 2) {
             $errors['name'] = 'Įrašykite darbovietės pavadinimą.';
+        } elseif (mb_strlen($v['name']) > VENUE_NAME_MAX) {
+            $errors['name'] = 'Pavadinimas gali būti iki '.VENUE_NAME_MAX.' simbolių.';
         }
         if (!isset(VENUE_TYPES[$v['type']])) {
             $errors['type'] = 'Pasirinkite darbovietės tipą.';
@@ -117,7 +122,7 @@ function venue_form_page(?int $id = null): never
         .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" aria-label="Darbovietės logotipas" data-crop="logo">'
         .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Rodomas darbo skelbimuose ir darbovietės puslapyje.</p>'.$remove.err($errors, 'logo').'</div></div>';
     $body = $section('Pagrindinė informacija', 'Pavadinimas, tipas ir logotipas padeda darbuotojams iš karto atpažinti jūsų darbovietę.',
-            $field('Pavadinimas', $text('name', 120, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
+            $field('Pavadinimas', $text('name', VENUE_NAME_MAX, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
             .$field('Koncepcija ar virtuvė'.$optional, $text('concept', 120, 'Pavyzdžiui: itališka virtuvė'), 'concept').'</div>'
             .$logoField)
