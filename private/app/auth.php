@@ -15,9 +15,30 @@ function current_user(): ?array
                 $user = null;
                 $_SESSION = [];
             }
+            if ($user) {
+                keep_signed_in();
+            }
         }
     }
     return $user;
+}
+
+// The session cookie lasts SESSION_DAYS from when it was last sent, so a member who visits at least
+// once in that time stays signed in (as on Wolt or Facebook). It is renewed at most once a day.
+function keep_signed_in(): void
+{
+    if ((int) ($_SESSION['cookie_at'] ?? 0) > time() - 86400 || headers_sent()) {
+        return;
+    }
+    $_SESSION['cookie_at'] = time();
+    setcookie(session_name(), session_id(), ['expires' => time() + SESSION_DAYS * 86400] + session_cookie_options());
+}
+
+// Only a path on this site: "/x" yes, "//evil.com" or "/\evil.com" (browsers read both as another site) no.
+function safe_next(?string $next): string
+{
+    $next = (string) $next;
+    return preg_match('#^/(?![/\\\\])#', $next) ? $next : '/mano';
 }
 
 // Admin rights come only from the /admin login (see admin.php), never from a member account.
@@ -59,10 +80,17 @@ const LOGIN_CODES_PER_IP_DAY = 30;
 
 // How many of the newest unexpired codes for one address still work. Asking for a code again
 // (or a double click on "Siųsti kodą") sends a second email, and the person often types the code
-// from the first one, so it has to keep working. A wrong guess counts against every live code,
-// so there are still at most 5 guesses before a new code is needed.
+// from the first one, so it has to keep working. Wrong guesses count on the newest code, so there
+// are still at most 5 guesses before a new code is needed.
 const LOGIN_CODES_LIVE = 3;
 const LOGIN_CODE_TRIES = 5;
+
+// Per address, over 24 hours: at most this many codes sent and this many wrong guesses. Someone
+// guessing at another person's codes then has a negligible chance (6 digits = 900 000 options),
+// while a member who mistypes a few times never notices.
+const LOGIN_CODES_PER_EMAIL_HOUR = 5;
+const LOGIN_CODES_PER_EMAIL_DAY = 5;
+const LOGIN_GUESSES_PER_DAY = 10;
 
 // The code input: digits only, so a pasted code with spaces or a line break still fits.
 function login_code_input(): string
@@ -71,13 +99,29 @@ function login_code_input(): string
         .' oninput="this.value=this.value.replace(/\\D/g,\'\').slice(0,6)">';
 }
 
-// Checks a typed code against $key's live codes: 'ok' (the codes are then used up), 'wrong' or 'expired'.
+function login_locked_error(): string
+{
+    return 'Per daug neteisingų bandymų su šiuo el. pašto adresu. Bandykite rytoj arba parašykite '.OPERATOR_EMAIL.'.';
+}
+
+// Wrong guesses for $key in the last 24 hours (rows stay a day after they expire, see cron.php).
+function login_guesses_today(string $key): int
+{
+    return (int) sql('SELECT COALESCE(SUM(attempts), 0) FROM login_codes WHERE email = ? AND created_at > ?', [$key, date('Y-m-d H:i:s', time() - 86400)])->fetchColumn();
+}
+
+// Checks a typed code against $key's live codes: 'ok' (the codes are then used up), 'wrong', 'expired'
+// or 'locked' (too many wrong guesses today).
 function check_login_code(string $key, string $typed): string
 {
     $code = preg_replace('/\D/', '', $typed);
-    $rows = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? AND attempts < ? ORDER BY id DESC LIMIT '.LOGIN_CODES_LIVE,
-        [$key, now(), LOGIN_CODE_TRIES])->fetchAll();
-    if (!$rows) {
+    if (login_guesses_today($key) >= LOGIN_GUESSES_PER_DAY) {
+        return 'locked';
+    }
+    // Wrong guesses are counted on the newest code; once it has no tries left, none of the codes work.
+    $rows = sql('SELECT * FROM login_codes WHERE email = ? AND expires_at > ? ORDER BY id DESC LIMIT '.LOGIN_CODES_LIVE,
+        [$key, now()])->fetchAll();
+    if (!$rows || (int) $rows[0]['attempts'] >= LOGIN_CODE_TRIES) {
         return 'expired';
     }
     foreach ($rows as $row) {
@@ -86,8 +130,14 @@ function check_login_code(string $key, string $typed): string
             return 'ok';
         }
     }
-    sql('UPDATE login_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at > ?', [$key, now()]);
+    // Counted once, so the day's total in login_guesses_today() is the real number of guesses.
+    sql('UPDATE login_codes SET attempts = attempts + 1 WHERE id = ?', [$rows[0]['id']]);
     return 'wrong';
+}
+
+function login_codes_for(string $key, int $seconds): int
+{
+    return (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$key, date('Y-m-d H:i:s', time() - $seconds)])->fetchColumn();
 }
 
 function login_codes_from_ip(string $ipHash, int $seconds): int
@@ -145,10 +195,13 @@ function login_page(): never
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Patikrinkite el. pašto adresą.';
         } elseif ($termsError === '') {
-            $recent = (int) sql('SELECT COUNT(*) FROM login_codes WHERE email = ? AND created_at > ?', [$email, date('Y-m-d H:i:s', time() - 3600)])->fetchColumn();
             $ipHash = hash_hmac('sha256', client_ip(), mail_secret());
-            if ($recent >= 5) {
+            if (login_guesses_today($email) >= LOGIN_GUESSES_PER_DAY) {
+                $error = login_locked_error();
+            } elseif (login_codes_for($email, 3600) >= LOGIN_CODES_PER_EMAIL_HOUR) {
                 $error = 'Viršytas bandymų skaičius. Bandykite dar kartą po valandos.';
+            } elseif (login_codes_for($email, 86400) >= LOGIN_CODES_PER_EMAIL_DAY) {
+                $error = 'Šiandien šiuo adresu išsiuntėme jau daug kodų. Bandykite rytoj arba parašykite '.OPERATOR_EMAIL.'.';
             } elseif (login_codes_from_ip($ipHash, 3600) >= LOGIN_CODES_PER_IP_HOUR || login_codes_from_ip($ipHash, 86400) >= LOGIN_CODES_PER_IP_DAY) {
                 $error = 'Iš šio tinklo per trumpą laiką paprašyta per daug kodų. Bandykite vėliau arba parašykite '.OPERATOR_EMAIL.'.';
             } else {
@@ -227,7 +280,9 @@ function login_code_page(): never
     if (is_post()) {
         check_csrf();
         $check = check_login_code($email, input('code'));
-        if ($check === 'expired') {
+        if ($check === 'locked') {
+            $error = login_locked_error();
+        } elseif ($check === 'expired') {
             $error = 'Kodas nebegalioja. Paprašykite naujo kodo.';
         } elseif ($check === 'wrong') {
             $error = 'Kodas neteisingas. Patikrinkite ir įveskite dar kartą.';
@@ -298,6 +353,7 @@ function create_user(string $kind, string $email): int
 function finish_login(int $userId): never
 {
     session_regenerate_id(true);
+    $_SESSION['cookie_at'] = time();
     $_SESSION['uid'] = $userId;
     $_SESSION['epoch'] = (int) sql('SELECT session_epoch FROM users WHERE id = ?', [$userId])->fetchColumn();
     unset($_SESSION['login_email'], $_SESSION['signup_kind'], $_SESSION['signup_intent']);
@@ -317,9 +373,9 @@ function finish_login(int $userId): never
     if (!profile_complete($user)) {
         redirect('/profilis');
     }
-    $next = $_SESSION['after_login'] ?? '/mano';
+    $next = safe_next($_SESSION['after_login'] ?? null);
     unset($_SESSION['after_login']);
-    redirect(str_starts_with($next, '/') && !str_starts_with($next, '//') ? $next : '/mano');
+    redirect($next);
 }
 
 // Signs the member out on every device, this one included.
