@@ -515,6 +515,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .contract.past { border-color: var(--line); }
 .contract h3 { margin: 12px 0 4px; font-size: 1.15rem; }
 .contract h3 a { text-decoration: none; }
+.contract-who { display: flex; align-items: center; gap: 10px; }
 .contract > .meta { margin: 0; }
 .stepper { list-style: none; padding: 0; margin: 0; display: flex; gap: 6px; flex-wrap: wrap; counter-reset: s; }
 .stepper li { counter-increment: s; display: flex; align-items: center; gap: 6px; font-size: .75rem; font-weight: 600; color: var(--muted); }
