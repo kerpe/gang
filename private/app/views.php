@@ -86,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=86">
+<link rel="stylesheet" href="/style.css?v=87">
 $head
 </head>
 <body$bodyClass>
@@ -109,6 +109,24 @@ function clearErr(e) { var box = e.target.closest && (e.target.closest('fieldset
 // e.g. two identical job requests. Forms that handle sending themselves (chat) prevent the default and are skipped.
 document.addEventListener('submit', function (e) { var f = e.target; if (e.defaultPrevented || f.method !== 'post') return; if (f.dataset.sending) { e.preventDefault(); return; } f.dataset.sending = '1'; setTimeout(function () { delete f.dataset.sending; }, 8000); });
 window.addEventListener('pageshow', function () { document.querySelectorAll('form[data-sending]').forEach(function (f) { delete f.dataset.sending; }); });
+// Remaining characters under text fields that have a maxlength: shown while the field is in use.
+// A textarea with data-min (venue/job description) first counts up to its minimum and stays visible.
+// Short numeric fields (pay, phone), link fields (255) and the chat box are left without a counter.
+document.querySelectorAll('form.form input[maxlength], form.form textarea[maxlength]').forEach(function (f) {
+  var max = +f.getAttribute('maxlength'), min = +f.dataset.min || 0;
+  if (max < 50 || (max >= 255 && f.tagName === 'INPUT') || f.readOnly || f.type === 'tel' || /numeric|decimal/.test(f.inputMode)) return;
+  var out = f.parentNode.querySelector('.counter');
+  if (!out) { out = document.createElement('span'); out.className = 'counter meta'; (f.closest('.input-suffix') || f).after(out); }
+  out.hidden = !min;
+  function show() {
+    var need = min - f.value.trim().length, left = max - f.value.length;
+    out.textContent = need > 0 ? 'Dar reikia simbolių: ' + need : left > 0 ? 'Liko simbolių: ' + left : 'Pasiektas simbolių limitas';
+  }
+  f.addEventListener('input', show);
+  f.addEventListener('focus', function () { show(); out.hidden = false; });
+  f.addEventListener('blur', function () { out.hidden = !min; });
+  show();
+});
 </script>
 </body>
 </html>
