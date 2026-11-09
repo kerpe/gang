@@ -985,3 +985,76 @@ function unsubscribe_page(int $id, string $token): never
         : '<p class="lead">Laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong> jau atsisakėte. Vėl įjungti galite <a href="/profilis">paskyroje</a>.</p>';
     page('Atsisakyti laiškų', '<section class="wrap narrow"><h1>Atsisakyti laiškų</h1>'.$body.'</section>', ['noindex' => true]);
 }
+
+// "Užbaikite registraciją": a member who confirmed their email but stopped before the account was ready
+// hears from GANG twice at most – a day and a week after signing up. The link to turn it off needs no sign-in.
+const SIGNUP_REMINDER_DAYS = [1 => 1, 2 => 7];
+
+function signup_reminders_url(int $userId): string
+{
+    return url('/atsisakyti/'.$userId.'/'.signup_reminders_token($userId).'/priminimai');
+}
+
+function signup_reminders_token(int $userId): string
+{
+    return substr(hash_hmac('sha256', 'signup-reminders:'.$userId, mail_secret()), 0, 32);
+}
+
+function send_signup_reminders(): void
+{
+    $users = sql("SELECT * FROM users WHERE blocked = 0 AND signup_reminders_off = 0 AND signup_reminders < 2 AND created_at < ? ORDER BY id LIMIT 200",
+        [date('Y-m-d H:i:s', strtotime('-'.SIGNUP_REMINDER_DAYS[1].' day'))])->fetchAll();
+    foreach ($users as $u) {
+        $n = (int) $u['signup_reminders'] + 1;
+        $step = signup_step_url($u);
+        // The second one waits a week from sign-up, and at least 6 days after the first.
+        $due = $u['created_at'] < date('Y-m-d H:i:s', strtotime('-'.SIGNUP_REMINDER_DAYS[$n].' days'))
+            && ($n === 1 || $u['signup_reminder_at'] < date('Y-m-d H:i:s', strtotime('-6 days')));
+        if ($step === '' || !$due) {
+            continue;
+        }
+        $left = match (true) {
+            $u['kind'] === 'worker' => 'Liko užpildyti paskyrą: vardą, telefoną, pareigas, patirtį ir miestus. Tada gausite jums tinkančius darbo pasiūlymus.',
+            $step === '/profilis' => 'Liko įrašyti savo vardą ir telefoną bei užregistruoti darbovietę. Tada ją patikrinsime ir galėsite skelbti darbuotojų paieškas.',
+            default => 'Liko užregistruoti darbovietę. Tada ją patikrinsime ir galėsite skelbti darbuotojų paieškas.',
+        };
+        $off = signup_reminders_url((int) $u['id']);
+        send_mail($u['email'], 'Užbaikite registraciją GANG', [
+            'kicker' => 'GANG',
+            'title' => 'Užbaikite registraciją',
+            'lead' => 'pradėjote registruotis GANG, bet registracijos dar neužbaigėte. '.$left,
+            'body' => 'Prisijunkite su šiuo el. pašto adresu – nukreipsime ten, kur sustojote. Tai užtruks kelias minutes.',
+            'cta' => ['Užbaigti registraciją', url('/prisijungti')],
+            'footnote' => 'Jei nebenorite gauti šių priminimų, [atsisakykite jų]('.$off.').',
+        ], '', [
+            'List-Unsubscribe' => '<'.$off.'>, <mailto:hello@gang.lt?subject=Atsisakyti%20priminimu>',
+            'List-Unsubscribe-Post' => 'List-Unsubscribe=One-Click',
+        ]);
+        sql('UPDATE users SET signup_reminders = ?, signup_reminder_at = ? WHERE id = ?', [$n, now(), $u['id']]);
+    }
+}
+
+// GET asks first (mail scanners open links); POST, including the mail client's one-click POST, turns them off.
+function signup_reminders_off_page(int $id, string $token): never
+{
+    header('X-Robots-Tag: noindex, nofollow');
+    $u = sql('SELECT * FROM users WHERE id = ?', [$id])->fetch();
+    if (!$u || !hash_equals(signup_reminders_token($id), $token)) {
+        not_found();
+    }
+    if (is_post()) {
+        sql('UPDATE users SET signup_reminders_off = 1 WHERE id = ?', [$id]);
+        if (($_POST['List-Unsubscribe'] ?? '') === 'One-Click') {
+            header('Content-Type: text/plain; charset=utf-8');
+            echo 'OK';
+            exit;
+        }
+        page('Priminimų atsisakyta', '<section class="wrap narrow"><h1>Priminimų atsisakyta</h1><p class="lead">Daugiau nesiųsime priminimų užbaigti registraciją adresu <strong>'.e($u['email']).'</strong>.</p>'
+            .'<p>Užbaigti registraciją galite bet kada <a href="/prisijungti">prisijungę</a>.</p></section>', ['noindex' => true]);
+    }
+    $body = $u['signup_reminders_off']
+        ? '<p class="lead">Priminimų užbaigti registraciją adresu <strong>'.e($u['email']).'</strong> jau atsisakėte.</p>'
+        : '<p class="lead">Nebesiųsime priminimų užbaigti registraciją adresu <strong>'.e($u['email']).'</strong>.</p>'
+            .'<form method="post" class="form"><button class="btn">Atsisakyti priminimų</button></form>';
+    page('Atsisakyti priminimų', '<section class="wrap narrow"><h1>Atsisakyti priminimų</h1>'.$body.'</section>', ['noindex' => true]);
+}

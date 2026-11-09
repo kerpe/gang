@@ -73,6 +73,19 @@ function profile_complete(array $u): bool
     return $u['name'] !== '' && $u['phone'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
 }
 
+// Where a member who has not finished signing up goes next: own details first, then (employers)
+// the venue. '' = sign-up finished. Only then GANG is asked to check a new employer.
+function signup_step_url(array $u): string
+{
+    if (!profile_complete($u)) {
+        return '/profilis';
+    }
+    if ($u['kind'] === 'manager' && !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$u['id']])->fetchColumn()) {
+        return '/darboviete/nauja';
+    }
+    return '';
+}
+
 // One network (IP address) may ask for this many sign-in codes, to any addresses, so the form
 // cannot be used to send GANG mail to strangers. Mobile networks share addresses, so the limits are loose.
 const LOGIN_CODES_PER_IP_HOUR = 10;
@@ -370,8 +383,8 @@ function finish_login(int $userId): never
     if (needs_consent($user)) {
         redirect('/sutikimas');
     }
-    if (!profile_complete($user)) {
-        redirect('/profilis');
+    if (($step = signup_step_url($user)) !== '') {
+        redirect($step);
     }
     $next = safe_next($_SESSION['after_login'] ?? null);
     unset($_SESSION['after_login']);

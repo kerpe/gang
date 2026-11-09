@@ -92,8 +92,8 @@ function consent_page(): never
         check_csrf();
         if (consent_given()) {
             record_consent((int) $user['id']);
-            if (!profile_complete($user)) {
-                redirect('/profilis');
+            if (($step = signup_step_url($user)) !== '') {
+                redirect($step);
             }
             $next = safe_next($_SESSION['after_login'] ?? null);
             unset($_SESSION['after_login']);

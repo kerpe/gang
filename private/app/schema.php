@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 
 function migrate(PDO $db): void
 {
@@ -244,6 +244,10 @@ function migrate(PDO $db): void
         'chat_reads ADD read_at DATETIME NULL',
         // Version 26: staff perks belong to each job ad (they differ by role); venues.perks stays, used as the first default.
         "requests ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
+        // Version 27: "Užbaikite registraciją" reminders sent (at most 2), when, and whether the member turned them off.
+        'users ADD signup_reminders INT NOT NULL DEFAULT 0',
+        'users ADD signup_reminder_at DATETIME NULL',
+        'users ADD signup_reminders_off TINYINT NOT NULL DEFAULT 0',
     ];
     foreach ($columns as $column) {
         try {
