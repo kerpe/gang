@@ -849,7 +849,7 @@ function request_page(int $id): never
     <h1>{$e($role)}</h1>$eventLine
   </header>
   <div class="job-grid">
-    <div class="job-side">$payBox$facts</div>
+    <div class="job-side job-card">$payBox$facts</div>
     <div class="job-main">
       $venueSec
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>

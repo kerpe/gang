@@ -650,7 +650,11 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .job-head h1 { margin: 6px 0 8px; }
 .job-tags { margin: 0; }
 .job-grid { display: grid; gap: 24px; }
-.job-side { display: grid; gap: 14px; align-content: start; }
+.job-side { display: grid; align-content: start; }
+/* Pay and facts in one card: the pay sits on top as the card's tinted header. */
+.job-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.job-card .pay-box { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.job-card .job-facts { background: none; border: 0; border-radius: 0; }
 .pay-box { background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.45); border-radius: var(--radius); padding: 18px 20px; }
 .pay-box .label, .job-sec h2, .job-facts dt { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
 .pay-box strong { display: block; font-size: 2.4rem; line-height: 1.1; color: var(--lime); margin: 6px 0 2px; }
