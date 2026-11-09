@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 25;
+const SCHEMA_VERSION = 26;
 
 function migrate(PDO $db): void
 {
@@ -242,6 +242,8 @@ function migrate(PDO $db): void
         'responses ADD recheck_at DATETIME NULL',
         // Version 23: when the member last read a new message (the chat's "Perskaityta 18:32").
         'chat_reads ADD read_at DATETIME NULL',
+        // Version 26: staff perks belong to each job ad (they differ by role); venues.perks stays, used as the first default.
+        "requests ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
     ];
     foreach ($columns as $column) {
         try {
@@ -268,6 +270,11 @@ function migrate(PDO $db): void
     if (!$db->query("SELECT 1 FROM settings WHERE name = 'managers_verified'")->fetchColumn()) {
         $db->exec("UPDATE users SET verified_at = created_at WHERE kind = 'manager' AND verified_at IS NULL");
         $db->exec("INSERT INTO settings (name, value) VALUES ('managers_verified', '1')");
+    }
+    // Version 26: existing job ads take over their venue's perks (once).
+    if (!$db->query("SELECT 1 FROM settings WHERE name = 'request_perks_copied'")->fetchColumn()) {
+        $db->exec("UPDATE requests SET perks = (SELECT perks FROM venues WHERE venues.id = requests.venue_id) WHERE perks = ''");
+        $db->exec("INSERT INTO settings (name, value) VALUES ('request_perks_copied', '1')");
     }
     // Version 24: "Skubiai" merged into "Trumpam" (Vilius 2026-11-08).
     $db->exec("UPDATE requests SET kind = 'trumpai' WHERE kind = 'skubu'");

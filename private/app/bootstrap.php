@@ -84,7 +84,7 @@ const TEAM_SIZES = [
     '31-60' => '31–60 žmonių',
     '60+' => 'Daugiau nei 60 žmonių',
 ];
-// What a venue offers its staff; shown on the venue page under "Darbuotojams siūlome".
+// What a job offers its staff; ticked in every job ad and shown there under "Darbuotojams siūlome".
 const VENUE_PERKS = [
     'maitinimas' => 'Personalo maitinimas',
     'arbatpinigiai' => 'Arbatpinigiai',

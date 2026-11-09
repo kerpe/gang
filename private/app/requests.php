@@ -11,9 +11,9 @@ function venue_form_page(?int $id = null): never
     if ($id && !$venue) {
         not_found();
     }
-    $v = array_fill_keys(VENUE_FIELDS, '') + ['perks' => [], 'logo' => null, 'id' => 0];
+    $v = array_fill_keys(VENUE_FIELDS, '') + ['logo' => null, 'id' => 0];
     if ($venue) {
-        $v = array_merge($v, array_intersect_key($venue, $v), ['perks' => from_list($venue['perks'])]);
+        $v = array_merge($v, array_intersect_key($venue, $v));
     }
     $errors = [];
     if (is_post()) {
@@ -21,7 +21,6 @@ function venue_form_page(?int $id = null): never
         foreach (VENUE_FIELDS as $field) {
             $v[$field] = input($field);
         }
-        $v['perks'] = (array) ($_POST['perks'] ?? []);
         if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
             $errors['name'] = 'Įrašykite darbovietės pavadinimą.';
         }
@@ -80,7 +79,7 @@ function venue_form_page(?int $id = null): never
             $logo = $venue['logo'] ?? null;
         }
         if (!$errors) {
-            $row = array_intersect_key($v, array_flip(VENUE_FIELDS)) + ['perks' => to_list($v['perks'], VENUE_PERKS), 'logo' => $logo];
+            $row = array_intersect_key($v, array_flip(VENUE_FIELDS)) + ['logo' => $logo];
             if ($venue) {
                 sql('UPDATE venues SET '.implode(', ', array_map(fn ($k) => "$k = ?", array_keys($row))).' WHERE id = ?', [...array_values($row), $venue['id']]);
                 if ($logo !== $venue['logo']) {
@@ -113,11 +112,6 @@ function venue_form_page(?int $id = null): never
     $logoField = '<div class="photo-row logo-row">'.venue_logo(['id' => $v['id'] ?: ($venue['id'] ?? 0), 'name' => $v['name'] ?: 'GANG', 'logo' => $v['logo']], 'large')
         .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" aria-label="Darbovietės logotipas" data-crop="logo">'
         .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Rodomas darbo skelbimuose ir darbovietės puslapyje.</p>'.$remove.err($errors, 'logo').'</div></div>';
-    $perks = '<div class="choices perk-choices">';
-    foreach (VENUE_PERKS as $key => $label) {
-        $perks .= '<label class="choice"><input type="checkbox" name="perks[]" value="'.$key.'"'.(in_array($key, $v['perks'], true) ? ' checked' : '').'> '.e($label).'</label>';
-    }
-    $perks .= '</div>';
     $body = $section('Pagrindinė informacija', 'Pavadinimas, tipas ir logotipas padeda darbuotojams iš karto atpažinti jūsų darbovietę.',
             $field('Pavadinimas', $text('name', 120, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
@@ -129,9 +123,8 @@ function venue_form_page(?int $id = null): never
             .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
         .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
             $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta" aria-live="polite"></span>', 'about'))
-        .$section('Komanda ir sąlygos', 'Pažymėkite, ką siūlote darbuotojams. Tai viena svarbiausių priežasčių, kodėl žmonės renkasi darbovietę.',
-            '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>'
-            .'<div class="field"><span class="field-label">Darbuotojams siūlome'.$optional.'</span>'.$perks.'</div>')
+        .$section('Komanda', 'Kiek žmonių dirba kartu. Ką siūlote darbuotojams, pažymėsite kiekviename skelbime atskirai.',
+            '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
         .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
             '<div class="row">'.$field('Svetainė'.$optional, $text('website', 255, 'www.jusu-baras.lt', ' inputmode="url" autocomplete="url"'), 'website')
             .$field('Instagram'.$optional, $text('instagram', 255, '@jusu_baras'), 'instagram').'</div>'
@@ -353,9 +346,10 @@ HTML;
 }
 
 // "Darbuotojams siūlome" chips of a venue.
-function venue_perks_html(array $venue, string $heading): string
+// What the job offers its staff (meals, uniform, tips…): picked in every job ad separately, since it differs by role.
+function perks_html(string $list, string $heading): string
 {
-    $perks = array_values(array_intersect_key(VENUE_PERKS, array_flip(from_list($venue['perks']))));
+    $perks = array_values(array_intersect_key(VENUE_PERKS, array_flip(from_list($list))));
     return $perks ? $heading.'<ul class="perk-list">'.implode('', array_map(fn ($p) => '<li>'.e($p).'</li>', $perks)).'</ul>' : '';
 }
 
@@ -397,14 +391,12 @@ function venue_page(int $id): never
         'Patikimumas' => $reliable !== null ? $reliable.' % sutartų darbų įvyko' : '',
     ]);
     $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>';
-    $perksHtml = venue_perks_html($venue, '<h2>Darbuotojams siūlome</h2>');
     $edit = $u && (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
     page($venue['name'], '<section class="wrap narrow venue-page"><header class="venue-head">'.venue_logo($venue, 'large')
         .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').($private ? ' · '.stars($avg, $n) : '').'</p>'
         .venue_links_html($venue).'</div></header>'.$edit
         .$factsHtml
         .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
-        .$perksHtml
         .$jobsHtml.$reviewsHtml.'</section>', ['noindex' => true]);
 }
 
@@ -420,6 +412,9 @@ function request_form_page(): never
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => ''];
+    // Perks start as in the venue's latest job ad, so a manager ticks them once and adjusts only where they differ.
+    $last = sql('SELECT r.perks FROM requests r WHERE r.venue_id = ? ORDER BY r.id DESC LIMIT 1', [$venues[0]['id']])->fetchColumn();
+    $perks = from_list($last !== false ? (string) $last : (string) $venues[0]['perks']);
     // Events: more roles on the same dates, each [role, people, pay]; every role becomes its own request.
     $extras = [];
     // "Pakartoti": the form comes filled in from an earlier request; only the dates are picked again.
@@ -430,6 +425,7 @@ function request_form_page(): never
         $description = ($from['hours'] !== '' ? 'Darbo laikas: '.$from['hours']."\n\n" : '').$from['description'];
         $v = ['venue_id' => (string) $from['venue_id'], 'role' => $from['role'], 'kind' => $from['kind'], 'people' => (string) $from['people'], 'dates' => '',
             'pay' => valid_pay($pay[0] ?? '') ? $pay[0] : '', 'min_experience' => (string) $from['min_experience'], 'description' => $description, 'event_title' => $from['event_title']];
+        $perks = from_list($from['perks']);
         if ($from['event_id'] && !ctype_digit($_GET['pakeisti'] ?? '')) {
             foreach (sql('SELECT role, people, pay FROM requests WHERE event_id = ? AND id <> ? ORDER BY id', [$from['event_id'], $from['id']])->fetchAll() as $x) {
                 preg_match('/^\d+(?:,\d+)?/', (string) $x['pay'], $xp);
@@ -449,6 +445,7 @@ function request_form_page(): never
         foreach ($v as $k => $_) {
             $v[$k] = input($k);
         }
+        $perks = array_values(array_intersect((array) ($_POST['perks'] ?? []), array_keys(VENUE_PERKS)));
         $extras = [];
         // Extra roles count only with "Renginiui reikalingi darbuotojai kelioms pareigoms" ticked.
         $eventOn = input('event') === '1' && in_array($v['kind'], EVENT_KINDS, true);
@@ -514,7 +511,7 @@ function request_form_page(): never
                     'venue_id' => (int) $v['venue_id'], 'role' => $line['role'], 'kind' => $v['kind'], 'people' => (int) $line['people'],
                     'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => '',
                     'pay' => pay_label(str_replace(',', '.', $line['pay'])), 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
-                    'event_title' => $extras ? $v['event_title'] : '',
+                    'event_title' => $extras ? $v['event_title'] : '', 'perks' => to_list($perks, VENUE_PERKS),
                 ]);
             }
             if (count($ids) > 1) {
@@ -573,7 +570,18 @@ function request_form_page(): never
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span><span class="hint pay-guide" id="pay-guide" hidden></span></label>'
         .event_roles_fieldset($extras, $v['event_title'], $errors, in_array($v['kind'], EVENT_KINDS, true))
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'" placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
+        .perks_fieldset($perks)
         .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script().counter_script(), ['noindex' => true]);
+}
+
+// "Darbuotojams siūlome" checkboxes in the job ad form and its edit form.
+function perks_fieldset(array $selected): string
+{
+    $html = '<fieldset><legend>Darbuotojams siūlome <small>neprivaloma</small></legend><div class="choices perk-choices">';
+    foreach (VENUE_PERKS as $key => $label) {
+        $html .= '<label class="choice"><input type="checkbox" name="perks[]" value="'.$key.'"'.(in_array($key, $selected, true) ? ' checked' : '').'> '.e($label).'</label>';
+    }
+    return $html.'</div></fieldset>';
 }
 
 const EVENT_MAX_ROLES = 6;
@@ -804,6 +812,8 @@ function request_page(int $id): never
             .' new IntersectionObserver(function (e) { bar.classList.toggle("off", e[0].isIntersecting || e[0].boundingClientRect.top < 0); }).observe(panel); })();</script>';
     }
     $desc = nl2br(e($r['description']));
+    $perks = perks_html($r['perks'], '');
+    $perks = $perks !== '' ? '<section class="job-sec"><h2>Darbuotojams siūlome</h2>'.$perks.'</section>' : '';
     $e = 'e';
     $ld = '';
     // Other roles of the same event.
@@ -842,6 +852,7 @@ function request_page(int $id): never
     <div class="job-main">
       $venueSec
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      $perks
       $event
       $action
     </div>
@@ -871,7 +882,6 @@ function venue_section_html(array $venue, string $url, string $city = '', string
         .($rating !== '' ? '<span class="meta venue-rating">'.$rating.'</span>' : '').'</div></div>'
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$factsHtml
-        .venue_perks_html($venue, '<h3>Darbuotojams siūlome</h3>')
         .venue_links_html($venue)
         .'<p class="venue-more"><a href="'.$url.'">Visa darbovietės informacija →</a></p></div></section>';
 }
@@ -1248,12 +1258,14 @@ function request_edit_page(int $id): never
     preg_match('/^\d+(?:,\d+)?/', (string) $r['pay'], $m);
     $oldPay = $m[0] ?? '';
     $v = ['dates' => $oldDates, 'pay' => $oldPay, 'description' => ($r['hours'] !== '' ? 'Darbo laikas: '.$r['hours']."\n\n" : '').$r['description']];
+    $perks = from_list($r['perks']);
     $errors = [];
     if (is_post()) {
         check_csrf();
         foreach ($v as $k => $_) {
             $v[$k] = input($k);
         }
+        $perks = array_values(array_intersect((array) ($_POST['perks'] ?? []), array_keys(VENUE_PERKS)));
         $ranges = [];
         if ($locked) {
             $v['dates'] = $oldDates;
@@ -1287,7 +1299,7 @@ function request_edit_page(int $id): never
                     $ranges[0][0], end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, count($ranges) > 1 ? $v['dates'] : '',
                 ]);
             }
-            sql("UPDATE requests SET description = ?, hours = '' WHERE id IN ($ids)", [$v['description']]);
+            sql("UPDATE requests SET description = ?, hours = '', perks = ? WHERE id IN ($ids)", [$v['description'], to_list($perks, VENUE_PERKS)]);
             sql('UPDATE requests SET pay = ? WHERE id = ?', [$newPay, $id]);
             $asked = 0;
             foreach ($group as $old) {
@@ -1305,9 +1317,9 @@ function request_edit_page(int $id): never
         }
     }
     $role = ROLES[$r['role']] ?? '';
-    $event = count($group) > 1 ? ' Datos ir aprašymas pasikeis visoms šio renginio pareigoms.' : '';
+    $event = count($group) > 1 ? ' Datos, aprašymas ir privalumai pasikeis visoms šio renginio pareigoms.' : '';
     $who = $locked
-        ? '<p class="notice tip">Šiai paieškai jau patvirtinote darbuotoją, todėl datos ir atlygis lieka tokie, dėl kurių susitarėte. Jei jie keičiasi, susitarkite su darbuotoju GANG pokalbyje. Aprašymą galite keisti.</p>'
+        ? '<p class="notice tip">Šiai paieškai jau patvirtinote darbuotoją, todėl datos ir atlygis lieka tokie, dėl kurių susitarėte. Jei jie keičiasi, susitarkite su darbuotoju GANG pokalbyje. Aprašymą ir privalumus galite keisti.</p>'
         : ($candidates
             ? '<p class="notice tip">Kandidatūrų jau gauta: '.$candidates.'. Pakeitus datas ar atlygį, kandidatai gaus laišką ir turės patvirtinti, ar naujos sąlygos jiems tinka. Kol jie to nepadarys, jų kandidatūrų patvirtinti negalėsite.'.$event.'</p>'
             : '<p class="notice ok">Kandidatūrų dar negauta, todėl pakeitimai bus išsaugoti be papildomų laiškų. Darbuotojai, atidarę skelbimą, matys atnaujintą informaciją.'.$event.'</p>');
@@ -1325,6 +1337,7 @@ function request_edit_page(int $id): never
         .($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
         .'<form method="post" class="form" novalidate>'.csrf_field().$when
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
+        .perks_fieldset($perks)
         .'<p class="hint">Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.</p>'
         .'<div class="owner-actions"><button class="btn">Išsaugoti pakeitimus</button><a class="btn ghost" href="/darbas/'.$id.'">Atšaukti</a></div></form></section>'
         .($locked ? '' : date_picker_script()).counter_script(), ['noindex' => true]);
