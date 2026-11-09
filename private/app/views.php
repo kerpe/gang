@@ -86,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=85">
+<link rel="stylesheet" href="/style.css?v=86">
 $head
 </head>
 <body$bodyClass>
@@ -128,13 +128,13 @@ function analytics_consent(): string
     }
     $ids = json_encode(['gtm' => $gtm, 'clarity' => $clarity]);
     return <<<HTML
-<div class="consent" id="consent" role="dialog" aria-live="polite" aria-label="Slapukai" hidden>
+<div class="cookie-bar" id="cookie-bar" role="dialog" aria-live="polite" aria-label="Slapukai" hidden>
   <p>Naudojame analitikos slapukus, kad matytume, kaip lankytojai naudojasi GANG, ir galėtume svetainę tobulinti. <a href="/privatumas#slapukai">Daugiau</a></p>
-  <div class="consent-actions"><button type="button" class="btn small ghost" data-consent="no">Atsisakyti</button><button type="button" class="btn small" data-consent="yes">Sutinku</button></div>
+  <div class="cookie-bar-actions"><button type="button" class="btn small ghost" data-consent="no">Atsisakyti</button><button type="button" class="btn small" data-consent="yes">Sutinku</button></div>
 </div>
 <script>
 (function () {
-  var ids = $ids, key = 'gang_consent', box = document.getElementById('consent'), loaded = false;
+  var ids = $ids, key = 'gang_consent', box = document.getElementById('cookie-bar'), loaded = false;
   function read() { try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v && v.t > Date.now() - 365 * 864e5 ? v.c : null; } catch (e) { return null; } }
   function save(c) { try { localStorage.setItem(key, JSON.stringify({ c: c, t: Date.now() })); } catch (e) {} }
   function load() {
