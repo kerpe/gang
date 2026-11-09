@@ -9,8 +9,8 @@ declare(strict_types=1);
 const TERMS_VERSION = '2026-11-07';
 
 // The legal entity that runs GANG.lt. Shown in both documents.
-const OPERATOR_NAME = 'MB „Rundfunkbeitrag support“';
-const OPERATOR_DETAILS = 'juridinio asmens kodas 307030376, buveinės adresas Beržų g. 38, LT-36202 Panevėžys';
+const OPERATOR_NAME = 'MB „Kerpė“';
+const OPERATOR_DETAILS = 'juridinio asmens kodas 305712990, PVM mokėtojo kodas LT100017165814, buveinės adresas Salantų g. 6, Padvarių k., Kretingos r.';
 const OPERATOR_EMAIL = 'hello@gang.lt';
 
 function terms_date(): string
