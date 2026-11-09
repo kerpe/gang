@@ -357,7 +357,7 @@ function contract_card(array $c, string $side, bool $reviewed, bool $venueName =
     $stepper .= '</ol>';
     // Phone numbers stay hidden: the two sides talk in the GANG chat and swap numbers there if they want to.
     $place = full_address($c);
-    $info = $worker ? '<dl class="contract-info"><div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd>'.e($c['manager_name']).'</dd></div></dl>' : '';
+    $info = $worker ? '<dl class="contract-info"><div><dt>Adresas</dt><dd>'.e($place).'</dd></div><div><dt>Kontaktas</dt><dd class="contract-who">'.avatar(['id' => $c['manager_id'], 'name' => $c['manager_name'], 'photo' => $c['manager_photo'] ?? null], 'small').e($c['manager_name']).'</dd></div></dl>' : '';
     $actions = '';
     $me = (int) ($worker ? $c['worker_id'] : $c['manager_id']);
     $unread = chat_unread((int) $c['id'], $me);
@@ -384,7 +384,9 @@ function contract_card(array $c, string $side, bool $reviewed, bool $venueName =
     }
     $title = $worker ? e(ROLES[$c['role']] ?? '').' · '.e($c['venue_name']) : e(first_name($c['worker_name'])).' · '.e(ROLES[$c['role']] ?? '');
     return '<article class="contract'.($over ? ' past' : '').'">'.$stepper
-        .'<h3><a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
+        // Both sides see each other's photo: the worker next to "Kontaktas", the employer next to the worker's name.
+        .($worker ? '<h3>' : '<h3 class="contract-who">'.avatar(['id' => $c['worker_id'], 'name' => $c['worker_name'], 'photo' => $c['worker_photo'] ?? null], 'small'))
+        .'<a href="/darbas/'.(int) $c['request_id'].'">'.$title.'</a></h3>'
         .'<p class="meta">'.($venueName ? e($c['venue_name']).' · ' : '').e(period($c)).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</p>'
         .$info.shift_status($c, $side).$attendance
         .'<p class="contract-actions">'.$actions.'</p></article>';
