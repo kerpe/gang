@@ -32,8 +32,9 @@ function profile_page(): never
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
             'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify'])];
-        if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
-            $errors['name'] = 'Įrašykite vardą ir pavardę.';
+        $v['name'] = preg_replace('/\s+/u', ' ', $v['name']);
+        if (!full_name_ok($v['name']) || mb_strlen($v['name']) > 120) {
+            $errors['name'] = NAME_ERROR;
         }
         // Optional, but a number that is given must be a real one.
         [$phone, $phoneError] = $v['phone'] === '' ? ['', ''] : check_phone($v['phone']);
@@ -139,7 +140,7 @@ function profile_page(): never
     page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
-        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required>'.err($errors, 'name').'</label>'
+        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required data-nocount aria-describedby="name-live">'.err($errors, 'name').'<span class="err-live" id="name-live" role="alert" hidden></span></label>'
         .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
@@ -148,7 +149,7 @@ function profile_page(): never
         .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
         .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
         .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
-        .'</section>'.phone_check_script().photo_resize_script(), ['noindex' => true]);
+        .'</section>'.name_check_script().phone_check_script().photo_resize_script(), ['noindex' => true]);
 }
 
 // Shows the chosen photo in the circle right away and lets the worker zoom and drag it into place.
@@ -776,6 +777,34 @@ function format_phone(string $code, string $national): string
 }
 
 // Same check in the browser, so a mistake shows while typing.
+// "Vardas ir pavardė" needs at least two words with a letter each: Jonas Jonaitis, Ona Marija Petrauskienė,
+// Jean-Luc O'Neil. Initials (Jonas J.) are fine too. Single names are not accepted.
+const NAME_ERROR = 'Įrašykite ir vardą, ir pavardę, pavyzdžiui: Jonas Jonaitis.';
+
+function full_name_ok(string $name): bool
+{
+    $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+    return count(array_filter($words, fn ($w) => preg_match('/\p{L}/u', $w))) >= 2;
+}
+
+// The same check in the browser: shown when the visitor leaves the field, gone as soon as it is right.
+function name_check_script(): string
+{
+    $error = json_encode(NAME_ERROR, JSON_UNESCAPED_UNICODE);
+    return <<<HTML
+<script>
+(function () {
+  var input = document.querySelector('input[name=name][data-nocount]'), msg = document.getElementById('name-live');
+  if (!input || !msg) return;
+  function ok() { return input.value.trim().split(/\s+/).filter(function (w) { return /\p{L}/u.test(w); }).length >= 2; }
+  function show(on) { msg.textContent = $error; msg.hidden = !on; input.setAttribute('aria-invalid', on ? 'true' : 'false'); }
+  input.addEventListener('blur', function () { if (input.value.trim() !== '') show(!ok()); });
+  input.addEventListener('input', function () { if (!msg.hidden && ok()) show(false); });
+})();
+</script>
+HTML;
+}
+
 function phone_check_script(): string
 {
     $codes = json_encode(PHONE_CODES, JSON_UNESCAPED_UNICODE);
