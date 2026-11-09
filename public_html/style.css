@@ -789,7 +789,6 @@ table.data td.actions form + form { margin-left: 6px; }
 .field-label { font-weight: 500; }
 .field-label small { color: var(--muted); font-weight: 400; font-size: .82rem; margin-left: 4px; }
 .field-hint { color: var(--muted); font-size: .85rem; }
-.field .counter { font-size: .85rem; }
 .perk-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
 .logo-row { align-items: center; }
 .logo-row .field-label { display: block; }
@@ -1120,3 +1119,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .analytics-refresh .linkish { color: var(--lime); }
 .analytics-settings { margin-top: 12px; }
 .analytics-settings summary { cursor: pointer; color: var(--muted); }
+
+/* Remaining characters under a field (views.php): small, muted, right-aligned. */
+.form .counter { justify-self: end; margin: -2px 0 0; font-size: .8rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
+.form .counter[hidden] { display: none; }

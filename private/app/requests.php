@@ -122,7 +122,7 @@ function venue_form_page(?int $id = null): never
             .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
             .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
         .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
-            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta" aria-live="polite"></span>', 'about'))
+            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
         .$section('Komanda', 'Kiek žmonių dirba kartu. Ką siūlote darbuotojams, pažymėsite kiekviename skelbime atskirai.',
             '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
         .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
@@ -136,7 +136,7 @@ function venue_form_page(?int $id = null): never
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
         .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
-        .counter_script().photo_resize_script(), ['noindex' => true]);
+        .photo_resize_script(), ['noindex' => true]);
 }
 
 // Turns what the manager typed (a URL, a domain, "@handle" or a bare handle) into a full https link.
@@ -327,23 +327,6 @@ document.querySelectorAll('.picker').forEach(function (box) {
 HTML;
 }
 
-// Live "dar X simbolių" under textareas with data-min.
-function counter_script(): string
-{
-    return <<<'HTML'
-<script>
-document.querySelectorAll('textarea[data-min]').forEach(function (t) {
-  var out = t.parentNode.querySelector('.counter'), min = +t.dataset.min;
-  function show() {
-    var left = min - t.value.trim().length;
-    out.textContent = left > 0 ? 'Dar reikia simbolių: ' + left : 'Aprašymo ilgis pakankamas.';
-    out.classList.toggle('ok-text', left <= 0);
-  }
-  t.addEventListener('input', show); show();
-});
-</script>
-HTML;
-}
 
 // "Darbuotojams siūlome" chips of a venue.
 // What the job offers its staff (meals, uniform, tips…): picked in every job ad separately, since it differs by role.
@@ -569,9 +552,9 @@ function request_form_page(): never
         .'<label class="pay-field">Atlygis į rankas <span class="input-suffix"><input name="pay" value="'.e($v['pay']).'" inputmode="decimal" maxlength="6" required placeholder="10" pattern="\d{1,3}([.,]\d{1,2})?" aria-describedby="pay-live"><span aria-hidden="true">€/val.</span></span>'
         .err($errors, 'pay').'<span class="err-live" id="pay-live" role="alert" hidden>'.e(PAY_ERROR).'</span><span class="hint pay-guide" id="pay-guide" hidden></span></label>'
         .event_roles_fieldset($extras, $v['event_title'], $errors, in_array($v['kind'], EVENT_KINDS, true))
-        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'" placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
+        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'" placeholder="Pavyzdžiui: penktadienį ir šeštadienį 16–24 val. Dėl darbuotojo ligos ieškome virėjo karštajai virtuvei. Meniu nesudėtingas, dirbsite kartu su su-šefu.">'.e($v['description']).'</textarea><span class="counter meta"></span>'.err($errors, 'description').'</label>'
         .perks_fieldset($perks)
-        .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script().counter_script(), ['noindex' => true]);
+        .'<div class="submit-bar"><button class="btn">Paskelbti ir informuoti darbuotojus</button></div></form></section>'.date_picker_script().request_preview_script(), ['noindex' => true]);
 }
 
 // "Darbuotojams siūlome" checkboxes in the job ad form and its edit form.
@@ -1349,13 +1332,13 @@ function request_edit_page(int $id): never
         .($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
         .'<form method="post" class="form" novalidate>'.csrf_field().$when
         .($xpOpen ? '<fieldset><legend>Reikalaujama darbo patirtis</legend>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>' : '')
-        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
+        .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'">'.e($v['description']).'</textarea><span class="counter meta"></span>'.err($errors, 'description').'</label>'
         .perks_fieldset($perks)
         .'<p class="hint">'.($xpOpen
             ? 'Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.'
             : 'Pareigų, miesto, darbo trukmės ir reikalaujamos patirties pakeisti negalima, nes kandidatūrų jau gauta. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.').'</p>'
         .'<div class="owner-actions"><button class="btn">Išsaugoti pakeitimus</button><a class="btn ghost" href="/darbas/'.$id.'">Atšaukti</a></div></form></section>'
-        .($locked ? '' : date_picker_script()).counter_script(), ['noindex' => true]);
+        .($locked ? '' : date_picker_script()), ['noindex' => true]);
 }
 
 // After new dates or pay: every waiting candidate of the request confirms the new terms again
