@@ -120,12 +120,12 @@ function profile_page(): never
         $durationChoices = '';
         foreach (KINDS as $kind => $label) {
             $durationChoices .= '<label class="choice"><input type="checkbox" name="durations[]" value="'.$kind.'"'.(in_array($kind, $v['durations'], true) ? ' checked' : '').'>'
-                .'<span><span class="choice-name">'.e($label).'</span><small><span class="hint-long">'.e(KIND_HINTS[$kind]).'</span><span class="hint-short">'.e(KIND_HINTS_SHORT[$kind]).'</span></small></span></label>';
+                .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$kind]).'</small></span></label>';
         }
         $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
-            .'<fieldset><legend>Jus dominantis darbas</legend><p class="hint">Pažymėkite, kokios trukmės darbo ieškote. Galite pasirinkti kelis variantus, pavyzdžiui, trumpus pavadavimus ir nuolatinį darbą.</p>'
+            .'<fieldset><legend>Jūs dominantis darbas</legend><p class="hint">Pažymėkite, kokios trukmės darbo ieškote. Galite pasirinkti kelis variantus, pavyzdžiui, trumpus pavadavimus ir nuolatinį darbą.</p>'
             .'<div class="choices kind-choices">'.$durationChoices.'</div>'.err($errors, 'durations').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
