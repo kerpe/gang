@@ -154,7 +154,7 @@ function terms_page(): never
                 .'<li>Nediskriminuoti kandidatų dėl lyties, amžiaus, tautybės, kilmės, religijos, negalios, seksualinės orientacijos ar kitų teisės aktų saugomų požymių.</li>'
                 .'<li>Darbuotojų duomenis ir kontaktus naudoti tik su darbo pasiūlymu susijusiam bendravimui.</li></ul>'],
             ['darbuotojai', 'Darbuotojų įsipareigojimai', '<ul>'
-                .'<li>Profilyje nurodyti tikrą patirtį ir pareigas, kurias iš tiesų galite atlikti.</li>'
+                .'<li>Paskyroje nurodyti tikrą patirtį ir pareigas, kurias iš tiesų galite atlikti.</li>'
                 .'<li>Teikti kandidatūrą tik tiems pasiūlymams, kuriems tikrai galite dirbti nurodytu laiku.</li>'
                 .'<li>Atvykti į patvirtintą darbą laiku arba, jei negalite, kuo anksčiau jį atšaukti per GANG.</li>'
                 .'<li>Darbdavių kontaktus naudoti tik su darbo pasiūlymu susijusiam bendravimui.</li></ul>'],
@@ -171,11 +171,11 @@ function terms_page(): never
                 .'<li>automatinėmis priemonėmis kopijuoti platformos turinį ar duomenis;</li>'
                 .'<li>bandyti apeiti platformos apsaugos priemones ar trikdyti jos veikimą.</li></ul>'],
             ['kaina', 'Kaina', '<p>Šiuo metu naudotis GANG nemokama. Jei ateityje darbdaviams atsirastų mokamų paslaugų, apie jas ir jų kainas pranešime iš anksto, o mokėti reikės tik jums su tuo atskirai sutikus. Darbuotojams GANG yra nemokamas.</p>'],
-            ['turinys', 'Jūsų turinys', '<p>Profilio, darbovietės ir paieškų informacija, nuotraukos ir logotipai lieka jūsų. Juos skelbdami suteikiate mums teisę neatlygintinai rodyti šį turinį GANG platformoje ir siunčiamuose pranešimuose tiek, kiek reikia platformai veikti. Skelbkite tik turinį, kurį turite teisę naudoti.</p>'],
+            ['turinys', 'Jūsų turinys', '<p>Paskyros, darbovietės ir paieškų informacija, nuotraukos ir logotipai lieka jūsų. Juos skelbdami suteikiate mums teisę neatlygintinai rodyti šį turinį GANG platformoje ir siunčiamuose pranešimuose tiek, kiek reikia platformai veikti. Skelbkite tik turinį, kurį turite teisę naudoti.</p>'],
             ['atsakomybe', 'Atsakomybė', '<p>Stengiamės, kad GANG veiktų patikimai, tačiau negalime užtikrinti, kad platforma veiks be trikdžių. Narių pateiktos informacijos (patirties, darbo sąlygų, įvertinimų) iš anksto netikriname ir už jos tikslumą atsako ją pateikęs narys.</p>'
                 .'<p>Neatsakome už darbdavių ir darbuotojų tarpusavio susitarimus, jų vykdymą, atsiskaitymą ar žalą, kilusią dėl šių santykių. Ši nuostata neriboja atsakomybės tais atvejais, kai jos riboti neleidžia teisės aktai.</p>'],
             ['sustabdymas', 'Paskyros sustabdymas ir ištrynimas', '<p>Taisyklių nesilaikančių narių paskyras galime laikinai sustabdyti arba užblokuoti, o jų turinį pašalinti. Apie tai, išskyrus akivaizdaus piktnaudžiavimo atvejus, informuosime el. paštu.</p>'
-                .'<p>Paskyrą bet kada galite ištrinti patys savo profilio puslapyje („Mano duomenys“ → „Ištrinti paskyrą“). Jei to padaryti nepavyksta, parašykite mums '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę.</p>'],
+                .'<p>Paskyrą bet kada galite ištrinti patys paskyros nustatymuose („Mano duomenys“ → „Ištrinti paskyrą“). Jei to padaryti nepavyksta, parašykite mums '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę.</p>'],
             ['pakeitimai', 'Taisyklių pakeitimai', '<p>Taisykles galime keisti, pavyzdžiui, atsiradus naujoms funkcijoms ar pasikeitus teisės aktams. Apie esminius pakeitimus informuosime iš anksto, o kitą kartą prisijungus paprašysime patvirtinti, kad sutinkate su nauja redakcija.</p>'],
             ['teise', 'Taikoma teisė ir ginčai', '<p>Taisyklėms taikoma Lietuvos Respublikos teisė. Ginčus pirmiausia stengiamės išspręsti derybomis, todėl su pretenzijomis kreipkitės '.$mail.'. Vartotojai taip pat gali kreiptis į Valstybinę vartotojų teisių apsaugos tarnybą (<a href="https://vvtat.lt" rel="noopener" target="_blank">vvtat.lt</a>). Neišspręsti ginčai sprendžiami Lietuvos Respublikos teismuose.</p>'],
             ['kontaktai', 'Kontaktai', '<p>'.operator_line().'.</p>'],
@@ -191,14 +191,14 @@ function privacy_page(): never
             ['valdytojas', 'Duomenų valdytojas', '<p>'.operator_line().'. Visais duomenų apsaugos klausimais rašykite šiuo adresu.</p>'],
             ['duomenys', 'Kokius duomenis tvarkome', '<ul>'
                 .'<li><strong>Paskyros duomenys:</strong> el. pašto adresas, paskyros tipas (darbuotojas ar darbdavys), registracijos ir prisijungimų laikas.</li>'
-                .'<li><strong>Darbuotojo profilis:</strong> vardas ir pavardė, telefono numeris, profilio nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, informacija apie save.</li>'
+                .'<li><strong>Darbuotojo paskyra:</strong> vardas ir pavardė, telefono numeris, paskyros nuotrauka ar avataras, pareigos ir patirtis, miestai, dominanti darbo trukmė, informacija apie save.</li>'
                 .'<li><strong>Darbdavio duomenys:</strong> vardas ir pavardė, telefono numeris, darbovietės informacija (pavadinimas, adresas, tipas, aprašymas, logotipas, nuorodos), paskelbtos paieškos.</li>'
                 .'<li><strong>Veiklos duomenys:</strong> kandidatūros, GANG kontraktai, atvykimo patvirtinimai, atšaukimai ir jų priežastys, neatvykimo žymos, įvertinimai, kvietimai.</li>'
                 .'<li><strong>Pokalbio duomenys:</strong> žinutės tarp darbdavio ir darbuotojo, jų išsiuntimo laikas ir žyma, ar žinutė perskaityta. Kai gaunate naują žinutę, el. laiške siunčiame jos ištrauką.</li>'
                 .'<li><strong>Laukiančiųjų sąrašas:</strong> iki platformos paleidimo užsiregistravusių asmenų el. pašto adresas, miestas ir užšifruota IP adreso santrauka.</li>'
                 .'<li><strong>Techniniai duomenys:</strong> prisijungimo kodai (saugomi tik užšifruoti) ir užšifruota IP adreso santrauka, pagal kurią ribojame kodų siuntimą, sesijos slapukas, IP adresas ir naršyklės informacija, užfiksuoti sutinkant su taisyklėmis, serverio žurnalai.</li></ul>'],
             ['tikslai', 'Kam naudojame duomenis ir kuo remiamės', '<ul>'
-                .'<li><strong>Paskyrai sukurti ir platformai teikti</strong> (sutarties vykdymas, BDAR 6 str. 1 d. b p.): prisijungimas, profilis, paieškos, kandidatūros, kontraktai, pranešimai el. paštu ar SMS apie tinkamus pasiūlymus, kandidatūras ir pamainas.</li>'
+                .'<li><strong>Paskyrai sukurti ir platformai teikti</strong> (sutarties vykdymas, BDAR 6 str. 1 d. b p.): prisijungimas, paskyra, paieškos, kandidatūros, kontraktai, pranešimai el. paštu ar SMS apie tinkamus pasiūlymus, kandidatūras ir pamainas.</li>'
                 .'<li><strong>Pasitikėjimui ir saugumui užtikrinti</strong> (teisėtas interesas, 6 str. 1 d. f p.): įvertinimai, patikimumo rodikliai, piktnaudžiavimo prevencija, paskyrų blokavimas, sistemos apsauga.</li>'
                 .'<li><strong>Sutikimui su taisyklėmis įrodyti</strong> (teisėtas interesas): taisyklių redakcija, sutikimo laikas, IP adresas ir naršyklės informacija.</li>'
                 .'<li><strong>Teisės aktų reikalavimams vykdyti</strong> (teisinė prievolė, 6 str. 1 d. c p.), pavyzdžiui, atsakant į kompetentingų institucijų užklausas.</li>'
@@ -206,8 +206,8 @@ function privacy_page(): never
                 .'<li><strong>Naujienoms siųsti</strong> – tik jei tam atskirai sutiksite (sutikimas, 6 str. 1 d. a p.). Sutikimą galėsite bet kada atšaukti.</li></ul>'
                 .'<p>Duomenų neparduodame ir reklamos tikslais tretiesiems asmenims neperduodame.</p>'],
             ['kas-mato', 'Kas mato jūsų duomenis', '<ul>'
-                .'<li>Darbuotojo profilį (vardą, nuotrauką, pareigas, patirtį, miestus, įvertinimus) mato tik GANG patvirtinti darbdaviai, kuriems darbuotojas pateikė kandidatūrą, su kuriais dirbo per GANG arba prie kurių komandos prisijungė.</li>'
-                .'<li>Darbdavio profilio nuotrauką, jei ji įkelta, mato tik darbuotojai, kurie pateikė kandidatūrą jo paieškoms, dirbo su juo per GANG arba prisijungė prie jo komandos.</li>'
+                .'<li>Darbuotojo paskyrą (vardą, nuotrauką, pareigas, patirtį, miestus, įvertinimus) mato tik GANG patvirtinti darbdaviai, kuriems darbuotojas pateikė kandidatūrą, su kuriais dirbo per GANG arba prie kurių komandos prisijungė.</li>'
+                .'<li>Darbdavio paskyros nuotrauką, jei ji įkelta, mato tik darbuotojai, kurie pateikė kandidatūrą jo paieškoms, dirbo su juo per GANG arba prisijungė prie jo komandos.</li>'
                 .'<li>Darbovietės puslapis, jos adresas ir paskelbtos paieškos yra vieši.</li>'
                 .'<li>Telefono numeris kitiems nariams nerodomas. Jį naudojame sisteminiams pranešimams siųsti.</li>'
                 .'<li>GANG kontrakto pokalbio žinutes mato tik darbdavys ir darbuotojas, kurie yra to kontrakto šalys. Naujos žinutės ištrauka siunčiama gavėjui el. paštu.</li>'
@@ -220,12 +220,12 @@ function privacy_page(): never
                 .'<li><strong>Google</strong> ir <strong>Microsoft</strong> – lankomumo statistika (Google Analytics, Microsoft Clarity), tik jei sutinkate su analitikos slapukais.</li></ul>'
                 .'<p>Jei duomenys perduodami už Europos ekonominės erdvės ribų, tai daroma taikant BDAR numatytas apsaugos priemones: Europos Komisijos patvirtintas standartines sutarčių sąlygas arba sprendimą dėl tinkamumo.</p>'],
             ['terminai', 'Kiek laiko saugome', '<ul>'
-                .'<li>Paskyros, profilio ir veiklos duomenis – kol turite paskyrą. Paskyrą ištrynus, duomenys ištrinami per 30 dienų.</li>'
+                .'<li>Paskyros ir veiklos duomenis – kol turite paskyrą. Paskyrą ištrynus, duomenys ištrinami per 30 dienų.</li>'
                 .'<li>Prisijungimo kodai galioja 15 minučių, o jų įrašai ištrinami po paros.</li>'
                 .'<li>Laukiančiųjų sąrašo įrašus – kol asmuo paprašo juos ištrinti arba ištrina savo GANG paskyrą.</li>'
                 .'<li>Sutikimo su taisyklėmis įrašus – kol turite paskyrą.</li>'
                 .'<li>Serverio žurnalus – ne ilgiau, nei jie saugomi prieglobos paslaugų teikėjo sistemose saugumo tikslais.</li></ul>'],
-            ['teises', 'Jūsų teisės', '<p>Turite teisę susipažinti su savo duomenimis, juos ištaisyti, ištrinti, apriboti jų tvarkymą, gauti juos perkeliamu formatu, nesutikti, kad duomenys būtų tvarkomi remiantis teisėtu interesu, ir bet kada atšaukti duotą sutikimą. Daugumą duomenų galite patys pakeisti savo profilyje. Ten pat galite atsisiųsti savo duomenis (JSON formatu) ir ištrinti paskyrą.</p>'
+            ['teises', 'Jūsų teisės', '<p>Turite teisę susipažinti su savo duomenimis, juos ištaisyti, ištrinti, apriboti jų tvarkymą, gauti juos perkeliamu formatu, nesutikti, kad duomenys būtų tvarkomi remiantis teisėtu interesu, ir bet kada atšaukti duotą sutikimą. Daugumą duomenų galite patys pakeisti savo paskyroje. Ten pat galite atsisiųsti savo duomenis (JSON formatu) ir ištrinti paskyrą.</p>'
                 .'<p>Norėdami pasinaudoti teisėmis, rašykite '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę. Atsakysime per 30 dienų. Jei manote, kad jūsų duomenys tvarkomi netinkamai, galite pateikti skundą Valstybinei duomenų apsaugos inspekcijai (<a href="https://vdai.lrv.lt" rel="noopener" target="_blank">vdai.lrv.lt</a>).</p>'],
             ['slapukai', 'Slapukai', '<p>Naudojame tik būtinuosius slapukus, be kurių svetainė neveiktų:</p><ul>'
                 .'<li><strong>PHPSESSID</strong> – išlaiko jus prisijungusius ir apsaugo formas; galioja iki 60 dienų;</li>'
@@ -234,7 +234,7 @@ function privacy_page(): never
                 .'<li><strong>Google Analytics</strong> (Google Ireland Ltd.) – <strong>_ga</strong>, <strong>_ga_*</strong>: lankomumo statistika; galioja iki 2 metų;</li>'
                 .'<li><strong>Microsoft Clarity</strong> (Microsoft Ireland Operations Ltd.), kai įjungta – <strong>_clck</strong>, <strong>_clsk</strong>: kaip naudojamasi puslapiais (paspaudimai, slinkimas); galioja iki 1 metų. Formų laukeliuose įvestas tekstas neįrašomas.</li></ul>'
                 .'<p>Pasirinkimą įsimename jūsų naršyklėje vieneriems metams. Jį bet kada galite pakeisti paspaudę „Slapukai“ svetainės apačioje. Atsisakius analitikos slapukai ištrinami. Reklamos slapukų nenaudojame.</p>'],
-            ['automatizuota', 'Automatizuoti sprendimai', '<p>Pranešimus apie paieškas siunčiame darbuotojams, kurių profilio pareigos, miestas ir patirtis atitinka paieškos reikalavimus. Tai padeda greičiau rasti tinkamus žmones, tačiau sprendimą, ką pakviesti dirbti, visada priima darbdavys, o ne sistema.</p>'],
+            ['automatizuota', 'Automatizuoti sprendimai', '<p>Pranešimus apie paieškas siunčiame darbuotojams, kurių paskyroje nurodytos pareigos, miestas ir patirtis atitinka paieškos reikalavimus. Tai padeda greičiau rasti tinkamus žmones, tačiau sprendimą, ką pakviesti dirbti, visada priima darbdavys, o ne sistema.</p>'],
             ['pakeitimai', 'Politikos pakeitimai', '<p>Pasikeitus duomenų tvarkymui, šią politiką atnaujinsime. Apie esminius pakeitimus informuosime el. paštu arba prisijungus prie GANG.</p>'],
         ]);
 }

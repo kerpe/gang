@@ -377,7 +377,7 @@ function venue_page(int $id): never
     $reliable = $private ? venue_reliability($id) : null;
     $reviewsHtml = match (true) {
         $private => '<h2>Darbuotojų įvertinimai</h2>'.criteria_html('worker', 'venue_id', $id).reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas'),
-        !$u => '<div class="panel venue-join"><h2>Darbuotojų įvertinimai</h2><p>Darbuotojų įvertinimus ir darbdavio patikimumą mato registruoti GANG darbuotojai.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>',
+        !$u => '<div class="panel venue-join"><h2>Darbuotojų įvertinimai</h2><p>Darbuotojų įvertinimus ir darbdavio patikimumą mato registruoti GANG darbuotojai.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>',
         default => '',
     };
     $jobs = open_requests([], 200);
@@ -408,7 +408,7 @@ function request_form_page(): never
         redirect('/darboviete/nauja');
     }
     if (!manager_verified($u)) {
-        page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į profilį</a></p></section>', ['noindex' => true]);
+        page('Laukiame patvirtinimo', '<section class="wrap narrow"><h1>Tikriname jūsų darbovietę</h1>'.verification_note().'<p><a class="btn ghost" href="/mano">Grįžti į paskyrą</a></p></section>', ['noindex' => true]);
     }
     $venueOptions = array_column($venues, 'name', 'id');
     $v = ['venue_id' => (string) $venues[0]['id'], 'role' => '', 'kind' => 'trumpai', 'people' => '1', 'dates' => '', 'pay' => '', 'min_experience' => '1', 'description' => '', 'event_title' => ''];
@@ -525,7 +525,7 @@ function request_form_page(): never
             $what = count($ids) > 1 ? 'Renginio paieška paskelbta: '.count($ids).' pareigos.' : 'Paieška paskelbta.';
             flash($sent > 0
                 ? "$what Pranešimą siunčiame tinkamiems darbuotojams: $sent. Atsiliepimus matysite šiame puslapyje ir gausite el. paštu."
-                : $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite darbuotojus prisijungti – kvietimo nuorodą rasite skiltyje „Mano profilis“.');
+                : $what.' Tinkamų registruotų darbuotojų kol kas nėra, tačiau skelbimą matys visi svetainės lankytojai. Pakvieskite darbuotojus prisijungti – kvietimo nuorodą rasite skiltyje „Mano paskyra“.');
             redirect('/darbas/'.$id);
         }
     }
@@ -891,7 +891,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
 function worker_panel(array $r, ?array $u, bool $isOpen): string
 {
     if (!$u) {
-        return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
+        return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
     if ($u['kind'] !== 'worker') {
         return '';
@@ -910,7 +910,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
             'cancelled' => '<div class="panel"><p>Šis GANG kontraktas atšauktas. Kviečiame peržiūrėti <a href="/darbai">kitus darbo pasiūlymus</a>.</p></div>',
             default => '<div class="panel"><h2>Jūsų kandidatūra išsiųsta</h2>'
                 .(request_splittable($r) && $mine['dates'] !== '' ? '<p><b>Jūsų nurodytos dienos:</b> '.e(days_text(response_days($mine, $r))).'</p>' : '')
-                .'<p>Darbdavys mato jūsų profilį ir įvertinimus. Kol jis priims sprendimą, galite susirašinėti GANG pokalbyje žemiau. Apie sprendimą pranešime el. paštu.</p>'
+                .'<p>Darbdavys mato jūsų paskyrą ir įvertinimus. Kol jis priims sprendimą, galite susirašinėti GANG pokalbyje žemiau. Apie sprendimą pranešime el. paštu.</p>'
                 .post_button('/darbas/'.$r['id'].'/atsaukti', 'Atsiimti kandidatūrą', [], 'btn small ghost', 'Ar tikrai norite atsiimti kandidatūrą? Darbdavys jos nebematys.').'</div>'
                 // Talking with the employer before the decision: the same chat goes on after the approval.
                 .($isOpen ? chat_box(application_chat((int) $mine['id']), $u).chat_script() : '')
@@ -922,11 +922,11 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     }
     // The employer sees the candidate's name, roles and experience, so the profile comes first.
     if (!profile_complete($u)) {
-        return '<div class="panel apply-panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite profilį: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
-            .'<p><a class="btn" href="/profilis">Užpildyti profilį</a></p></div>';
+        return '<div class="panel apply-panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite paskyros duomenis: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
+            .'<p><a class="btn" href="/profilis">Užpildyti paskyrą</a></p></div>';
     }
     $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
-        ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų profilyje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
+        ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų paskyroje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
         : '';
     $again = $again ? '<p class="notice tip">Kandidatūrą buvote atšaukę. Jei vėl galite dirbti, pateikite ją iš naujo.</p>' : '';
     // Days of this job the worker already works through GANG: their own call whether to apply anyway.
@@ -946,7 +946,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         .days_fieldset($r, array_keys($busy))
         .'<label>Žinutė darbdaviui <small>(neprivaloma)</small><textarea name="note" rows="3" maxlength="1000" placeholder="Pavyzdžiui: Laba diena! Galiu atvykti per valandą, turiu dvejų metų patirtį šiose pareigose."></textarea></label>'
         .'<button class="btn">'.($busy ? 'Vis tiek kandidatuoti' : 'Pateikti kandidatūrą').'</button></form>'
-        .'<p class="meta">Darbdavys matys jūsų profilį ir įvertinimus.</p></div>';
+        .'<p class="meta">Darbdavys matys jūsų paskyrą ir įvertinimus.</p></div>';
 }
 
 // What the worker's waiting application looks like right now: a change (confirmed, declined, new terms, search closed) reloads the page.
@@ -1474,7 +1474,7 @@ function respond_action(int $id): never
         not_found();
     }
     if (!profile_complete($u)) {
-        flash('Prieš teikdami kandidatūrą, užpildykite profilį.');
+        flash('Prieš teikdami kandidatūrą, užpildykite paskyros duomenis.');
         redirect('/profilis');
     }
     $previous = sql('SELECT id, status FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetch();
@@ -1511,7 +1511,7 @@ function respond_action(int $id): never
         send_mail($manager['email'], 'Nauja kandidatūra: '.$role.' – '.first_name($u['name']), [
             'kicker' => 'Nauja kandidatūra',
             'title' => $role,
-            'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką'.($some ? ' ir nurodė, kad gali dirbti tik kai kuriomis dienomis' : '').'. Peržiūrėkite kandidato profilį ir, jei kandidatūra tinka, patvirtinkite ją.',
+            'lead' => '**'.first_name($u['name']).'** atsiliepė į jūsų darbuotojo paiešką'.($some ? ' ir nurodė, kad gali dirbti tik kai kuriomis dienomis' : '').'. Peržiūrėkite kandidato paskyrą ir, jei kandidatūra tinka, patvirtinkite ją.',
             'facts' => ['Kandidatas' => first_name($u['name'])] + ($some ? ['Gali dirbti' => days_text($days)] : ['Darbo laikas' => period($r)]) + ['Įvertinimas' => $rating],
             'note' => ['label' => 'Kandidato žinutė', 'text' => $note],
             'cta' => ['Peržiūrėti kandidatūrą', url('/kandidatura/'.(int) $responseId)],
@@ -1608,10 +1608,10 @@ function decide_response_action(int $responseId, bool $accept): never
             'Kontaktas' => $u['name'],
         ],
         'body' => [
-            'Darbo detales aptarkite su darbdaviu GANG žinutėse: jas rasite skiltyje „Mano profilis“. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
+            'Darbo detales aptarkite su darbdaviu GANG žinutėse: jas rasite skiltyje „Mano paskyra“. Darbo sąlygos ir sutartis derinamos tiesiogiai su darbdaviu.',
             '**Atvykimo patvirtinimas.** '.shift_notice(),
         ],
-        'cta' => ['Mano profilis', url('/mano')],
+        'cta' => ['Mano paskyra', url('/mano')],
         'after' => 'Baigę darbą, savo paskyroje galėsite įvertinti darbdavį.',
     ]);
     $contact = ' Darbuotojui galite parašyti GANG žinutėse.';
@@ -1660,7 +1660,7 @@ function declined_mail(array $r, string $why): array
 
 function verification_note(): string
 {
-    return '<div class="panel"><p><strong>Tikriname jūsų darbovietę.</strong> Kad darbuotojų duomenys būtų saugūs, kiekvieną darbdavį GANG patikrina prieš leisdamas skelbti paieškas ir matyti darbuotojų profilius. Kai patvirtinsime, pranešime el. paštu.</p></div>';
+    return '<div class="panel"><p><strong>Tikriname jūsų darbovietę.</strong> Kad darbuotojų duomenys būtų saugūs, kiekvieną darbdavį GANG patikrina prieš leisdamas skelbti paieškas ir matyti darbuotojų paskyras. Kai patvirtinsime, pranešime el. paštu.</p></div>';
 }
 
 // A new employer registered a venue: GANG gets an email to check it in /admin.
@@ -1688,8 +1688,8 @@ function worker_profile_page(int $id): never
     }
     if (!sees_worker_profile($u, $id)) {
         flash(match (true) {
-            $u['kind'] !== 'manager' => 'Darbuotojų profilius gali peržiūrėti tik darbdaviai.',
-            default => 'Darbuotojo profilį matysite, kai jis pateiks kandidatūrą į jūsų paiešką.',
+            $u['kind'] !== 'manager' => 'Darbuotojų paskyras gali peržiūrėti tik darbdaviai.',
+            default => 'Darbuotojo paskyrą matysite, kai jis pateiks kandidatūrą į jūsų paiešką.',
         });
         redirect('/mano');
     }

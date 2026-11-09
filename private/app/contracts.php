@@ -161,9 +161,9 @@ function no_show_action(int $id): never
             'lead' => "**{$c['venue_name']}** pažymėjo, kad neatvykote į sutartą darbą (".period($c).').',
             'body' => [
                 'Neatvykimas mažina jūsų patikimumo rodiklį, kurį mato darbdaviai. Jei negalite atvykti, visada atšaukite darbą savo paskyroje kuo anksčiau.',
-                'Jei manote, kad tai klaida, parašykite darbdaviui GANG žinutėse ([Mano profilis]('.url('/mano').')). Darbdavys žymą gali pašalinti per '.NO_SHOW_DAYS.' dienas. Taip pat galite parašyti mums [hello@gang.lt](mailto:hello@gang.lt).',
+                'Jei manote, kad tai klaida, parašykite darbdaviui GANG žinutėse ([Mano paskyra]('.url('/mano').')). Darbdavys žymą gali pašalinti per '.NO_SHOW_DAYS.' dienas. Taip pat galite parašyti mums [hello@gang.lt](mailto:hello@gang.lt).',
             ],
-            'cta' => ['Mano profilis', url('/mano')],
+            'cta' => ['Mano paskyra', url('/mano')],
         ]);
     }
     flash('Pažymėta, kad darbuotojas neatvyko. Darbuotojas informuotas el. paštu.');
