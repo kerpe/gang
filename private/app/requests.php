@@ -532,7 +532,7 @@ function request_form_page(): never
     $kinds = '<div class="choices kind-choices">';
     foreach (KINDS as $value => $label) {
         $kinds .= '<label class="choice"><input type="radio" name="kind" value="'.$value.'"'.($value === $v['kind'] ? ' checked' : '').'>'
-            .'<span><span class="choice-name">'.e($label).'</span><small><span class="hint-long">'.e(KIND_HINTS[$value]).'</span><span class="hint-short">'.e(KIND_HINTS_SHORT[$value]).'</span></small></span></label>';
+            .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$value]).'</small></span></label>';
     }
     $kinds .= '</div>';
     $venueData = '';
