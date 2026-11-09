@@ -1091,3 +1091,18 @@ table.data td.actions form + form { margin-left: 6px; }
   .consent-actions .btn { flex: 1; }
 }
 @media (max-width: 720px) { .has-tabbar .consent { bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom)); } }
+
+/* Admin → Analitika. */
+.insights { margin: 0 0 28px; padding: 16px 18px 16px 36px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 10px; }
+.insights strong { color: var(--lime); }
+.kpis .tile strong i.down { color: var(--err); }
+.an-bars { display: flex; align-items: flex-end; gap: 3px; height: 120px; padding: 8px 0 0; border-bottom: 1px solid var(--line); }
+.an-bars span { flex: 1; height: max(2px, var(--h)); background: var(--lime); border-radius: 3px 3px 0 0; opacity: .85; }
+.an-bars span:hover { opacity: 1; }
+.an-bars-axis { display: flex; justify-content: space-between; color: var(--muted); font-size: .8rem; margin: 4px 0 24px; }
+.analytics-two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 720px) { .analytics-two { grid-template-columns: 1fr; } }
+.analytics-key { max-width: 460px; }
+.analytics-refresh .linkish { color: var(--lime); }
+.analytics-settings { margin-top: 12px; }
+.analytics-settings summary { cursor: pointer; color: var(--muted); }

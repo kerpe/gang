@@ -155,7 +155,7 @@ function admin_login_page(): never
             .'<label>Slaptažodis <input type="password" name="password" autocomplete="current-password" required></label>'
             .$error.'<button class="btn">Toliau</button></form>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow">'
-        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=82"></head>'
+        .'<title>GANG</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=83"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Administravimas</h1>'.$form.'</section></main></body></html>';
     exit;
@@ -203,6 +203,13 @@ function admin_page(): never
         if (input('action') === 'admin_password') {
             admin_change_password();
         }
+        if (input('action') === 'windsor_key') {
+            analytics_save_key();
+        }
+        if (input('action') === 'analytics_refresh') {
+            analytics_clear_cache(true);
+            redirect('/admin?tab=analytics');
+        }
         $id = (int) input('id');
         $back = '/admin?'.http_build_query(array_intersect_key($_GET, ['tab' => 1, 'q' => 1, 'kind' => 1, 'status' => 1]));
         match (input('action')) {
@@ -227,6 +234,7 @@ function admin_page(): never
     [$openWhere, $openParams] = open_where();
     $tabs = [
         'stats' => ['Rodikliai', null],
+        'analytics' => ['Analitika', null],
         'users' => ['Nariai', $count('SELECT COUNT(*) FROM users')],
         'venues' => ['Darbovietės', $count('SELECT COUNT(*) FROM venues')],
         'requests' => ['Darbo skelbimai', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
@@ -250,6 +258,7 @@ function admin_page(): never
         'reviews' => admin_reviews(),
         'waitlist' => admin_waitlist(),
         'settings' => admin_settings(),
+        'analytics' => admin_analytics(),
         default => admin_attention().admin_stats(),
     };
     $title = $tab === 'user' ? 'Narys' : ($tabs[$tab][0] ?? 'Rodikliai');
