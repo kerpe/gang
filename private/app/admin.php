@@ -230,6 +230,7 @@ function admin_page(): never
         'users' => ['Nariai', $count('SELECT COUNT(*) FROM users')],
         'venues' => ['Darbovietės', $count('SELECT COUNT(*) FROM venues')],
         'requests' => ['Darbo skelbimai', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
+        'contracts' => ['Kontraktai', $count('SELECT COUNT(*) FROM contracts WHERE cancelled_at IS NULL')],
         'reviews' => ['Įvertinimai', $count('SELECT COUNT(*) FROM reviews')],
         'waitlist' => ['Laukiantieji', $count('SELECT COUNT(*) FROM waitlist WHERE invited_at IS NULL')],
         'settings' => ['Nustatymai', null],
@@ -245,6 +246,7 @@ function admin_page(): never
         'users' => admin_users(),
         'user' => admin_user((int) ($_GET['id'] ?? 0)),
         'venues' => admin_venues(),
+        'contracts' => admin_contracts(),
         'reviews' => admin_reviews(),
         'waitlist' => admin_waitlist(),
         'settings' => admin_settings(),
@@ -497,6 +499,49 @@ function admin_requests(): string
             .'<td class="actions">'.$close.$delete.'</td></tr>';
     }
     return $html.($rows ? '' : '<tr><td colspan="11">Paieškų nėra.</td></tr>').'</table></div>';
+}
+
+const CONTRACT_STATUSES = ['upcoming' => 'Būsimas', 'ongoing' => 'Vyksta', 'done' => 'Įvykęs', 'no_show' => 'Neatvyko', 'cancelled' => 'Atšauktas'];
+
+function contract_status(array $c): string
+{
+    return match (true) {
+        (bool) $c['cancelled_at'] => 'cancelled',
+        (bool) $c['no_show_at'] => 'no_show',
+        contract_end($c) < today() => 'done',
+        $c['start_date'] <= today() => 'ongoing',
+        default => 'upcoming',
+    };
+}
+
+// Every GANG contract: a worker the employer confirmed for a job.
+function admin_contracts(): string
+{
+    $rows = sql('SELECT c.id, c.created_at, c.cancelled_at, c.no_show_at, c.worker_id, r.id AS request_id, r.role, r.kind, '.CONTRACT_DATES.', v.name AS venue_name, v.city, v.manager_id, w.name AS worker_name
+        FROM contracts c JOIN requests r ON r.id = c.request_id JOIN venues v ON v.id = c.venue_id JOIN users w ON w.id = c.worker_id
+        WHERE (v.name LIKE ? OR w.name LIKE ?) ORDER BY c.created_at DESC LIMIT 1000', [admin_like(), admin_like()])->fetchAll();
+    $counts = array_fill_keys(array_keys(CONTRACT_STATUSES), 0);
+    foreach ($rows as &$c) {
+        $c['status'] = contract_status($c);
+        $counts[$c['status']]++;
+    }
+    unset($c);
+    $filter = (string) ($_GET['status'] ?? '');
+    if (isset(CONTRACT_STATUSES[$filter])) {
+        $rows = array_values(array_filter($rows, fn ($c) => $c['status'] === $filter));
+    }
+    $html = '<div class="tiles kpis"><div class="tile"><span>Sudaryta</span><strong>'.(array_sum($counts) - $counts['cancelled']).'</strong></div>'
+        .'<div class="tile"><span>Įvykę</span><strong>'.$counts['done'].'</strong></div>'
+        .'<div class="tile"><span>Atšaukti</span><strong>'.$counts['cancelled'].'</strong></div></div>'
+        .admin_filter('contracts', 'Darbovietė arba darbuotojas', 'status', CONTRACT_STATUSES).'<p class="meta">Rasta: '.count($rows).'</p>'
+        .'<div class="scroll"><table class="data"><tr><th>Sudaryta</th><th>Darbovietė</th><th>Pareigos</th><th>Darbuotojas</th><th>Kada</th><th>Būsena</th></tr>';
+    foreach ($rows as $c) {
+        $html .= '<tr><td>'.e(substr($c['created_at'], 0, 10)).'</td><td><a href="/admin?tab=user&amp;id='.(int) $c['manager_id'].'">'.e($c['venue_name']).'</a>, '.e(CITIES[$c['city']] ?? '').'</td>'
+            .'<td><a href="/darbas/'.(int) $c['request_id'].'">'.e(ROLES[$c['role']] ?? $c['role']).'</a></td>'
+            .'<td><a href="/admin?tab=user&amp;id='.(int) $c['worker_id'].'">'.e($c['worker_name'] !== '' ? $c['worker_name'] : '(be vardo)').'</a></td>'
+            .'<td>'.e(period($c)).'</td><td>'.e(CONTRACT_STATUSES[$c['status']]).'</td></tr>';
+    }
+    return $html.($rows ? '' : '<tr><td colspan="6">Kontraktų nėra.</td></tr>').'</table></div>';
 }
 
 function admin_users(): string
