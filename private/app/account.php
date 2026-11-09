@@ -60,7 +60,9 @@ function profile_page(): never
         if ($worker && to_list($v['durations'], KINDS) === '') {
             $errors['durations'] = 'Pažymėkite bent vieną jus dominančią darbo trukmę.';
         }
-        if (mb_strlen($v['about']) > 2000) {
+        if ($worker && mb_strlen($v['about']) < WORKER_ABOUT_MIN) {
+            $errors['about'] = 'Trumpai papasakokite apie save – bent '.WORKER_ABOUT_MIN.' simbolių: darbo patirtis, ankstesnės darbovietės, įgūdžiai. Tai padeda darbdaviams jus pasirinkti.';
+        } elseif (mb_strlen($v['about']) > 2000) {
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
         $photo = $u['photo'];
@@ -132,7 +134,7 @@ function profile_page(): never
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
             .'<fieldset><legend>Jūs dominantis darbas</legend><p class="hint">Pažymėkite, kokios trukmės darbo ieškote. Galite pasirinkti kelis variantus, pavyzdžiui, trumpus pavadavimus ir nuolatinį darbą.</p>'
             .'<div class="choices kind-choices">'.$durationChoices.'</div>'.err($errors, 'durations').'</fieldset>'
-            .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
+            .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" minlength="'.WORKER_ABOUT_MIN.'" maxlength="2000" required data-min="'.WORKER_ABOUT_MIN.'" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
     $phoneNote = '(neprivaloma, naudojamas tik sisteminiams pranešimams siųsti)';

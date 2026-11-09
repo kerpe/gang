@@ -56,6 +56,8 @@ const REVIEW_HIDE_DAYS = 7;
 // How far ahead job dates and worker availability can be planned.
 const PLANNING_MONTHS = 12;
 const VENUE_ABOUT_MIN = 80;
+// Worker profile „Apie save“: required, as long as the venue description (Vilius 2026-11-09).
+const WORKER_ABOUT_MIN = 80;
 const REQUEST_DESC_MIN = 20;
 // Venue profile (darbovietės duomenys). Keys are stored in venues.type / team_size / perks.
 const VENUE_TYPES = [

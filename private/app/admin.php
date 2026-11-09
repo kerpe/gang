@@ -235,7 +235,7 @@ function admin_page(): never
     $tabs = [
         'stats' => ['Rodikliai', null],
         'analytics' => ['Analitika', null],
-        'users' => ['Nariai', $count('SELECT COUNT(*) FROM users')],
+        'users' => ['Nariai', count(array_filter(sql('SELECT * FROM users')->fetchAll(), fn ($u) => signup_step_url($u) === ''))],
         'venues' => ['Darbovietės', $count('SELECT COUNT(*) FROM venues')],
         'requests' => ['Darbo skelbimai', $count("SELECT COUNT(*) FROM requests r WHERE $openWhere", $openParams)],
         'contracts' => ['Kontraktai', $count('SELECT COUNT(*) FROM contracts WHERE cancelled_at IS NULL')],
@@ -565,15 +565,28 @@ function admin_users(): string
     $rows = sql('SELECT u.*, (SELECT COUNT(*) FROM contracts c WHERE c.worker_id = u.id OR c.venue_id IN (SELECT id FROM venues WHERE manager_id = u.id)) AS contracts,
         (SELECT GROUP_CONCAT(v.name) FROM venues v WHERE v.manager_id = u.id) AS venues
         FROM users u WHERE '.implode(' AND ', $where).' ORDER BY u.created_at DESC LIMIT 1000', $params)->fetchAll();
-    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta">Rasta: '.count($rows).'. Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
-        .'<div class="scroll"><table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos / darbovietės</th><th>Kontr.</th><th>Paskutinį kartą</th></tr>';
-    foreach ($rows as $r) {
-        $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
-        $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
-            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] ? ($r['name'] !== '' && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : ' <small>nebaigė registracijos</small>') : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
-            .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
+    // Members who confirmed their email but have not saved their details yet (workers: name, roles,
+    // cities; employers: also the venue) are kept out of the main list, in their own table below it.
+    $done = array_filter($rows, fn ($r) => signup_step_url($r) === '');
+    $unfinished = array_diff_key($rows, $done);
+    $head = '<div class="scroll"><table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos / darbovietės</th><th>Kontr.</th><th>Paskutinį kartą</th></tr>';
+    $table = function (array $list, string $empty) use ($head): string {
+        $html = $head;
+        foreach ($list as $r) {
+            $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
+            $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
+                .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+                .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
+        }
+        return $html.($list ? '' : '<tr><td colspan="8">'.$empty.'</td></tr>').'</table></div>';
+    };
+    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta">Rasta: '.count($done).'. Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
+        .$table($done, 'Narių nerasta.');
+    if ($unfinished) {
+        $html .= '<h2>Nebaigė registracijos ('.count($unfinished).')</h2><p class="meta">Patvirtino el. paštą, bet dar neišsaugojo savo duomenų. Užbaigę registraciją jie atsiras sąraše viršuje.</p>'
+            .$table($unfinished, '');
     }
-    return $html.($rows ? '' : '<tr><td colspan="8">Narių nerasta.</td></tr>').'</table></div>';
+    return $html;
 }
 
 // The employer may publish searches and see the profiles of workers who apply. Mails them once.
