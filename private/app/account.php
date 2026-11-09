@@ -3,15 +3,18 @@
 declare(strict_types=1);
 
 // An employer's first steps: own details, venue, first search ("Žingsnis 1 iš 3").
+// Steps 1–2 are required (the account is ready only with them, see signup_step_url); step 3 is not.
 const ONBOARDING_STEPS = [1 => 'Jūsų duomenys', 2 => 'Darbovietė', 3 => 'Pirmoji paieška'];
+const ONBOARDING_REQUIRED = 2;
 
 function onboarding_step(int $n): string
 {
     $dots = '';
     foreach (ONBOARDING_STEPS as $i => $label) {
-        $dots .= '<li'.($i < $n ? ' class="done"' : ($i === $n ? ' class="now" aria-current="step"' : '')).'>'.e($label).'</li>';
+        $dots .= '<li'.($i < $n ? ' class="done"' : ($i === $n ? ' class="now" aria-current="step"' : '')).'>'.e($label)
+            .'<small>'.($i <= ONBOARDING_REQUIRED ? 'Privaloma' : 'Neprivaloma').'</small></li>';
     }
-    return '<p class="eyebrow">Žingsnis '.$n.' iš '.count(ONBOARDING_STEPS).'</p><ol class="onboard" aria-label="Registracijos žingsniai">'.$dots.'</ol>';
+    return '<p class="eyebrow">'.($n <= ONBOARDING_REQUIRED ? 'Privalomas žingsnis ' : 'Neprivalomas žingsnis ').$n.' iš '.count(ONBOARDING_STEPS).'</p><ol class="onboard" aria-label="Registracijos žingsniai">'.$dots.'</ol>';
 }
 
 function profile_page(): never
@@ -29,10 +32,12 @@ function profile_page(): never
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
             'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify'])];
-        if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
-            $errors['name'] = 'Įrašykite vardą ir pavardę.';
+        $v['name'] = preg_replace('/\s+/u', ' ', $v['name']);
+        if (!full_name_ok($v['name']) || mb_strlen($v['name']) > 120) {
+            $errors['name'] = NAME_ERROR;
         }
-        [$phone, $phoneError] = check_phone($v['phone']);
+        // Optional, but a number that is given must be a real one.
+        [$phone, $phoneError] = $v['phone'] === '' ? ['', ''] : check_phone($v['phone']);
         if ($phoneError !== '') {
             $errors['phone'] = $phoneError;
         } else {
@@ -130,13 +135,13 @@ function profile_page(): never
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" maxlength="2000" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
             .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
     }
-    $phoneNote = 'Naudojamas tik sisteminiams pranešimams siųsti.';
+    $phoneNote = '(neprivaloma, naudojamas tik sisteminiams pranešimams siųsti)';
     $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
     page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
-        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required>'.err($errors, 'name').'</label>'
-        .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" required placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
+        .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required data-nocount aria-describedby="name-live">'.err($errors, 'name').'<span class="err-live" id="name-live" role="alert" hidden></span></label>'
+        .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
         .'<button class="btn">Išsaugoti</button></form>'
@@ -144,7 +149,7 @@ function profile_page(): never
         .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
         .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
         .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
-        .'</section>'.phone_check_script().photo_resize_script(), ['noindex' => true]);
+        .'</section>'.name_check_script().phone_check_script().photo_resize_script(), ['noindex' => true]);
 }
 
 // Shows the chosen photo in the circle right away and lets the worker zoom and drag it into place.
@@ -772,6 +777,34 @@ function format_phone(string $code, string $national): string
 }
 
 // Same check in the browser, so a mistake shows while typing.
+// "Vardas ir pavardė" needs at least two words with a letter each: Jonas Jonaitis, Ona Marija Petrauskienė,
+// Jean-Luc O'Neil. Initials (Jonas J.) are fine too. Single names are not accepted.
+const NAME_ERROR = 'Įrašykite ir vardą, ir pavardę, pavyzdžiui: Jonas Jonaitis.';
+
+function full_name_ok(string $name): bool
+{
+    $words = preg_split('/\s+/u', trim($name), -1, PREG_SPLIT_NO_EMPTY);
+    return count(array_filter($words, fn ($w) => preg_match('/\p{L}/u', $w))) >= 2;
+}
+
+// The same check in the browser: shown when the visitor leaves the field, gone as soon as it is right.
+function name_check_script(): string
+{
+    $error = json_encode(NAME_ERROR, JSON_UNESCAPED_UNICODE);
+    return <<<HTML
+<script>
+(function () {
+  var input = document.querySelector('input[name=name][data-nocount]'), msg = document.getElementById('name-live');
+  if (!input || !msg) return;
+  function ok() { return input.value.trim().split(/\s+/).filter(function (w) { return /\p{L}/u.test(w); }).length >= 2; }
+  function show(on) { msg.textContent = $error; msg.hidden = !on; input.setAttribute('aria-invalid', on ? 'true' : 'false'); }
+  input.addEventListener('blur', function () { if (input.value.trim() !== '') show(!ok()); });
+  input.addEventListener('input', function () { if (!msg.hidden && ok()) show(false); });
+})();
+</script>
+HTML;
+}
+
 function phone_check_script(): string
 {
     $codes = json_encode(PHONE_CODES, JSON_UNESCAPED_UNICODE);
@@ -785,7 +818,7 @@ function phone_check_script(): string
   var codes = $codes, formatError = $format;
   function problem(v, final) {
     v = v.trim();
-    if (v === '') return final ? formatError : '';
+    if (v === '') return '';
     if (v.indexOf('00') === 0) v = '+' + v.slice(2);
     // Lithuanian 8 600 12345: allowed while typing, turned into +370 600 12345 at 9 digits.
     var l = v.replace(/[\s()\-]/g, '');
@@ -1014,8 +1047,8 @@ function send_signup_reminders(): void
             continue;
         }
         $left = match (true) {
-            $u['kind'] === 'worker' => 'Liko užpildyti paskyrą: vardą, telefoną, pareigas, patirtį ir miestus. Tada gausite jums tinkančius darbo pasiūlymus.',
-            $step === '/profilis' => 'Liko įrašyti savo vardą ir telefoną bei užregistruoti darbovietę. Tada ją patikrinsime ir galėsite skelbti darbuotojų paieškas.',
+            $u['kind'] === 'worker' => 'Liko užpildyti paskyrą: vardą ir pavardę, pareigas, patirtį ir miestus. Tada gausite jums tinkančius darbo pasiūlymus.',
+            $step === '/profilis' => 'Liko įrašyti savo vardą ir pavardę bei užregistruoti darbovietę. Tada ją patikrinsime ir galėsite skelbti darbuotojų paieškas.',
             default => 'Liko užregistruoti darbovietę. Tada ją patikrinsime ir galėsite skelbti darbuotojų paieškas.',
         };
         $off = signup_reminders_url((int) $u['id']);

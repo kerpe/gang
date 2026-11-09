@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 const VENUE_FIELDS = ['name', 'type', 'concept', 'city', 'address', 'hours', 'about', 'team_size', 'website', 'instagram', 'facebook', 'tiktok'];
 
+// Venue name length: short enough for job cards and the chat header.
+const VENUE_NAME_MAX = 50;
+const VENUE_ABOUT_MAX = 500;
+
 function venue_form_page(?int $id = null): never
 {
     $u = require_user('manager');
@@ -11,7 +15,7 @@ function venue_form_page(?int $id = null): never
     if ($id && !$venue) {
         not_found();
     }
-    // The employer's own name and phone come first: a venue without them would reach GANG for checking half-done.
+    // The employer's own name comes first: a venue without them would reach GANG for checking half-done.
     if (!$venue && !profile_complete($u)) {
         redirect('/profilis');
     }
@@ -25,8 +29,10 @@ function venue_form_page(?int $id = null): never
         foreach (VENUE_FIELDS as $field) {
             $v[$field] = input($field);
         }
-        if (mb_strlen($v['name']) < 2 || mb_strlen($v['name']) > 120) {
+        if (mb_strlen($v['name']) < 2) {
             $errors['name'] = 'Įrašykite darbovietės pavadinimą.';
+        } elseif (mb_strlen($v['name']) > VENUE_NAME_MAX) {
+            $errors['name'] = 'Pavadinimas gali būti iki '.VENUE_NAME_MAX.' simbolių.';
         }
         if (!isset(VENUE_TYPES[$v['type']])) {
             $errors['type'] = 'Pasirinkite darbovietės tipą.';
@@ -51,8 +57,8 @@ function venue_form_page(?int $id = null): never
         }
         if (mb_strlen($v['about']) < VENUE_ABOUT_MIN) {
             $errors['about'] = 'Aprašymas padeda darbuotojams apsispręsti. Parašykite bent '.VENUE_ABOUT_MIN.' simbolių: kokia tai vieta, kokia komanda ir kokios darbo sąlygos.';
-        } elseif (mb_strlen($v['about']) > 2000) {
-            $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
+        } elseif (mb_strlen($v['about']) > VENUE_ABOUT_MAX) {
+            $errors['about'] = 'Aprašymas gali būti iki '.VENUE_ABOUT_MAX.' simbolių.';
         }
         if (!isset(TEAM_SIZES[$v['team_size']])) {
             $errors['team_size'] = 'Pasirinkite komandos dydį.';
@@ -123,7 +129,7 @@ function venue_form_page(?int $id = null): never
         .'<div><span class="field-label">Logotipas'.$optional.'</span><input type="file" name="logo" accept="image/jpeg,image/png,image/webp" aria-label="Darbovietės logotipas" data-crop="logo">'
         .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Rodomas darbo skelbimuose ir darbovietės puslapyje.</p>'.$remove.err($errors, 'logo').'</div></div>';
     $body = $section('Pagrindinė informacija', 'Pavadinimas, tipas ir logotipas padeda darbuotojams iš karto atpažinti jūsų darbovietę.',
-            $field('Pavadinimas', $text('name', 120, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
+            $field('Pavadinimas', $text('name', VENUE_NAME_MAX, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
             .$field('Koncepcija ar virtuvė', $text('concept', 120, 'Pavyzdžiui: itališka virtuvė', ' required'), 'concept').'</div>'
             .$logoField)
@@ -132,7 +138,7 @@ function venue_form_page(?int $id = null): never
             .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' required autocomplete="street-address"'), 'address').'</div>'
             .venue_hours_field($v['hours'], $venue['hours'] ?? '', err($errors, 'hours')))
         .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
-            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="2000" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
+            $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="'.VENUE_ABOUT_MAX.'" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
         .$section('Komanda', 'Kiek žmonių dirba kartu. Ką siūlote darbuotojams, pažymėsite kiekviename skelbime atskirai.',
             '<div class="row">'.$field('Komandos dydis', '<select name="team_size" required>'.options(['' => 'Pasirinkite'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
         .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
@@ -518,7 +524,7 @@ function venue_page(int $id): never
 {
     $u = current_user();
     $venue = sql('SELECT v.*, m.verified_at FROM venues v JOIN users m ON m.id = v.manager_id WHERE v.id = ?', [$id])->fetch();
-    if (!$venue || (!$venue['verified_at'] && !($u && ((int) $venue['manager_id'] === (int) $u['id'] || is_admin($u))))) {
+    if (!$venue || (!$venue['verified_at'] && !(is_admin() || ($u && (int) $venue['manager_id'] === (int) $u['id'])))) {
         not_found();
     }
     $private = sees_venue_reviews($u, $venue);

@@ -112,9 +112,13 @@ window.addEventListener('pageshow', function () { document.querySelectorAll('for
 // Remaining characters under text fields that have a maxlength: shown while the field is in use.
 // A textarea with data-min (venue/job description) first counts up to its minimum and stays visible.
 // Short numeric fields (pay, phone), link fields (255) and the chat box are left without a counter.
+var pointerDown = false;
+document.addEventListener('pointerdown', function () { pointerDown = true; }, true);
+document.addEventListener('pointerup', function () { pointerDown = false; }, true);
+document.addEventListener('pointercancel', function () { pointerDown = false; }, true);
 document.querySelectorAll('form.form input[maxlength], form.form textarea[maxlength]').forEach(function (f) {
   var max = +f.getAttribute('maxlength'), min = +f.dataset.min || 0;
-  if (max < 50 || (max >= 255 && f.tagName === 'INPUT') || f.readOnly || f.type === 'tel' || /numeric|decimal/.test(f.inputMode)) return;
+  if (max < 40 || (max >= 255 && f.tagName === 'INPUT') || f.readOnly || f.hasAttribute('data-nocount') || f.type === 'tel' || /numeric|decimal/.test(f.inputMode)) return;
   var out = f.parentNode.querySelector('.counter');
   if (!out) { out = document.createElement('span'); out.className = 'counter meta'; (f.closest('.input-suffix') || f).after(out); }
   out.hidden = !min;
@@ -124,7 +128,12 @@ document.querySelectorAll('form.form input[maxlength], form.form textarea[maxlen
   }
   f.addEventListener('input', show);
   f.addEventListener('focus', function () { show(); out.hidden = false; });
-  f.addEventListener('blur', function () { out.hidden = !min; });
+  // Hiding the counter moves everything below it up. When a tap or click on the save button is what
+  // takes the focus away, wait until it is over, or the button slides away and the form is not sent.
+  f.addEventListener('blur', function () {
+    var hide = function () { out.hidden = !min; };
+    if (pointerDown) document.addEventListener('pointerup', function () { setTimeout(hide, 0); }, { once: true }); else hide();
+  });
   show();
 });
 </script>
