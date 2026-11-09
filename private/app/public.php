@@ -20,7 +20,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
         'roles' => ['Barmenai', 'Baristos', 'Baro vadovai'],
-        'join' => 'Profilyje pažymėkite darbą bare, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Paskyroje pažymėkite darbą bare, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '02' => [
         'slug' => 'virtuve',
@@ -30,7 +30,7 @@ const TEAM_PAGES = [
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
             .'<p>Šefas, virėjai, virtuvės pagalbiniai darbuotojai ir indų plovėjai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
         'roles' => ['Šefai', 'Virėjai', 'Virtuvės pagalbiniai darbuotojai', 'Indų plovėjai'],
-        'join' => 'Profilyje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Paskyroje pažymėkite darbą virtuvėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
     '03' => [
         'slug' => 'aptarnavimas',
@@ -41,7 +41,7 @@ const TEAM_PAGES = [
             .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
             .'<p>Būtent čia aptarnavimas tampa svetingumu, o pirmas apsilankymas – priežastimi sugrįžti.</p>',
         'roles' => ['Padavėjai', 'Runneriai', 'Administratoriai', 'Restorano vadovai'],
-        'join' => 'Profilyje pažymėkite darbą salėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
+        'join' => 'Paskyroje pažymėkite darbą salėje, nurodykite savo patirtį ir miestus. Apie tinkamas pamainas, renginius, sezoninį ir nuolatinį darbą sužinosite pirmieji.',
     ],
 ];
 
@@ -58,9 +58,9 @@ function join_cta(string $workerClass = 'btn', string $employerClass = 'btn ligh
         return '<p class="cta"><a class="'.$workerClass.'" href="/prisijungti?kaip=darbuotojas">Ieškau darbo</a><a class="'.$employerClass.'" href="/prisijungti?kaip=vadovas">Ieškau darbuotojų</a></p>';
     }
     if ($u['kind'] === 'manager') {
-        return '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano profilis</a></p>';
+        return '<p class="cta"><a class="'.$workerClass.'" href="/poreikis/naujas">Paskelbti paiešką</a><a class="'.$employerClass.'" href="/mano">Mano paskyra</a></p>';
     }
-    return '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano profilis</a></p>';
+    return '<p class="cta"><a class="'.$workerClass.'" href="/darbai">Darbo pasiūlymai</a><a class="'.$employerClass.'" href="/mano">Mano paskyra</a></p>';
 }
 
 function home_page(): never
@@ -119,8 +119,8 @@ function home_page(): never
     $mark = knives();
     $me = current_user();
     $heroCta = join_cta();
-    $workerBtn = !$me ? '<a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>'
-        : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Redaguoti profilį</a>' : '');
+    $workerBtn = !$me ? '<a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą</a>'
+        : ($me['kind'] === 'worker' ? '<a class="btn" href="/profilis">Redaguoti paskyrą</a>' : '');
     $venueBtn = !$me ? '<a class="btn light" href="/prisijungti?kaip=vadovas">Raskite žmonių savo komandai</a>'
         : ($me['kind'] === 'manager' ? '<a class="btn light" href="/poreikis/naujas">Paskelbti paiešką</a>' : '');
     $finalCta = $me ? '' : '<section class="wrap home-block">
@@ -154,7 +154,7 @@ $list
       <h2>Dirbkite, kai jums patogu</h2>
       <ul>
         <li><strong>Papildomos pajamos</strong>Tinkami pasiūlymai ateina el. paštu, o patvirtinti darbai atsiranda jūsų GANG kalendoriuje.</li>
-        <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų profilį.</li>
+        <li><strong>Profesinė reputacija</strong>Kiekvienas GANG kontraktas ir įvertinimas stiprina jūsų paskyrą.</li>
         <li><strong>Jūsų pasirinkimas</strong>Patys sprendžiate, kur, kada ir su kokia komanda dirbti.</li>
       </ul>
       $workerBtn
@@ -222,7 +222,7 @@ function jobs_page(): never
     $jobs = open_requests($f);
     $count = count($jobs);
     $cards = $count ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
-        : '<p class="empty">Pagal pasirinktus filtrus darbo pasiūlymų šiuo metu nėra. '.(current_user() ? '' : 'Susikūrę profilį, apie naujus pasiūlymus gausite pranešimą el. paštu. <a href="/prisijungti?kaip=darbuotojas">Susikurti profilį</a>').'</p>';
+        : '<p class="empty">Pagal pasirinktus filtrus darbo pasiūlymų šiuo metu nėra. '.(current_user() ? '' : 'Susikūrę paskyrą, apie naujus pasiūlymus gausite pranešimą el. paštu. <a href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą</a>').'</p>';
     $cities = options(['' => 'Visi miestai'] + CITIES, $f['city']);
     $roles = options(['' => 'Visos pareigos'] + ROLES, $f['role']);
     $kinds = options(['' => 'Visi tipai'] + KINDS, $f['kind']);
@@ -292,10 +292,10 @@ function how_page(): never
 {
     $days = REVIEW_HIDE_DAYS;
     split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo paieškos iki pamainos', '03', [
-        ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi ir įvertinimais. Su kandidatais galite susirašinėti GANG pokalbyje.</p>'
+        ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių paskyroje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi ir įvertinimais. Su kandidatais galite susirašinėti GANG pokalbyje.</p>'
             .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>'],
-        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Su darbdaviu galite susirašinėti GANG pokalbyje. Darbdaviui patvirtinus jūsų kandidatūrą, darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
-            .'<p class="chips"><span>Profilis</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>'],
+        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite paskyrą, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Su darbdaviu galite susirašinėti GANG pokalbyje. Darbdaviui patvirtinus jūsų kandidatūrą, darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
+            .'<p class="chips"><span>Paskyra</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>'],
         ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atsiskaitymą ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
         ['ivertinimai', 'Įvertinimai', '<ul>'
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'

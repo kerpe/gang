@@ -540,7 +540,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
   .stepper li + li::after { width: 10px; margin-right: 4px; }
 }
 
-/* Mano profilis: "Kitas žingsnis" and the summary tiles under it. */
+/* Mano paskyra: "Kitas žingsnis" and the summary tiles under it. */
 .next-step { display: flex; gap: 20px; align-items: center; justify-content: space-between; margin: 24px 0 12px; padding: 20px 22px; border: 1px solid rgba(216,255,54,.45); background: rgba(216,255,54,.07); border-radius: 14px; }
 .next-step .eyebrow { color: var(--lime); margin: 0 0 6px; }
 .next-step h2 { font: 400 1.9rem/1.05 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 0 0 6px; }
@@ -983,7 +983,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .overlap p { margin: 4px 0; }
 .day-checks small.busy { color: var(--orange); }
 
-/* Account card at the top of Mano profilis; "Atsijungti" sits in the header */
+/* Account card at the top of Mano paskyra; "Atsijungti" sits in the header */
 .account-bar { margin: 8px 0 28px; }
 .top nav form.inline { margin: 0; }
 .top nav .mnav-links form { margin: 0; }

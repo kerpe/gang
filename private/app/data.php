@@ -309,8 +309,8 @@ function job_offer_mail(array $r): array
 
 function job_mail_footnote(?array $w = null): string
 {
-    return 'Šį laišką gavote, nes jūsų GANG profilyje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. '
-        .($w ? '[Atsisakyti darbo pasiūlymų laiškų]('.unsubscribe_url((int) $w['id']).') arba pakeisti nustatymus [profilyje]('.url('/profilis').').' : 'Pranešimų atsisakyti galite [profilio nustatymuose]('.url('/profilis').').');
+    return 'Šį laišką gavote, nes jūsų GANG paskyroje pažymėtos šios pareigos, miestas, patirtis ir darbo trukmė. '
+        .($w ? '[Atsisakyti darbo pasiūlymų laiškų]('.unsubscribe_url((int) $w['id']).') arba pakeisti nustatymus [paskyroje]('.url('/profilis').').' : 'Pranešimų atsisakyti galite [paskyros nustatymuose]('.url('/profilis').').');
 }
 
 // One-click unsubscribe from job-offer emails (Gmail/Yahoo bulk sender rules, RFC 8058).
@@ -386,7 +386,7 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
         $mail = [
             'kicker' => 'Darbo pasiūlymai',
             'title' => 'Jums tinkantys darbo pasiūlymai',
-            'lead' => 'Pagal jūsų atnaujintą profilį GANG rado tinkančių darbo pasiūlymų: **'.count($jobs).'**. Jei kuris nors pasiūlymas jums tinka, pateikite kandidatūrą.',
+            'lead' => 'Pagal jūsų atnaujintą paskyrą GANG rado tinkančių darbo pasiūlymų: **'.count($jobs).'**. Jei kuris nors pasiūlymas jums tinka, pateikite kandidatūrą.',
             'body' => $lines,
             'cta' => ['Visi tinkantys pasiūlymai', url('/mano/pasiulymai')],
             'footnote' => job_mail_footnote(),

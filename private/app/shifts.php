@@ -165,7 +165,7 @@ function shift_page(string $token): never
                     'kicker' => 'Rytojaus pamaina',
                     'title' => 'Atvykimas patvirtintas',
                     'lead' => '**'.first_name($s['worker_name']).'** patvirtino, kad atvyks į pamainą '.date_lt($s['shift_date'])." ({$s['venue_name']}).",
-                    'cta' => ['Mano profilis', url('/mano')],
+                    'cta' => ['Mano paskyra', url('/mano')],
                 ]);
             }
             flash('Ačiū. Atvykimas patvirtintas, darbdavys tai matys savo paskyroje.');

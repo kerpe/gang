@@ -91,20 +91,20 @@ function profile_page(): never
                 redirect('/darboviete/nauja');
             }
             $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : '';
-            flash((!$first ? 'Profilio pakeitimai išsaugoti.' : 'Profilis sukurtas. Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.').$jobsNote);
+            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : 'Paskyra sukurta. Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.').$jobsNote);
             redirect('/mano');
         }
     }
-    $title = profile_complete($u) ? 'Redaguoti profilį' : ($worker ? 'Susikurkite profilį' : 'Jūsų duomenys');
+    $title = profile_complete($u) ? 'Redaguoti paskyrą' : ($worker ? 'Susikurkite paskyrą' : 'Jūsų duomenys');
     $workerFields = '';
     $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
-    $photoField = '<fieldset class="photo-field"><legend>Profilio nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
+    $photoField = '<fieldset class="photo-field"><legend>Paskyros nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
         .'<div class="photo-row">'.avatar($u, 'large').'<div>'
         .'<p class="hint">'.($worker
-            ? 'Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų profilyje.'
+            ? 'Jei norite, įkelkite savo nuotrauką arba avatarą, kuris bus rodomas jūsų paskyroje.'
             : 'Jei norite, įkelkite savo nuotrauką arba avatarą. Jis bus rodomas pokalbiuose su darbuotojais.')
         .' Neįkėlus paveikslėlio, rodomos jūsų vardo ir pavardės pirmosios raidės.</p>'
-        .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Profilio nuotrauka arba avataras" data-crop>'
+        .'<input type="file" name="photo" accept="image/jpeg,image/png,image/webp" aria-label="Paskyros nuotrauka arba avataras" data-crop>'
         .'<p class="meta">JPG, PNG arba WEBP formatu, iki '.PHOTO_MAX_MB.' MB. Paveikslėlį mato tik '.($worker ? 'darbdaviai, kuriems pateikiate kandidatūrą' : 'jūsų kandidatai ir darbuotojai').'.</p>'
         .$remove.err($errors, 'photo').'</div></div></fieldset>';
     if ($worker) {
@@ -308,10 +308,10 @@ function dashboard_page(): never
         // A newcomer sees just "GANG naujokas", not "Įvertinimų dar nėra" next to it.
         $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>';
     }
-    page('Mano profilis', '<section class="wrap">'
+    page('Mano paskyra', '<section class="wrap">'
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><h1 class="account-name">'.e($u['name']).'</h1><span class="meta">'.e($u['email']).'</span>'.$rating.'</div>'
-        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti profilį</a></div>'
+        .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti paskyrą</a></div>'
         .'</div>'.$body.'</section>', ['noindex' => true]);
 }
 
@@ -440,7 +440,7 @@ function worker_open_offers(array $u): array
     return array_values(array_filter($jobs, fn ($r) => !isset($responded[$r['id']])));
 }
 
-// "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano profilis.
+// "Jums tinkantys darbo pasiūlymai": the full list behind "Peržiūrėti" on Mano paskyra.
 function worker_offers_page(): never
 {
     $u = require_user();
@@ -450,9 +450,9 @@ function worker_offers_page(): never
     $jobs = worker_open_offers($u);
     $cards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
-        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik čia. Juos galite įjungti profilio nustatymuose.').'</p>'
+        .'<p>'.($u['notify'] ? 'Kai darbdavys paskelbs jūsų pareigas, miestą ir darbo trukmę atitinkantį pasiūlymą, iš karto informuosime jus el. paštu.' : 'Pranešimai el. paštu išjungti, todėl naujus pasiūlymus matysite tik čia. Juos galite įjungti paskyros nustatymuose.').'</p>'
         .'<p class="empty-actions"><a class="btn small ghost" href="/darbai">Visi darbo pasiūlymai</a><a class="btn small ghost" href="/profilis">Atnaujinti pareigas ir miestus</a></p></div></div>';
-    page('Jums tinkantys darbo pasiūlymai', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano profilis</a></p>'
+    page('Jums tinkantys darbo pasiūlymai', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano paskyra</a></p>'
         .'<h1>Jums tinkantys pasiūlymai</h1><p class="meta">Pagal jūsų pareigas, miestus ir darbo trukmę: '.count($jobs).'</p>'.$cards.'</section>', ['noindex' => true]);
 }
 
@@ -550,7 +550,7 @@ function manager_requests_page(): never
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Aktyvių paieškų nėra</h3>'
         .'<p>Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką. Tinkami darbuotojai pranešimą gaus iš karto.</p>'
         .'<p class="empty-actions"><a class="btn small" href="/poreikis/naujas">+ Paskelbti paiešką</a></p></div></div>';
-    page('Aktyvios paieškos', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano profilis</a></p>'
+    page('Aktyvios paieškos', '<section class="wrap list-page"><p class="meta"><a href="/mano">← Mano paskyra</a></p>'
         .'<h1>Aktyvios paieškos</h1><p class="meta">Iš viso: '.count($open).'</p>'.$cards
         .($openHtml ? '<p class="cta-row"><a class="btn small ghost" href="/poreikis/naujas">+ Nauja paieška</a></p>' : '').'</section>', ['noindex' => true]);
 }
@@ -608,7 +608,7 @@ function manager_dashboard(array $u): string
         .invite_box($u);
 }
 
-// "Kitas žingsnis": the one thing to do now, on top of Mano profilis. $tone: '' | warn | calm.
+// "Kitas žingsnis": the one thing to do now, on top of Mano paskyra. $tone: '' | warn | calm.
 function next_step(string $tone, string $title, string $text, string $href, string $label): string
 {
     return '<section class="next-step'.($tone ? ' '.$tone : '').'"><div><p class="eyebrow">Kitas žingsnis</p><h2>'.e($title).'</h2><p>'.e($text).'</p></div>'
@@ -939,8 +939,8 @@ function account_delete_page(): never
     }
     $worker = $u['kind'] === 'worker';
     $what = $worker
-        ? '<li>profilis, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
-        : '<li>profilis, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>';
+        ? '<li>paskyros duomenys, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
+        : '<li>paskyros duomenys, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>';
     if ($upcoming) {
         $list = '';
         foreach ($upcoming as $c) {
@@ -957,7 +957,7 @@ function account_delete_page(): never
     page('Ištrinti paskyrą', '<section class="wrap narrow"><h1>Ištrinti paskyrą</h1>'
         .'<p class="lead">Ištrynus paskyrą, iš GANG visam laikui pašalinsime:</p><ul>'.$what.'<li>el. pašto adresą '.e($u['email']).' ir sutikimų įrašus.</li></ul>'
         .'<p>Prieš trindami galite <a href="/profilis/duomenys">atsisiųsti savo duomenis</a>. Išsiųsti el. laiškai lieka gavėjų pašto dėžutėse.</p>'
-        .$body.'<p><a href="/profilis">← Grįžti į profilį</a></p></section>', ['noindex' => true]);
+        .$body.'<p><a href="/profilis">← Grįžti į paskyrą</a></p></section>', ['noindex' => true]);
 }
 
 // /atsisakyti/{id}/{token} from job-offer emails. GET asks first (mail scanners open links);
@@ -977,11 +977,11 @@ function unsubscribe_page(int $id, string $token): never
             exit;
         }
         page('Laiškų atsisakyta', '<section class="wrap narrow"><h1>Laiškų atsisakyta</h1><p class="lead">Daugiau nesiųsime laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong>.</p>'
-            .'<p>Laiškus apie jūsų kandidatūras, patvirtintus darbus ir žinutes gausite toliau. Darbo pasiūlymų laiškus vėl įjungti galite <a href="/profilis">profilyje</a>.</p></section>', ['noindex' => true]);
+            .'<p>Laiškus apie jūsų kandidatūras, patvirtintus darbus ir žinutes gausite toliau. Darbo pasiūlymų laiškus vėl įjungti galite <a href="/profilis">paskyroje</a>.</p></section>', ['noindex' => true]);
     }
     $body = (int) $u['notify']
         ? '<p class="lead">Nebesiųsime laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong>. Laiškus apie jūsų kandidatūras, patvirtintus darbus ir žinutes gausite toliau.</p>'
             .'<form method="post" class="form"><button class="btn">Atsisakyti darbo pasiūlymų laiškų</button></form>'
-        : '<p class="lead">Laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong> jau atsisakėte. Vėl įjungti galite <a href="/profilis">profilyje</a>.</p>';
+        : '<p class="lead">Laiškų apie naujus darbo pasiūlymus adresu <strong>'.e($u['email']).'</strong> jau atsisakėte. Vėl įjungti galite <a href="/profilis">paskyroje</a>.</p>';
     page('Atsisakyti laiškų', '<section class="wrap narrow"><h1>Atsisakyti laiškų</h1>'.$body.'</section>', ['noindex' => true]);
 }

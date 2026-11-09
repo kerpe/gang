@@ -588,7 +588,7 @@ function admin_verify_manager(int $id): bool
         'kicker' => 'GANG',
         'title' => 'Darbovietė patvirtinta',
         'lead' => 'patikrinome jūsų darbovietę. Dabar galite skelbti darbuotojų paieškas: pavadavimui, sezonui, renginiui ar nuolatiniam darbui.',
-        'body' => 'Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste, o atsiliepusių darbuotojų profilius matysite paieškos puslapyje.',
+        'body' => 'Paskelbta paieška iš karto pasiekia tinkamus darbuotojus jūsų mieste, o atsiliepusių darbuotojų paskyras matysite paieškos puslapyje.',
         'cta' => ['Paskelbti paiešką', url('/poreikis/naujas')],
     ]);
     return true;
@@ -615,7 +615,7 @@ function admin_user(int $id): string
     ];
     if (!$worker) {
         $facts['Patvirtinimas'] = $u['verified_at'] ? 'Patvirtintas '.e(substr($u['verified_at'], 0, 10))
-            : '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų profilius.')
+            : '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.')
                 .'<br><small>Prieš tvirtindami patikrinkite: ar darbovietė tikrai egzistuoja (Google Maps, Instagram, svetainė), ar darbdavio vardas ir telefonas atrodo tikri. Jei abejojate, paskambinkite.</small>';
     }
     if ($worker) {
@@ -625,7 +625,7 @@ function admin_user(int $id): string
             'Domina darbas' => e($u['durations'] !== '' ? labels($u['durations'], KINDS) : 'Visi'),
             'Kontraktų' => (string) sql('SELECT COUNT(*) FROM contracts WHERE worker_id = ?', [$id])->fetchColumn(),
             'Kandidatūrų' => (string) sql('SELECT COUNT(*) FROM responses WHERE worker_id = ?', [$id])->fetchColumn(),
-            'Profilis' => '<a href="/darbuotojas/'.$id.'">Atidaryti viešą profilį</a>',
+            'Paskyra' => '<a href="/darbuotojas/'.$id.'">Atidaryti viešą paskyrą</a>',
         ];
     }
     $html = '<p><a href="/admin?tab=users">← Visi nariai</a></p><h2>'.e($u['name'] !== '' ? $u['name'] : '(be vardo)').'</h2><dl class="admin-facts">';
@@ -723,7 +723,7 @@ function admin_waitlist(): string
     // Accounts made before launch get no automatic "GANG jau veikia" email: most of them are test accounts (Vilius 2026-11-07).
     $note = '<p class="meta">Senojo laukiančiųjų sąrašo nariams, kurie paskyros dar nesusikūrė, galite išsiųsti kvietimą užsiregistruoti. Kiekvienas kvietimas siunčiamas tik kartą.</p>';
     $venues = (int) sql('SELECT COUNT(DISTINCT manager_id) FROM venues')->fetchColumn();
-    $html = '<div class="tiles"><div class="tile"><span>Darbuotojų profilių</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
+    $html = '<div class="tiles"><div class="tile"><span>Darbuotojų paskyrų</span><strong>'.$profiles.'</strong></div><div class="tile"><span>Darbdavių su darboviete</span><strong>'.$venues.'</strong></div>'
         .'<div class="tile"><span>Sąraše be paskyros</span><strong>'.count(array_filter($rows, fn ($r) => !$r['user_id'])).'</strong></div></div>'.$note.$invite
         .'<table class="data"><tr><th>Data</th><th>El. paštas</th><th>Ieško</th><th>Miestas</th><th>Pakviesta</th><th>Paskyra</th></tr>';
     foreach ($rows as $r) {
@@ -751,23 +751,23 @@ function invite_waitlist(): int
         $intro = $public ? 'GANG jau veikia. Kaip ir žadėjome, kviečiame jus vienus pirmųjų ' : 'dėkojame, kad užsiregistravote GANG laukiančiųjų sąraše. Kviečiame jus jau dabar ';
         $mail = [
             'kicker' => $public ? 'GANG jau veikia' : 'Kvietimas',
-            'title' => $worker ? 'Susikurkite profilį' : 'Užregistruokite darbovietę',
+            'title' => $worker ? 'Susikurkite paskyrą' : 'Užregistruokite darbovietę',
             'lead' => $intro.($worker
                 ? ($public
-                    ? 'susikurti profilį ir gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.'
-                    : 'susikurti profilį: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti.')
+                    ? 'susikurti paskyrą ir gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.'
+                    : 'susikurti paskyrą: nurodyti pareigas, patirtį ir miestus, kuriuose galite dirbti.')
                 : ($public
                     ? 'užregistruoti savo barą, restoraną ar kavinę ir rasti patikimų žmonių savo komandai pavadavimui, sezonui ar nuolatiniam darbui.'
                     : 'užregistruoti savo barą, restoraną ar kavinę.')),
             'body' => $public ? [] : ($worker
-                ? ['Paleidimo dieną jūsų profilis jau bus matomas darbdaviams.',
+                ? ['Paleidimo dieną jūsų paskyra jau bus matoma darbdaviams.',
                     'Nuo starto dienos gausite jums tinkančius darbo pasiūlymus.']
                 : ['Nuo paleidimo dienos galėsite skelbti darbuotojų paieškas, o tinkami darbuotojai jas gaus iš karto.']),
-            'cta' => [$worker ? 'Susikurti profilį' : 'Užregistruoti darbovietę', url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))],
+            'cta' => [$worker ? 'Susikurti paskyrą' : 'Užregistruoti darbovietę', url('/prisijungti?kaip='.($worker ? 'darbuotojas' : 'vadovas'))],
             'after' => 'Registracija trunka kelias minutes.',
             'footnote' => 'Šį laišką gavote, nes užsiregistravote GANG laukiančiųjų sąraše. Jei daugiau laiškų gauti nenorite, atsakykite į šį laišką.',
         ];
-        $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite profilį jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
+        $subject = $public ? 'GANG jau veikia: kvietimas registruotis' : ($worker ? 'GANG: susikurkite paskyrą jau dabar' : 'GANG: užregistruokite darbovietę jau dabar');
         if (send_mail($r['email'], $subject, $mail)) {
             $sent++;
         }

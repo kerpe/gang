@@ -228,7 +228,7 @@ function login_page(): never
         default => $signup ? 'Registracija' : 'Prisijungimas',
     };
     $lead = match ($kind) {
-        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užpildysite trumpą profilį ir galėsite gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.',
+        'worker' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada susikursite paskyrą ir galėsite gauti darbo pasiūlymus iš restoranų, kavinių, barų ir klubų.',
         'manager' => 'Įveskite el. pašto adresą ir atsiųsime prisijungimo kodą. Tada užregistruosite savo barą, restoraną ar kavinę ir galėsite skelbti darbuotojų paieškas.',
         default => $signup
             ? 'Slaptažodžio nereikia: įveskite el. pašto adresą ir atsiųsime 6 skaitmenų kodą. Tada pasirinksite, ar ieškote darbo, ar darbuotojų.'
