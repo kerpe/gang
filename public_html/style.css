@@ -505,7 +505,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 @media (max-width: 720px) {
   body.has-tabbar { --tabbar-h: 64px; padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
   body.has-tabbar .top nav > .btn { display: none; }
-  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
+  .tabbar { display: grid; grid-template-columns: repeat(3, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom);
     background: rgba(23,23,23,.94); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
   .tabbar a { display: grid; justify-items: center; align-content: center; gap: 3px; font-size: .68rem; font-weight: 600; color: var(--muted); text-decoration: none; }
   .tabbar svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -29,13 +29,12 @@ function page(string $title, string $body, array $opt = []): never
     $tabbar = '';
     if ($user && profile_complete($user)) {
         $tabs = $user['kind'] === 'worker'
-            ? [['/mano', 'Mano paskyra', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#kalendorius', 'Kalendorius', 'cal'], ['/profilis', 'Redaguoti', 'user']]
-            : [['/mano', 'Mano paskyra', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list'], ['/profilis', 'Redaguoti', 'user']];
+            ? [['/mano', 'Mano paskyra', 'home'], ['/darbai', 'Darbai', 'list'], ['/mano#kalendorius', 'Kalendorius', 'cal']]
+            : [['/mano', 'Mano paskyra', 'home'], ['/poreikis/naujas', 'Nauja paieška', 'plus'], ['/darbai', 'Darbai', 'list']];
         $icons = [
             'home' => '<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
             'list' => '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
             'cal' => '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
-            'user' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
             'plus' => '<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>',
         ];
         $tabbar = '<nav class="tabbar" aria-label="Pagrindinis meniu">';
@@ -87,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=83">
+<link rel="stylesheet" href="/style.css?v=84">
 $head
 </head>
 <body$bodyClass>
