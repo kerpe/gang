@@ -618,8 +618,7 @@ function admin_user(int $id): string
         $facts['Patvirtinimas'] = match (true) {
             (bool) $u['verified_at'] => 'Patvirtintas '.e(substr($u['verified_at'], 0, 10)),
             (bool) $missing => 'Nebaigė registracijos<br><small>Trūksta: '.e(implode(', ', $missing)).'. Patvirtinti galėsite, kai darbdavys užpildys savo duomenis ir užregistruos darbovietę – tada gausite laišką.</small>',
-            default => '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.')
-                .'<br><small>Prieš tvirtindami patikrinkite: ar darbovietė tikrai egzistuoja (Google Maps, Instagram, svetainė), ar darbdavio vardas (ir telefonas, jei nurodytas) atrodo tikri. Jei abejojate, parašykite darbdaviui.</small>',
+            default => '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.'),
         };
     }
     if ($worker) {
