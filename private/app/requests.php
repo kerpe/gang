@@ -1257,7 +1257,9 @@ function request_edit_page(int $id): never
     $oldDates = ranges_string($ahead);
     preg_match('/^\d+(?:,\d+)?/', (string) $r['pay'], $m);
     $oldPay = $m[0] ?? '';
-    $v = ['dates' => $oldDates, 'pay' => $oldPay, 'description' => ($r['hours'] !== '' ? 'Darbo laikas: '.$r['hours']."\n\n" : '').$r['description']];
+    // Required experience can change only while nobody has applied: a stricter rule would be unfair to candidates.
+    $xpOpen = !$locked && !$candidates;
+    $v = ['dates' => $oldDates, 'pay' => $oldPay, 'min_experience' => (string) $r['min_experience'], 'description' => ($r['hours'] !== '' ? 'Darbo laikas: '.$r['hours']."\n\n" : '').$r['description']];
     $perks = from_list($r['perks']);
     $errors = [];
     if (is_post()) {
@@ -1282,6 +1284,11 @@ function request_edit_page(int $id): never
                 $errors['pay'] = PAY_ERROR;
             }
         }
+        if (!$xpOpen) {
+            $v['min_experience'] = (string) $r['min_experience'];
+        } elseif (!isset(EXPERIENCE_REQUIRED[(int) $v['min_experience']])) {
+            $errors['min_experience'] = 'Nurodykite reikalaujamą darbo patirtį.';
+        }
         if (mb_strlen($v['description']) < REQUEST_DESC_MIN || mb_strlen($v['description']) > 3000) {
             $errors['description'] = 'Nurodykite darbo laiką ir trumpai aprašykite darbo pobūdį bei pareigas (bent '.REQUEST_DESC_MIN.' simbolių).';
         }
@@ -1300,6 +1307,9 @@ function request_edit_page(int $id): never
                 ]);
             }
             sql("UPDATE requests SET description = ?, hours = '', perks = ? WHERE id IN ($ids)", [$v['description'], to_list($perks, VENUE_PERKS)]);
+            if ($xpOpen) {
+                sql("UPDATE requests SET min_experience = ? WHERE id IN ($ids)", [(int) $v['min_experience']]);
+            }
             sql('UPDATE requests SET pay = ? WHERE id = ?', [$newPay, $id]);
             $asked = 0;
             foreach ($group as $old) {
@@ -1336,9 +1346,12 @@ function request_edit_page(int $id): never
         .'<h1>Redaguoti paiešką</h1><p class="meta">'.e($role.' · '.$r['venue_name'].', '.(CITIES[$r['city']] ?? '')).'</p>'.$who
         .($errors ? '<p class="notice tip">Kai kurie laukai užpildyti ne iki galo.</p>' : '')
         .'<form method="post" class="form" novalidate>'.csrf_field().$when
+        .($xpOpen ? '<fieldset><legend>Reikalaujama darbo patirtis</legend>'.radios('min_experience', EXPERIENCE_REQUIRED, $v['min_experience']).err($errors, 'min_experience').'</fieldset>' : '')
         .'<label>Darbo laikas ir aprašymas <textarea name="description" rows="6" maxlength="3000" required data-min="'.REQUEST_DESC_MIN.'">'.e($v['description']).'</textarea><span class="counter meta" aria-live="polite"></span>'.err($errors, 'description').'</label>'
         .perks_fieldset($perks)
-        .'<p class="hint">Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.</p>'
+        .'<p class="hint">'.($xpOpen
+            ? 'Pareigų, miesto ir darbo trukmės pakeisti negalima. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.'
+            : 'Pareigų, miesto, darbo trukmės ir reikalaujamos patirties pakeisti negalima, nes kandidatūrų jau gauta. Jei jie kitokie, uždarykite šią paiešką ir paskelbkite naują.').'</p>'
         .'<div class="owner-actions"><button class="btn">Išsaugoti pakeitimus</button><a class="btn ghost" href="/darbas/'.$id.'">Atšaukti</a></div></form></section>'
         .($locked ? '' : date_picker_script()).counter_script(), ['noindex' => true]);
 }
