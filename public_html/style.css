@@ -218,7 +218,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .facts { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0; }
 .facts li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
 .facts b { display: block; font-size: .7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
-.desc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.desc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; overflow-wrap: anywhere; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin: 24px 0; }
 .panel h2 { margin-top: 0; }
 .panel.ok { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.06); }
@@ -1129,3 +1129,20 @@ table.data td.actions form + form { margin-left: 6px; }
 /* Remaining characters under a field (views.php): small, muted, right-aligned. */
 .form .counter { justify-self: end; margin: -2px 0 0; font-size: .8rem; font-weight: 400; color: var(--muted); font-variant-numeric: tabular-nums; }
 .form .counter[hidden] { display: none; }
+/* Venue opening hours: one row per weekday, a tick and from–to. */
+.hours-field { border: 0; padding: 0; margin: 0; min-width: 0; }
+.hours-field legend { padding: 0; margin-bottom: 6px; }
+.hours-days { display: grid; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.hours-day { display: grid; grid-template-columns: minmax(150px, 1fr) auto; align-items: center; gap: 8px 16px; padding: 8px 14px; border-top: 1px solid var(--line); min-height: 58px; }
+.hours-day:first-child { border-top: 0; }
+.hours-day .check { margin: 0; }
+.hours-time { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.hours-time select { width: 104px; min-height: 42px !important; padding: 8px 10px; }
+.hours-day.off .hours-time { display: none; }
+.hours-closed { display: none; }
+.hours-day.off .hours-closed { display: block; justify-self: end; }
+@media (max-width: 420px) {
+  .hours-day { grid-template-columns: 1fr; }
+  .hours-day.off { grid-template-columns: 1fr auto; }
+  .hours-time select { flex: 1; width: auto; }
+}

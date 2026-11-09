@@ -37,25 +37,31 @@ function venue_form_page(?int $id = null): never
         if (!isset(VENUE_TYPES[$v['type']])) {
             $errors['type'] = 'Pasirinkite darbovietės tipą.';
         }
-        if (mb_strlen($v['concept']) > 120) {
+        if (mb_strlen($v['concept']) < 2) {
+            $errors['concept'] = 'Įrašykite koncepciją ar virtuvę.';
+        } elseif (mb_strlen($v['concept']) > 120) {
             $errors['concept'] = 'Koncepcija gali būti ne ilgesnė nei 120 simbolių.';
         }
         if (!isset(CITIES[$v['city']])) {
             $errors['city'] = 'Pasirinkite miestą.';
         }
-        if (mb_strlen($v['address']) > 190) {
+        if (mb_strlen($v['address']) < 3) {
+            $errors['address'] = 'Įrašykite darbovietės adresą.';
+        } elseif (mb_strlen($v['address']) > 190) {
             $errors['address'] = 'Adresas gali būti ne ilgesnis nei 190 simbolių.';
         }
-        if (mb_strlen($v['hours']) > 190) {
-            $errors['hours'] = 'Darbo laikas gali būti ne ilgesnis nei 190 simbolių.';
+        [$hours, $hoursError] = venue_hours_from_post();
+        $v['hours'] = venue_hours_text($hours);
+        if ($hoursError !== '') {
+            $errors['hours'] = $hoursError;
         }
         if (mb_strlen($v['about']) < VENUE_ABOUT_MIN) {
             $errors['about'] = 'Aprašymas padeda darbuotojams apsispręsti. Parašykite bent '.VENUE_ABOUT_MIN.' simbolių: kokia tai vieta, kokia komanda ir kokios darbo sąlygos.';
         } elseif (mb_strlen($v['about']) > VENUE_ABOUT_MAX) {
             $errors['about'] = 'Aprašymas gali būti iki '.VENUE_ABOUT_MAX.' simbolių.';
         }
-        if ($v['team_size'] !== '' && !isset(TEAM_SIZES[$v['team_size']])) {
-            $v['team_size'] = '';
+        if (!isset(TEAM_SIZES[$v['team_size']])) {
+            $errors['team_size'] = 'Pasirinkite komandos dydį.';
         }
         foreach (array_keys(VENUE_LINKS) as $link) {
             if ($v[$link] === '') {
@@ -125,16 +131,16 @@ function venue_form_page(?int $id = null): never
     $body = $section('Pagrindinė informacija', 'Pavadinimas, tipas ir logotipas padeda darbuotojams iš karto atpažinti jūsų darbovietę.',
             $field('Pavadinimas', $text('name', VENUE_NAME_MAX, 'Pavyzdžiui: baras Gintaras', ' required autocomplete="organization"'), 'name')
             .'<div class="row">'.$field('Tipas', '<select name="type" required>'.options(['' => 'Pasirinkite'] + VENUE_TYPES, $v['type']).'</select>', 'type')
-            .$field('Koncepcija ar virtuvė'.$optional, $text('concept', 120, 'Pavyzdžiui: itališka virtuvė'), 'concept').'</div>'
+            .$field('Koncepcija ar virtuvė', $text('concept', 120, 'Pavyzdžiui: itališka virtuvė', ' required'), 'concept').'</div>'
             .$logoField)
         .$section('Vieta ir darbo laikas', 'Adresas matomas darbo skelbimuose ir darbovietės puslapyje.',
             '<div class="row">'.$field('Miestas', '<select name="city" required>'.options(['' => 'Pasirinkite'] + CITIES, $v['city']).'</select>', 'city')
-            .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' autocomplete="street-address"'), 'address').'</div>'
-            .$field('Darbo laikas'.$optional, $text('hours', 190, 'Pavyzdžiui: I–IV 12:00–23:00, V–VI 12:00–02:00'), 'hours', 'Kada darbovietė atidaryta lankytojams.'))
+            .$field('Adresas', $text('address', 190, 'Pavyzdžiui: Basanavičiaus g. 12', ' required autocomplete="street-address"'), 'address').'</div>'
+            .venue_hours_field($v['hours'], $venue['hours'] ?? '', err($errors, 'hours')))
         .$section('Apie darbovietę', 'Darbuotojai renkasi ne tik pagal atlygį. Papasakokite, kokia tai vieta ir kaip jums dirbama.',
             $field('Aprašymas', '<textarea name="about" rows="6" minlength="'.VENUE_ABOUT_MIN.'" maxlength="'.VENUE_ABOUT_MAX.'" required data-min="'.VENUE_ABOUT_MIN.'" placeholder="Pavyzdžiui: kokteilių baras senamiestyje, 40 vietų. Dirbame komandoje po 3–4 žmones, daugiausia vakarais. Naujus kolegas apmokome vietoje.">'.e($v['about']).'</textarea><span class="counter meta"></span>', 'about'))
         .$section('Komanda', 'Kiek žmonių dirba kartu. Ką siūlote darbuotojams, pažymėsite kiekviename skelbime atskirai.',
-            '<div class="row">'.$field('Komandos dydis'.$optional, '<select name="team_size">'.options(['' => 'Nenurodyta'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
+            '<div class="row">'.$field('Komandos dydis', '<select name="team_size" required>'.options(['' => 'Pasirinkite'] + TEAM_SIZES, $v['team_size']).'</select>', 'team_size').'</div>')
         .$section('Internete', 'Nuorodos padeda darbuotojams geriau pažinti jūsų darbovietę prieš priimant pasiūlymą.',
             '<div class="row">'.$field('Svetainė'.$optional, $text('website', 255, 'www.jusu-baras.lt', ' inputmode="url" autocomplete="url"'), 'website')
             .$field('Instagram'.$optional, $text('instagram', 255, '@jusu_baras'), 'instagram').'</div>'
@@ -148,7 +154,161 @@ function venue_form_page(?int $id = null): never
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
         .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
-        .photo_resize_script(), ['noindex' => true]);
+        .photo_resize_script().venue_hours_script(), ['noindex' => true]);
+}
+
+// Opening hours: I–VII with a from–to time each. Kept in venues.hours as the text visitors read,
+// e.g. "I–IV 12:00–23:00; V–VI 12:00–02:00" or "Kasdien 16:00–24:00"; the form reads that text back.
+// A closing time at or before the opening time is past midnight. Older free-text hours stay as typed
+// until the employer edits the venue.
+const WEEKDAYS_ROMAN = [1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const WEEKDAYS_FULL = [1 => 'Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'];
+
+// Every half hour of the day, "00:00" … "23:30".
+function venue_hour_options(): array
+{
+    $out = [];
+    for ($m = 0; $m < 1440; $m += 30) {
+        $t = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
+        $out[$t] = $t;
+    }
+    return $out;
+}
+
+// [day => [from, to]] from the form, with the first problem found ('' when fine).
+function venue_hours_from_post(): array
+{
+    $times = venue_hour_options();
+    $days = (array) ($_POST['hours_day'] ?? []);
+    $from = (array) ($_POST['hours_from'] ?? []);
+    $to = (array) ($_POST['hours_to'] ?? []);
+    $out = [];
+    $error = '';
+    foreach (WEEKDAYS_ROMAN as $d => $_) {
+        if (empty($days[$d])) {
+            continue;
+        }
+        $f = (string) ($from[$d] ?? '');
+        $t = (string) ($to[$d] ?? '');
+        $out[$d] = [$f, $t];
+        if (!isset($times[$f], $times[$t])) {
+            $error = $error ?: 'Pasirinkite, nuo kada iki kada dirbate pažymėtomis dienomis.';
+        } elseif ($f === $t) {
+            $error = $error ?: 'Pradžios ir pabaigos laikas negali sutapti.';
+        }
+    }
+    return [$out, $out ? $error : 'Pažymėkite dienas, kai darbovietė dirba, ir valandas.'];
+}
+
+function venue_hours_text(array $hours): string
+{
+    $groups = [];
+    foreach (WEEKDAYS_ROMAN as $d => $_) {
+        if (isset($hours[$d]) && $hours[$d][0] !== '' && $hours[$d][1] !== '') {
+            $groups[$hours[$d][0].'–'.($hours[$d][1] === '00:00' ? '24:00' : $hours[$d][1])][] = $d;
+        }
+    }
+    $parts = [];
+    foreach ($groups as $time => $days) {
+        if (count($days) === 7) {
+            $parts[] = "Kasdien $time";
+            continue;
+        }
+        // Consecutive days run together: I, II, III, V → "I–III, V".
+        $runs = [];
+        foreach ($days as $d) {
+            if ($runs && end($runs)[1] === $d - 1) {
+                $runs[array_key_last($runs)][1] = $d;
+            } else {
+                $runs[] = [$d, $d];
+            }
+        }
+        $parts[] = implode(', ', array_map(fn ($r) => WEEKDAYS_ROMAN[$r[0]].($r[1] > $r[0] ? '–'.WEEKDAYS_ROMAN[$r[1]] : ''), $runs)).' '.$time;
+    }
+    return implode('; ', $parts);
+}
+
+// The form's [day => [from, to]] from a stored text, or null for older free text.
+function venue_hours_parse(string $text): ?array
+{
+    if ($text === '') {
+        return [];
+    }
+    $roman = array_flip(WEEKDAYS_ROMAN);
+    $out = [];
+    foreach (explode('; ', $text) as $part) {
+        if (!preg_match('/^(Kasdien|[IV, –]+) (\d\d:\d\d)–(\d\d:\d\d)$/u', $part, $m)) {
+            return null;
+        }
+        $to = $m[3] === '24:00' ? '00:00' : $m[3];
+        $days = $m[1] === 'Kasdien' ? array_keys(WEEKDAYS_ROMAN) : [];
+        foreach ($m[1] === 'Kasdien' ? [] : explode(', ', $m[1]) as $run) {
+            $ends = explode('–', $run);
+            $a = $roman[$ends[0]] ?? null;
+            $b = $roman[$ends[1] ?? $ends[0]] ?? null;
+            if (!$a || !$b || $b < $a) {
+                return null;
+            }
+            $days = array_merge($days, range($a, $b));
+        }
+        foreach ($days as $d) {
+            $out[$d] = [$m[2], $to];
+        }
+    }
+    return venue_hours_text($out) === $text ? $out : null;
+}
+
+// One line per group of days on venue pages: "I–IV 12:00–23:00" / "V–VI 12:00–02:00".
+function venue_hours_html(string $text): string
+{
+    return implode('<br>', array_map('e', explode('; ', $text)));
+}
+
+// Seven rows: a day to tick and its hours. $stored is what the venue has now, so older free text can be shown.
+function venue_hours_field(string $text, string $stored, string $error): string
+{
+    $hours = venue_hours_parse($text) ?? [];
+    $legacy = $stored !== '' && venue_hours_parse($stored) === null && $text === $stored;
+    $times = ['' => '--:--'] + venue_hour_options();
+    $rows = '';
+    foreach (WEEKDAYS_FULL as $d => $name) {
+        $on = isset($hours[$d]);
+        [$f, $t] = $hours[$d] ?? ['', ''];
+        $rows .= '<div class="hours-day'.($on ? '' : ' off').'"><label class="check"><input type="checkbox" name="hours_day['.$d.']" value="1"'.($on ? ' checked' : '').'> '.$name.'</label>'
+            .'<span class="hours-time"><select name="hours_from['.$d.']" aria-label="'.$name.': nuo">'.options($times, $f).'</select><span aria-hidden="true">–</span>'
+            .'<select name="hours_to['.$d.']" aria-label="'.$name.': iki">'.options($times, $t).'</select></span>'
+            .'<span class="hours-closed meta">Nedirba</span></div>';
+    }
+    return '<fieldset class="field hours-field"><legend class="field-label">Darbo laikas</legend>'
+        .($legacy ? '<p class="field-hint">Dabar nurodyta: „'.e($stored).'“. Pažymėkite dienas ir valandas iš naujo.</p>' : '')
+        .'<div class="hours-days">'.$rows.'</div>'
+        .'<span class="field-hint">Kada darbovietė atidaryta lankytojams. Jei dirbate po vidurnakčio, pabaigai pasirinkite, pavyzdžiui, 02:00.</span>'
+        .$error.'</fieldset>';
+}
+
+// Ticking a day copies the hours of the nearest ticked day above it (or below), so a week is a few clicks.
+function venue_hours_script(): string
+{
+    return <<<'HTML'
+<script>
+document.querySelectorAll('.hours-days').forEach(function (box) {
+  var rows = Array.prototype.slice.call(box.querySelectorAll('.hours-day'));
+  rows.forEach(function (row, i) {
+    var box = row.querySelector('input[type=checkbox]'), sel = row.querySelectorAll('select');
+    box.addEventListener('change', function () {
+      row.classList.toggle('off', !box.checked);
+      if (!box.checked || sel[0].value || sel[1].value) return;
+      var order = rows.slice(0, i).reverse().concat(rows.slice(i + 1));
+      for (var k = 0; k < order.length; k++) {
+        var o = order[k].querySelectorAll('select');
+        if (order[k].querySelector('input').checked && o[0].value && o[1].value) { sel[0].value = o[0].value; sel[1].value = o[1].value; break; }
+      }
+      if (!sel[0].value) sel[0].focus();
+    });
+  });
+});
+</script>
+HTML;
 }
 
 // Turns what the manager typed (a URL, a domain, "@handle" or a bare handle) into a full https link.
@@ -385,7 +545,7 @@ function venue_page(int $id): never
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
         'Patikimumas' => $reliable !== null ? $reliable.' % sutartų darbų įvyko' : '',
     ]);
-    $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>';
+    $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>';
     $edit = $u && (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
     page($venue['name'], '<section class="wrap narrow venue-page"><header class="venue-head">'.venue_logo($venue, 'large')
         .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').($private ? ' · '.stars($avg, $n) : '').'</p>'
@@ -871,7 +1031,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
     ]);
-    $factsHtml = $facts ? '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.e($val).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    $factsHtml = $facts ? '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
     return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'
         .'<div class="venue-card-head">'.venue_logo($venue, 'small').'<div><strong><a href="'.$url.'">'.e($venue['name']).'</a></strong>'
         .($type !== '' ? '<span class="meta">'.e($type).'</span>' : '')
