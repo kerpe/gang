@@ -202,6 +202,7 @@ function privacy_page(): never
                 .'<li><strong>Pasitikėjimui ir saugumui užtikrinti</strong> (teisėtas interesas, 6 str. 1 d. f p.): įvertinimai, patikimumo rodikliai, piktnaudžiavimo prevencija, paskyrų blokavimas, sistemos apsauga.</li>'
                 .'<li><strong>Sutikimui su taisyklėmis įrodyti</strong> (teisėtas interesas): taisyklių redakcija, sutikimo laikas, IP adresas ir naršyklės informacija.</li>'
                 .'<li><strong>Teisės aktų reikalavimams vykdyti</strong> (teisinė prievolė, 6 str. 1 d. c p.), pavyzdžiui, atsakant į kompetentingų institucijų užklausas.</li>'
+                .'<li><strong>Lankomumo statistikai</strong> (sutikimas, 6 str. 1 d. a p.): analitikos slapukai, tik jei sutinkate. Sutikimą galite bet kada atšaukti.</li>'
                 .'<li><strong>Naujienoms siųsti</strong> – tik jei tam atskirai sutiksite (sutikimas, 6 str. 1 d. a p.). Sutikimą galėsite bet kada atšaukti.</li></ul>'
                 .'<p>Duomenų neparduodame ir reklamos tikslais tretiesiems asmenims neperduodame.</p>'],
             ['kas-mato', 'Kas mato jūsų duomenis', '<ul>'
@@ -215,7 +216,8 @@ function privacy_page(): never
             ['tvarkytojai', 'Paslaugų teikėjai', '<p>Duomenis patikime tik paslaugų teikėjams, be kurių platforma negalėtų veikti, ir tik tiek, kiek būtina:</p><ul>'
                 .'<li><strong>Hostinger</strong> – svetainės ir duomenų bazės prieglobos paslaugos;</li>'
                 .'<li><strong>Resend</strong> – el. laiškų siuntimas;</li>'
-                .'<li><strong>Twilio</strong> – SMS pranešimų siuntimas, kai ši paslauga įjungta.</li></ul>'
+                .'<li><strong>Twilio</strong> – SMS pranešimų siuntimas, kai ši paslauga įjungta;</li>'
+                .'<li><strong>Google</strong> ir <strong>Microsoft</strong> – lankomumo statistika (Google Analytics, Microsoft Clarity), tik jei sutinkate su analitikos slapukais.</li></ul>'
                 .'<p>Jei duomenys perduodami už Europos ekonominės erdvės ribų, tai daroma taikant BDAR numatytas apsaugos priemones: Europos Komisijos patvirtintas standartines sutarčių sąlygas arba sprendimą dėl tinkamumo.</p>'],
             ['terminai', 'Kiek laiko saugome', '<ul>'
                 .'<li>Paskyros, profilio ir veiklos duomenis – kol turite paskyrą. Paskyrą ištrynus, duomenys ištrinami per 30 dienų.</li>'
@@ -228,7 +230,10 @@ function privacy_page(): never
             ['slapukai', 'Slapukai', '<p>Naudojame tik būtinuosius slapukus, be kurių svetainė neveiktų:</p><ul>'
                 .'<li><strong>PHPSESSID</strong> – išlaiko jus prisijungusius ir apsaugo formas; galioja iki 60 dienų;</li>'
                 .'<li><strong>gang_preview</strong> – kol svetainė neatidaryta, suteikia prieigą GANG komandai; galioja iki 90 dienų.</li></ul>'
-                .'<p>Analitikos ir reklamos slapukų nenaudojame. Jei ateityje jų prireiktų, prieš juos įrašydami paprašysime jūsų sutikimo.</p>'],
+                .'<p>Analitikos slapukus naudojame tik tada, kai su jais sutinkate svetainės apačioje rodomoje juostoje („Sutinku“). Jie padeda suprasti, kaip lankytojai naudojasi GANG (kuriuos puslapius atidaro, iš kur atėjo, kur susiduria su sunkumais), kad galėtume svetainę tobulinti:</p><ul>'
+                .'<li><strong>Google Analytics</strong> (Google Ireland Ltd.) – <strong>_ga</strong>, <strong>_ga_*</strong>: lankomumo statistika; galioja iki 2 metų;</li>'
+                .'<li><strong>Microsoft Clarity</strong> (Microsoft Ireland Operations Ltd.), kai įjungta – <strong>_clck</strong>, <strong>_clsk</strong>: kaip naudojamasi puslapiais (paspaudimai, slinkimas); galioja iki 1 metų. Formų laukeliuose įvestas tekstas neįrašomas.</li></ul>'
+                .'<p>Pasirinkimą įsimename jūsų naršyklėje vieneriems metams. Jį bet kada galite pakeisti paspaudę „Slapukai“ svetainės apačioje. Atsisakius analitikos slapukai ištrinami. Reklamos slapukų nenaudojame.</p>'],
             ['automatizuota', 'Automatizuoti sprendimai', '<p>Pranešimus apie paieškas siunčiame darbuotojams, kurių profilio pareigos, miestas ir patirtis atitinka paieškos reikalavimus. Tai padeda greičiau rasti tinkamus žmones, tačiau sprendimą, ką pakviesti dirbti, visada priima darbdavys, o ne sistema.</p>'],
             ['pakeitimai', 'Politikos pakeitimai', '<p>Pasikeitus duomenų tvarkymui, šią politiką atnaujinsime. Apie esminius pakeitimus informuosime el. paštu arba prisijungus prie GANG.</p>'],
         ]);

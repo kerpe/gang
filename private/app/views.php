@@ -51,6 +51,7 @@ function page(string $title, string $body, array $opt = []): never
         $nav = '<span class="admin-badge">Administravimas</span>';
         $tabbar = '';
     }
+    $consent = $admin ? '' : analytics_consent();
     $bodyClass = $admin ? ' class="admin-body"' : ($tabbar ? ' class="has-tabbar"' : '');
     $flash = flash();
     // Shown as a toast at the bottom of the screen, where it is seen after a form is sent.
@@ -60,7 +61,7 @@ function page(string $title, string $body, array $opt = []): never
     $logoMark = knives();
         $footer = $admin ? '' : '<footer class="foot"><div class="wrap">'
         .'<p><strong>GANG.lt</strong> – patikimi kolegos restoranams, kavinėms, barams ir klubams.</p>'
-        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a> · <a href="/darbai">Darbo pasiūlymai</a> · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · © '.$year.'</p>'
+        .'<p><a href="/kaip-veikia">Kaip veikia</a> · <a href="/apie">Apie GANG</a> · <a href="/darbai">Darbo pasiūlymai</a> · <a href="/taisykles">Taisyklės</a> · <a href="/privatumas">Privatumas</a> · <a href="#slapukai" data-consent-open>Slapukai</a> · © '.$year.'</p>'
         .'</div></footer>';
     echo <<<HTML
 <!doctype html>
@@ -85,7 +86,7 @@ function page(string $title, string $body, array $opt = []): never
 $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=80">
+<link rel="stylesheet" href="/style.css?v=82">
 $head
 </head>
 <body$bodyClass>
@@ -99,6 +100,7 @@ $body
 </main>
 $footer
 $tabbar
+$consent
 <script>
 // A field's error disappears as soon as the field is changed.
 document.addEventListener('input', clearErr); document.addEventListener('change', clearErr);
@@ -112,6 +114,61 @@ window.addEventListener('pageshow', function () { document.querySelectorAll('for
 </html>
 HTML;
     exit;
+}
+
+// Cookie banner („Sutinku / Atsisakyti“). Google tag and Microsoft Clarity are loaded only after
+// „Sutinku“; the choice is kept in the browser (localStorage) for a year, and the footer link
+// „Slapukai“ opens the banner again. Refusing after agreeing removes their cookies.
+function analytics_consent(): string
+{
+    $gtm = GOOGLE_TAG_ID;
+    $clarity = CLARITY_ID;
+    if ($gtm === '' && $clarity === '') {
+        return '';
+    }
+    $ids = json_encode(['gtm' => $gtm, 'clarity' => $clarity]);
+    return <<<HTML
+<div class="consent" id="consent" role="dialog" aria-live="polite" aria-label="Slapukai" hidden>
+  <p>Naudojame analitikos slapukus, kad matytume, kaip lankytojai naudojasi GANG, ir galėtume svetainę tobulinti. <a href="/privatumas#slapukai">Daugiau</a></p>
+  <div class="consent-actions"><button type="button" class="btn small ghost" data-consent="no">Atsisakyti</button><button type="button" class="btn small" data-consent="yes">Sutinku</button></div>
+</div>
+<script>
+(function () {
+  var ids = $ids, key = 'gang_consent', box = document.getElementById('consent'), loaded = false;
+  function read() { try { var v = JSON.parse(localStorage.getItem(key) || 'null'); return v && v.t > Date.now() - 365 * 864e5 ? v.c : null; } catch (e) { return null; } }
+  function save(c) { try { localStorage.setItem(key, JSON.stringify({ c: c, t: Date.now() })); } catch (e) {} }
+  function load() {
+    if (loaded) return; loaded = true;
+    if (ids.gtm) {
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function () { dataLayer.push(arguments); };
+      dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+      gtag('js', new Date());
+      var g = document.createElement('script'); g.async = true; g.src = 'https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(ids.gtm); document.head.appendChild(g);
+    }
+    if (ids.clarity) {
+      (function (c, l, a, r, i, t, y) { c[a] = c[a] || function () { (c[a].q = c[a].q || []).push(arguments); }; t = l.createElement(r); t.async = 1; t.src = 'https://www.clarity.ms/tag/' + i; y = l.getElementsByTagName(r)[0]; y.parentNode.insertBefore(t, y); })(window, document, 'clarity', 'script', ids.clarity);
+    }
+  }
+  function wipe() {
+    var host = location.hostname.replace(/^www\./, '');
+    document.cookie.split(';').forEach(function (p) {
+      var n = p.split('=')[0].trim();
+      if (/^(_ga|_gid|_gat|_gcl|_clck|_clsk|CLID|MUID)/.test(n)) ['', '; domain=' + host, '; domain=.' + host].forEach(function (d) { document.cookie = n + '=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/' + d; });
+    });
+  }
+  var c = read();
+  if (c === 'yes') load(); else if (c === null) box.hidden = false;
+  box.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-consent]'); if (!b) return;
+    var yes = b.dataset.consent === 'yes', was = read();
+    save(yes ? 'yes' : 'no'); box.hidden = true;
+    if (yes) load(); else { wipe(); if (was === 'yes') location.reload(); }
+  });
+  document.addEventListener('click', function (e) { if (e.target.closest('[data-consent-open]')) { e.preventDefault(); box.hidden = false; } });
+})();
+</script>
+HTML;
 }
 
 function not_found(): never

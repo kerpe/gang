@@ -1052,3 +1052,16 @@ table.data td.actions form + form { margin-left: 6px; }
 .msg.emoji-only .ge-in { width: 2.4em; height: 2.4em; color: var(--lime); margin: 0 3px; }
 .msg.emoji-only.mine .msg-time { color: var(--muted); }
 .msg.emoji-only.mine .msg-seen.read { color: var(--lime); }
+
+/* Cookie banner: bottom of the screen, above the phone tab bar. */
+.consent { position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); width: min(640px, calc(100% - 32px));
+  display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.consent[hidden] { display: none; }
+.consent p { margin: 0; flex: 1; font-size: .92rem; color: var(--ink); }
+.consent p a { color: var(--muted); }
+.consent-actions { display: flex; gap: 8px; flex-shrink: 0; }
+@media (max-width: 600px) {
+  .consent { flex-direction: column; align-items: stretch; gap: 12px; }
+  .consent-actions .btn { flex: 1; }
+}
+@media (max-width: 720px) { .has-tabbar .consent { bottom: calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom)); } }
