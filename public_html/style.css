@@ -653,7 +653,7 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .job-side { display: grid; align-content: start; }
 /* Pay and facts in one card: the pay sits on top as the card's tinted header. */
 .job-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
-.job-card .pay-box { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; }
+.job-card .pay-box { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 18px; }
 .job-card .job-facts { background: none; border: 0; border-radius: 0; }
 .pay-box { background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.45); border-radius: var(--radius); padding: 18px 20px; }
 .pay-box .label, .job-sec h2, .job-facts dt { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
@@ -685,11 +685,6 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
   .apply-bar[hidden] { display: none; }
   .apply-bar.off { opacity: 0; transform: translateY(12px); pointer-events: none; }
   .apply-bar .btn { width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,.55); }
-  .job-facts { display: grid; grid-template-columns: 1fr 1fr; }
-  .job-facts > div { border-top: 1px solid var(--line); }
-  .job-facts > div:nth-child(-n+2) { border-top: 0; }
-  .job-facts > div:nth-child(even) { border-left: 1px solid var(--line); }
-  .job-facts > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
 }
 
 /* Flash messages: toast at the bottom of the screen (above the phone tab bar) */
