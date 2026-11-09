@@ -6,7 +6,7 @@ declare(strict_types=1);
 // SITE_OPEN = false: every visitor without the shared team password (preview_password,
 // from the PREVIEW_PASSWORD secret) sees one "Netrukus" page; /admin stays reachable.
 // SITE_OPEN = true opens the site to everyone (instant sign-up, as in PR #68).
-const SITE_OPEN = false;
+const SITE_OPEN = true;
 
 function preview_gate(string $path): void
 {
