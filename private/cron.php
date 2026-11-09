@@ -6,7 +6,7 @@ declare(strict_types=1);
 if (PHP_SAPI !== 'cli') {
     exit;
 }
-foreach (['bootstrap', 'data', 'views', 'account', 'shifts', 'contracts', 'messages'] as $f) {
+foreach (['bootstrap', 'data', 'views', 'auth', 'admin', 'account', 'shifts', 'contracts', 'messages'] as $f) {
     require __DIR__."/app/$f.php";
 }
 
@@ -37,6 +37,9 @@ foreach ($due as $c) {
     ]);
     sql('UPDATE contracts SET review_mail_at = ? WHERE id = ?', [now(), $c['id']]);
 }
+
+// "Užbaikite registraciją": a day and a week after an unfinished sign-up (see account.php).
+send_signup_reminders();
 
 // Arrival confirmation for tomorrow's shifts (10:00 reminder, 18:00 heads-up to the employer).
 run_shift_checks();

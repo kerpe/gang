@@ -93,6 +93,7 @@ match (true) {
     $is('/k/([a-z0-9]{3,80})') => invite_landing_page($m[1]),
     $is('/darbuotojas/(\d+)') => worker_profile_page((int) $m[1]),
     $is('/nuotrauka/(\d+)') => photo_page((int) $m[1]),
+    $is('/atsisakyti/(\d+)/([0-9a-f]{32})/priminimai') => signup_reminders_off_page((int) $m[1], $m[2]),
     $is('/atsisakyti/(\d+)/([0-9a-f]{32})') => unsubscribe_page((int) $m[1], $m[2]),
     default => not_found(),
 };
