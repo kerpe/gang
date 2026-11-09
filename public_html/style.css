@@ -52,7 +52,7 @@ h2 small, .meta, .fine, label small { color: var(--muted); font-weight: 400; fon
 .narrow { max-width: 760px; }
 main { min-height: 70vh; padding-bottom: 64px; }
 main > section.wrap, main > article.wrap { padding-top: 36px; }
-.eyebrow { font-size: .75rem; letter-spacing: .35em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
+.eyebrow { font-size: .8rem; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin: 0 0 14px; }
 
 /* Header */
 .top { border-bottom: 1px solid var(--line); background: rgba(23,23,23,.92); backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10; }
@@ -102,7 +102,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero-facts { list-style: none; padding: 0; margin: 34px 0 0; display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: .9rem; color: var(--muted); }
 .hero-facts strong { color: var(--ink); margin-right: 6px; }
 .cam-tabs { position: relative; z-index: 1; display: flex; gap: 6px; flex-wrap: wrap; padding: 0 32px 24px; max-width: 1180px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.cam-tabs button { font: 600 .72rem/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: rgba(14,14,13,.6); border: 1px solid var(--line-strong); border-radius: 4px; padding: 8px 10px; cursor: pointer; }
+.cam-tabs button { font: 600 .78rem/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: rgba(14,14,13,.6); border: 1px solid var(--line-strong); border-radius: 4px; padding: 8px 10px; cursor: pointer; }
 .cam-tabs button.on { color: #151515; background: var(--lime); border-color: var(--lime); }
 @media (max-width: 720px) {
   .home-hero { min-height: 92svh; }
@@ -147,8 +147,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .final-cta .cta { margin: 0; }
 
 .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border-top: 1px solid var(--line); padding-top: 28px; margin: 56px 0 18px; }
-.section-head h2 { font-size: .75rem; letter-spacing: .35em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0; }
-.section-head a { color: var(--lime); text-decoration: none; font-size: .9rem; }
+.section-head h2 { font-size: .8rem; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 500; margin: 0; }
+.section-head a { color: var(--lime); text-decoration: none; font-size: .9rem; white-space: nowrap; }
 .steps { list-style: none; counter-reset: s; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
 @media (max-width: 900px) { .steps { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 520px) { .steps { grid-template-columns: 1fr; } }
@@ -159,7 +159,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* Lists and cards */
 .list-page h1 { margin-bottom: 20px; }
 .filters { display: grid; grid-template-columns: repeat(3, 1fr) auto; gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; margin: 8px 0 12px; }
-@media (max-width: 720px) { .filters { grid-template-columns: 1fr; } }
+.filters.auto { grid-template-columns: repeat(3, 1fr); }
+.filters.auto .btn { display: none; }
+@media (max-width: 720px) {
+  .filters { grid-template-columns: 1fr; }
+  .filters.auto { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+  .filters.auto [name=pareigos] { grid-column: 1 / -1; grid-row: 2; }
+}
 select, input, textarea { width: 100%; font: inherit; color: var(--ink); padding: 11px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); }
 input::placeholder, textarea::placeholder { color: #6f6b63; }
 select:focus, input:focus, textarea:focus { border-color: var(--lime); outline: none; }
@@ -403,7 +409,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 /* Bento facts on the home page */
 .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
 .bt { grid-column: span 6; min-width: 0; container-type: inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; }
-.bt .k { display: block; margin-bottom: 14px; font: .72rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.bt .k { display: block; margin-bottom: 14px; font: .8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
 .bt .big { display: block; margin-bottom: 8px; font-family: var(--display); font-size: clamp(3.2rem, 6vw, 4.6rem); line-height: 1; color: var(--lime); overflow-wrap: anywhere; }
 /* Long words ("kalendorius") shrink with the card instead of spilling out of it */
 @supports (font-size: 1cqi) { .bt .big { font-size: clamp(1.6rem, 20cqi, 4.6rem); } }
@@ -809,7 +815,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .avatar.venue-logo.small { font-size: .85rem; border-radius: 8px; }
 
 /* Reliability, cancellations, team first, events, review criteria, pay guide (v12) */
-.tag.good { color: var(--ink); border-color: rgba(216,255,54,.6); background: rgba(216,255,54,.14); text-transform: none; letter-spacing: 0; font-size: .8rem; }
+.tag.good { color: var(--ink); border-color: rgba(216,255,54,.6); background: rgba(216,255,54,.14); }
 .tag.event { color: var(--ink); border-color: var(--line-strong); background: var(--surface-2); }
 .job-tags .tag + .tag { margin-left: 6px; }
 .pay-unit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin: 0; }
@@ -1052,6 +1058,26 @@ table.data td.actions form + form { margin-left: 6px; }
 .msg.emoji-only .ge-in { width: 2.4em; height: 2.4em; color: var(--lime); margin: 0 3px; }
 .msg.emoji-only.mine .msg-time { color: var(--muted); }
 .msg.emoji-only.mine .msg-seen.read { color: var(--lime); }
+
+/* Home: jobs come right after the hero; the bento repeats hero facts, so phones skip it. */
+@media (max-width: 719px) { .home-block:has(> .bento) { display: none; } }
+
+/* Moving strip of open jobs under the hero. */
+.ticker { display: block; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--lime); color: #151515; text-decoration: none; }
+.ticker-track { display: flex; width: max-content; animation: ticker 40s linear infinite; }
+.ticker-track > div { display: flex; align-items: center; }
+.ticker span { font-family: var(--display); text-transform: uppercase; font-size: 1.15rem; letter-spacing: .03em; line-height: 1; padding: 12px 0; white-space: nowrap; }
+.ticker i { display: inline-block; width: 8px; height: 8px; margin: 0 22px; background: #151515; transform: rotate(45deg); }
+.ticker + .home-block .section-head { border-top: 0; padding-top: 0; margin-top: 0; }
+.ticker:hover .ticker-track, .ticker:focus-visible .ticker-track { animation-play-state: paused; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+
+/* Join buttons at the end of Kaip veikia / Apie GANG. */
+.split-cta { margin-top: 40px; border-radius: 16px; background: var(--lime); color: #151515; padding: clamp(24px, 4vw, 40px); }
+.split-cta h2 { font-family: var(--display); font-weight: 400; text-transform: uppercase; font-size: clamp(1.9rem, 4vw, 2.8rem); line-height: 1.05; margin: 0 0 8px; color: #151515; }
+.split-cta p { margin: 0 0 20px; }
+.split-cta .cta { margin: 0; }
 
 /* Cookie banner: bottom of the screen, above the phone tab bar. */
 .consent { position: fixed; z-index: 45; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom)); width: min(640px, calc(100% - 32px));

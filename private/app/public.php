@@ -72,7 +72,20 @@ function home_page(): never
     }
     $urgent = $latest && !array_filter($latest, fn ($r) => !request_urgent($r));
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
-    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
+    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi pasiūlymai →</a></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
+    // Moving strip of open jobs under the hero (stands still for reduced motion).
+    $ticker = '';
+    $tickJobs = open_requests([], 12);
+    if (count($tickJobs) >= 3) {
+        $items = '';
+        foreach ($tickJobs as $r) {
+            $parts = $r['pay'] !== '' ? pay_parts($r['pay']) : null;
+            $items .= '<span>'.e(ROLES[$r['role']] ?? $r['role']).' · '.e(CITIES[$r['city']] ?? '').($parts ? ' · '.e($parts[0]).'/val.' : '').'</span><i aria-hidden="true"></i>';
+        }
+        // Each half must be wider than the widest screen, or the loop shows a gap.
+        $items = str_repeat($items, (int) ceil(10 / count($tickJobs)));
+        $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
+    }
     $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
     $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
 
@@ -131,7 +144,8 @@ function home_page(): never
   </div>
   $tabs
 </section>
-
+$ticker
+$list
 
 <section class="wrap home-block">
   <div class="audience">
@@ -166,8 +180,6 @@ function home_page(): never
   </div>
 </section>
 
-$list
-
 <section class="wrap home-block">
   <div class="section-head"><h2>Visa komanda vienoje vietoje</h2></div>
   <div class="cam-tiles">$tiles</div>
@@ -177,8 +189,8 @@ $list
   <div class="section-head"><h2>Kaip veikia</h2></div>
   <ol class="steps">
     <li><strong>Darbdavys paskelbia paiešką</strong>Pavyzdžiui, „virėjas rytoj, <span class="nw">10–22 val.</span>“ arba „padavėjai vasaros sezonui“.</li>
-    <li><strong>Tinkami darbuotojai gauna pranešimą</strong>ir pateikia kandidatūrą vienu paspaudimu.</li>
-    <li><strong>Darbdavys patvirtina kandidatą</strong>Sudaromas GANG kontraktas: abi šalys gauna viena kitos kontaktus.</li>
+    <li><strong>Tinkami darbuotojai gauna pranešimą</strong>Pranešimas ateina el. paštu, o kandidatūrą galima pateikti vienu paspaudimu.</li>
+    <li><strong>Darbdavys patvirtina kandidatą</strong>Sudaromas GANG kontraktas, o darbo detales abi šalys suderina GANG pokalbyje.</li>
     <li><strong>Abi šalys įvertina viena kitą</strong>Įvertinimai paskelbiami tik tada, kai įvertina abi šalys arba praėjus 7 dienoms.</li>
   </ol>
 </section>
@@ -217,13 +229,20 @@ function jobs_page(): never
     $cityName = $f['city'] ? ' '.CITIES_IN[$f['city']] : '';
     page('Darbas restoranuose, kavinėse, baruose ir klubuose'.($f['city'] ? ' – '.CITIES[$f['city']] : ''), <<<HTML
 <section class="wrap list-page">
-  <h1>Darbai{$cityName}</h1>
+  <h1>Darbo pasiūlymai{$cityName}</h1>
   <form class="filters" method="get" action="/darbai">
     <select name="miestas" aria-label="Miestas">$cities</select>
     <select name="pareigos" aria-label="Pareigos">$roles</select>
     <select name="tipas" aria-label="Tipas">$kinds</select>
     <button class="btn">Rodyti</button>
   </form>
+  <script>
+  (function () {
+    var f = document.querySelector('.filters');
+    f.classList.add('auto');
+    f.addEventListener('change', function () { f.submit(); });
+  })();
+  </script>
   <p class="meta">Rasta: $count</p>
   <h2 class="sr-only">Darbo pasiūlymai</h2>
   $cards
@@ -234,7 +253,7 @@ HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
 // Two-column text page: sticky heading, CCTV photo and section index on the left,
 // numbered sections on the right. $sections is [[id, heading, html], ...].
 // With $numbered = false the sections carry no numbers, headings or side index (Baras, Virtuvė, Salė).
-function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical, bool $numbered = true): never
+function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical, bool $numbered = true, bool $cta = false): never
 {
     $index = $body = '';
     foreach ($sections as $i => [$id, $h, $html]) {
@@ -249,6 +268,9 @@ function split_page(string $title, string $eyebrow, string $heading, string $cam
     $index = $index !== '' ? '<ol class="side-index">'.$index.'</ol>' : '';
     $photo = cam_photo($cam);
     $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
+    if ($cta) {
+        $body .= '<div class="split-cta">'.(current_user() ? '' : '<h2>Prisijunkite prie GANG</h2><p>Registracija trunka kelias minutes.</p>').join_cta('btn dark', 'btn dark ghost').'</div>';
+    }
     page($title, '<div class="wrap split"><div class="side">'.($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '').'<h1>'.e($heading).'</h1>'.$photo
         .$index.'</div><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
 }
@@ -272,14 +294,14 @@ function how_page(): never
     split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo paieškos iki pamainos', '03', [
         ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių profilyje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi ir įvertinimais. Su kandidatais galite susirašinėti GANG pokalbyje.</p>'
             .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>'],
-        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Darbdaviui patvirtinus jūsų kandidatūrą, gausite jo kontaktus, galėsite susirašinėti GANG pokalbyje, o darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
+        ['darbuotojams', 'Darbuotojams', '<p>Susikurkite profilį, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Su darbdaviu galite susirašinėti GANG pokalbyje. Darbdaviui patvirtinus jūsų kandidatūrą, darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
             .'<p class="chips"><span>Profilis</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>'],
         ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atsiskaitymą ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
         ['ivertinimai', 'Įvertinimai', '<ul>'
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
             .'<li>Įvertinimo autorius neskelbiamas: prie darbuotojų įvertinimų rodomas darbdavio miestas ir data, prie darbdavių įvertinimų – tik data.</li>'
             .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>'],
-    ], '/kaip-veikia');
+    ], '/kaip-veikia', true, true);
 }
 
 function about_page(): never
@@ -299,7 +321,7 @@ function about_page(): never
             .'<p>GANG padės skubiai rasti patikimą komandos narį, o geri specialistai čia lengvai ras sau tinkamiausią darbą.</p>'
             .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau žmonių, neturinčių nieko bendro su HoReCa, teiraujasi, ar galėtų porą dienų pabandyti pasidarbuoti bare ar pagelbėti virtuvėje. Pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, gyvenime neatsiradus tinkamai progai, taip ir lieka net neišbandytas – GANG tikrai rasime darbo ir žaliems.</p></blockquote>'
             .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
-    ], '/apie');
+    ], '/apie', true, true);
 }
 
 function sitemap(): never
