@@ -114,7 +114,7 @@ window.addEventListener('pageshow', function () { document.querySelectorAll('for
 // Short numeric fields (pay, phone), link fields (255) and the chat box are left without a counter.
 document.querySelectorAll('form.form input[maxlength], form.form textarea[maxlength]').forEach(function (f) {
   var max = +f.getAttribute('maxlength'), min = +f.dataset.min || 0;
-  if (max < 50 || (max >= 255 && f.tagName === 'INPUT') || f.readOnly || f.type === 'tel' || /numeric|decimal/.test(f.inputMode)) return;
+  if (max < 40 || (max >= 255 && f.tagName === 'INPUT') || f.readOnly || f.hasAttribute('data-nocount') || f.type === 'tel' || /numeric|decimal/.test(f.inputMode)) return;
   var out = f.parentNode.querySelector('.counter');
   if (!out) { out = document.createElement('span'); out.className = 'counter meta'; (f.closest('.input-suffix') || f).after(out); }
   out.hidden = !min;
