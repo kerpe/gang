@@ -45,7 +45,7 @@ function preview_gate(string $path): void
         .'<label>Peržiūros slaptažodis <input type="password" name="password" autocomplete="current-password" required>'.$error.'</label>'
         .'<button class="btn small ghost">Įeiti</button></form></details>';
     echo '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">'
-        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=81"></head>'
+        .'<title>GANG · netrukus</title><link rel="icon" href="/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="/style.css?v=82"></head>'
         .'<body><main><section class="wrap narrow soon"><span class="logo">'.knives().'GANG<span>.lt</span></span>'
         .'<h1>Netrukus</h1>'
         .'<p class="meta">Susisiekti: <a href="mailto:hello@gang.lt">hello@gang.lt</a></p>'.$team.'</section></main></body></html>';
