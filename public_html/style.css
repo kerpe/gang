@@ -218,7 +218,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .facts { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0; }
 .facts li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
 .facts b { display: block; font-size: .7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
-.desc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
+.desc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; overflow-wrap: anywhere; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin: 24px 0; }
 .panel h2 { margin-top: 0; }
 .panel.ok { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.06); }
