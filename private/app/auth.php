@@ -70,7 +70,8 @@ function require_user(?string $kind = null): array
 
 function profile_complete(array $u): bool
 {
-    return $u['name'] !== '' && $u['phone'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
+    // The phone number is optional (Vilius 2026-11-09): email, full name and, for workers, roles and cities are enough.
+    return $u['name'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
 }
 
 // Where a member who has not finished signing up goes next: own details first, then (employers)

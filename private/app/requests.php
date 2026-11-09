@@ -11,7 +11,7 @@ function venue_form_page(?int $id = null): never
     if ($id && !$venue) {
         not_found();
     }
-    // The employer's own name and phone come first: a venue without them would reach GANG for checking half-done.
+    // The employer's own name comes first: a venue without them would reach GANG for checking half-done.
     if (!$venue && !profile_complete($u)) {
         redirect('/profilis');
     }

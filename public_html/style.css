@@ -964,6 +964,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .onboard li::before { content: counter(o) ". "; }
 .onboard li.done { border-color: var(--lime); }
 .onboard li.now { border-color: var(--lime); color: var(--ink); font-weight: 700; }
+.onboard li small { display: block; font-size: .72rem; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 
 /* Changed job terms: the candidate confirms them again */
 .badge.wait { border-color: rgba(255,101,74,.45); background: rgba(255,101,74,.08); color: var(--ink); }

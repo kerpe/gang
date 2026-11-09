@@ -276,7 +276,7 @@ function admin_attention(): string
     if ($urgent) {
         $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
     }
-    $pending = (int) sql("SELECT COUNT(*) FROM users u WHERE u.kind = 'manager' AND u.verified_at IS NULL AND u.blocked = 0 AND u.name <> '' AND u.phone <> '' AND EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id)")->fetchColumn();
+    $pending = (int) sql("SELECT COUNT(*) FROM users u WHERE u.kind = 'manager' AND u.verified_at IS NULL AND u.blocked = 0 AND u.name <> '' AND EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id)")->fetchColumn();
     if ($pending) {
         $items[] = '<a href="/admin?tab=users&amp;kind=manager">Darbdaviai laukia patvirtinimo: '.$pending.'</a>';
     }
@@ -570,7 +570,7 @@ function admin_users(): string
     foreach ($rows as $r) {
         $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
         $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
-            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] ? ($r['name'] !== '' && $r['phone'] !== '' && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : ' <small>nebaigė registracijos</small>') : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+            .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] ? ($r['name'] !== '' && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : ' <small>nebaigė registracijos</small>') : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
             .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
     }
     return $html.($rows ? '' : '<tr><td colspan="8">Narių nerasta.</td></tr>').'</table></div>';
@@ -614,12 +614,12 @@ function admin_user(int $id): string
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
     if (!$worker) {
-        $missing = array_keys(array_filter(['vardas' => $u['name'] === '', 'telefonas' => $u['phone'] === '', 'darbovietė' => !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$id])->fetchColumn()]));
+        $missing = array_keys(array_filter(['vardas ir pavardė' => $u['name'] === '', 'darbovietė' => !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$id])->fetchColumn()]));
         $facts['Patvirtinimas'] = match (true) {
             (bool) $u['verified_at'] => 'Patvirtintas '.e(substr($u['verified_at'], 0, 10)),
             (bool) $missing => 'Nebaigė registracijos<br><small>Trūksta: '.e(implode(', ', $missing)).'. Patvirtinti galėsite, kai darbdavys užpildys savo duomenis ir užregistruos darbovietę – tada gausite laišką.</small>',
             default => '<strong>Laukia patvirtinimo</strong> '.post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn small', 'Patvirtinti šį darbdavį? Jis galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.')
-                .'<br><small>Prieš tvirtindami patikrinkite: ar darbovietė tikrai egzistuoja (Google Maps, Instagram, svetainė), ar darbdavio vardas ir telefonas atrodo tikri. Jei abejojate, paskambinkite.</small>',
+                .'<br><small>Prieš tvirtindami patikrinkite: ar darbovietė tikrai egzistuoja (Google Maps, Instagram, svetainė), ar darbdavio vardas (ir telefonas, jei nurodytas) atrodo tikri. Jei abejojate, parašykite darbdaviui.</small>',
         };
     }
     if ($worker) {
