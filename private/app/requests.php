@@ -794,13 +794,14 @@ function request_page(int $id): never
         .($r['hours'] !== '' ? '<div><dt>Darbo laikas</dt><dd>'.e($r['hours']).'</dd></div>' : '')
         .($owner ? '' : '<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>')
         .'<div><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
-        .'<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
-        .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>'
+        // Workers see the venue's name and address in the "Apie darbovietę" card; the owner has no such card.
+        .($owner ? '<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
+            .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>' : '')
         .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '').'</dl>';
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
     $venueUrl = '/darboviete/'.(int) $r['venue_id'];
     // The employer doesn't need to read about their own venue (e.g. when they come to approve a worker).
-    $venueSec = $owner ? '' : venue_section_html($venue, $venueUrl, $city, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
+    $venueSec = $owner ? '' : venue_section_html($venue, $venueUrl, $city, $place, sees_venue_reviews($u, $venue) ? stars($avg, $n) : '');
     $kindTag = kind_tag($r['kind']);
     $action = $owner ? owner_panel($r, $isOpen) : worker_panel($r, $u, $isOpen);
     // On a phone the apply form is screens below the pay and description: a bar at the bottom jumps to it
@@ -848,7 +849,7 @@ function request_page(int $id): never
     <h1>{$e($role)}</h1>$eventLine
   </header>
   <div class="job-grid">
-    <div class="job-side">$payBox$facts</div>
+    <div class="job-side job-card">$payBox$facts</div>
     <div class="job-main">
       $venueSec
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
@@ -867,8 +868,8 @@ HTML, [
 }
 
 // "Apie darbovietę" at the top of the job page: what the employer filled in about the venue, visible to everyone.
-// The city and (for members who may see them) the venue's ratings sit under the name.
-function venue_section_html(array $venue, string $url, string $city = '', string $rating = ''): string
+// The address closes the card. The city and (for members who may see them) the venue's ratings sit under the name.
+function venue_section_html(array $venue, string $url, string $city = '', string $address = '', string $rating = ''): string
 {
     $type = implode(' · ', array_filter([venue_type_text($venue), $city], fn ($x) => $x !== ''));
     $facts = array_filter([
@@ -883,7 +884,8 @@ function venue_section_html(array $venue, string $url, string $city = '', string
         .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$factsHtml
         .venue_links_html($venue)
-        .'<p class="venue-more"><a href="'.$url.'">Visa darbovietės informacija →</a></p></div></section>';
+        // The address as plain text; the venue's name above already links to its page.
+        .($address !== '' ? '<p class="venue-more">'.e($address).'</p>' : '').'</div></section>';
 }
 
 function worker_panel(array $r, ?array $u, bool $isOpen): string
