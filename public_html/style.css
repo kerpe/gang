@@ -865,8 +865,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .event-body { display: grid; gap: 0; transition: opacity .2s; }
 .event-body > .hint { margin: 0 0 4px; color: var(--muted); font-size: .92rem; }
 .event-body [data-add-role] { justify-self: start; }
-.event-body[disabled] { opacity: .4; }
-.event-body[disabled] * { cursor: not-allowed; }
+.event-body[disabled] { display: none; }
 .nw { white-space: nowrap; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .event-roles .extra-rows { display: grid; gap: 10px; margin: 8px 0 12px; }
