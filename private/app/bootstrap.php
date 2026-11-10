@@ -30,7 +30,7 @@ const ROLE_GROUPS = [
 const JOB_PHOTOS = [
     'bar' => 'Main floor', 'club' => 'Club bar', 'wedding' => 'Event bar', 'stock' => 'Stock room',
     'cafe' => 'Coffee bar', 'roastery' => 'Roastery', 'pass' => 'Chef\'s pass', 'kitchen' => 'Kitchen',
-    'streetfood' => 'Open kitchen', 'dish' => 'Dish pit', 'dining' => 'Dining room', 'briefing' => 'Briefing', 'door' => 'Entrance',
+    'streetfood' => 'Open kitchen', 'dish' => 'Dish pit', 'dining' => 'Dining room', 'briefing' => 'Briefing',
 ];
 // A role with several photos: ads take turns by id, so a list of the same role does not repeat one picture.
 const ROLE_PHOTOS = [
@@ -43,7 +43,7 @@ const ROLE_PHOTOS = [
     'virejas' => ['kitchen', 'streetfood'],
     'pagalbinis' => ['streetfood', 'kitchen'],
     'plovejas' => ['dish'],
-    'administratorius' => ['door', 'briefing'],
+    'administratorius' => ['dining', 'briefing'],
     'vadovas' => ['stock', 'bar'],
     'someljee' => ['briefing', 'dining'],
 ];
