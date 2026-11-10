@@ -164,11 +164,13 @@ function venue_form_page(?int $id = null): never
 const WEEKDAYS_ROMAN = [1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 const WEEKDAYS_FULL = [1 => 'Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'];
 
-// Every half hour of the day, "00:00" … "23:30".
+// Every half hour of the day, from 06:00 round to 05:30: the list opens where venues open, and
+// closing times after midnight come right after 23:30.
 function venue_hour_options(): array
 {
     $out = [];
-    for ($m = 0; $m < 1440; $m += 30) {
+    for ($i = 0; $i < 1440; $i += 30) {
+        $m = ($i + 360) % 1440;
         $t = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
         $out[$t] = $t;
     }
@@ -751,7 +753,7 @@ function event_roles_fieldset(array $extras, string $title, array $errors, bool 
         .'<label>Atlygis į rankas <span class="input-suffix"><input name="extra_pay[]" value="'.e($x['pay']).'" inputmode="decimal" maxlength="6" placeholder="10"><span aria-hidden="true">€/val.</span></span></label>'
         .'<button type="button" class="btn small ghost" data-rm-role aria-label="Pašalinti šias pareigas">×</button></div>';
     $on = $extras && $shown;
-    // Without the tick the part stays visible but greyed out and disabled, so nothing from it is sent.
+    // Without the tick only the tick shows: the rest is disabled and hidden, so nothing from it is sent.
     $rows = implode('', array_map($row, $extras ?: [['role' => '', 'people' => '1', 'pay' => '']]));
     return '<fieldset class="event-roles'.($on ? ' on' : '').'"'.($shown ? '' : ' hidden').'><legend class="sr-only">Renginys</legend>'
         .'<label class="choice event-toggle"><input type="checkbox" name="event" value="1"'.($on ? ' checked' : '').'>'
@@ -838,7 +840,7 @@ function request_preview_script(): string
     }
     guideOut.textContent = text; guideOut.hidden = false;
   }
-  // Event roles: the tick turns the part on; without it the part is greyed out and nothing from it is sent.
+  // Event roles: the tick shows and turns on the part; without it the part is hidden and nothing from it is sent.
   var box = f.querySelector('.event-roles'), body = box.querySelector('.event-body'), tick = box.querySelector('input[name=event]');
   var rows = box.querySelector('.extra-rows'), tpl = document.getElementById('extra-row');
   function addRow() { rows.appendChild(tpl.content.cloneNode(true)); }

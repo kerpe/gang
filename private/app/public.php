@@ -122,7 +122,8 @@ function home_page(): never
     $tiles = '';
     foreach (CAMS as $n => [$label, $roles]) {
         $src = cam_photo($n);
-        // Photos carry their own burned-in camera label.
+        // The first photos, with their own burned-in camera label. Kept here on purpose (Vilius 2026-11-10)
+        // until he asks to change them.
         $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span><span class="cam-label">CAM '.$n.'</span>';
         $tiles .= '<a class="cam-tile" href="/'.TEAM_PAGES[$n]['slug'].'"><div class="cam-media">'.$media.'</div>'
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';

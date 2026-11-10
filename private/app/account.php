@@ -97,8 +97,9 @@ function profile_page(): never
             if (!$worker && !sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn()) {
                 redirect('/darboviete/nauja');
             }
-            $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : '';
-            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : 'Paskyra sukurta. Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.').$jobsNote);
+            // One sentence about the emails: either some offers went out just now or they will come later.
+            $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : ($first ? ' Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.' : '');
+            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : 'Paskyra sukurta.').$jobsNote);
             redirect('/mano');
         }
     }
@@ -147,10 +148,12 @@ function profile_page(): never
         .$workerFields
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
         .'<button class="btn">Išsaugoti</button></form>'
-        .'<h2>Mano duomenys</h2><p class="meta">Galite atsisiųsti viską, ką GANG apie jus saugo, arba ištrinti paskyrą kartu su visais duomenimis.</p>'
+        // Data download, account deletion and signing out everywhere only once the account exists,
+        // not on the first sign-up step.
+        .(profile_complete($u) ? '<h2>Mano duomenys</h2><p class="meta">Galite atsisiųsti viską, ką GANG apie jus saugo, arba ištrinti paskyrą kartu su visais duomenimis.</p>'
         .'<p class="venue-actions"><a class="btn small ghost" href="/profilis/duomenys">Atsisiųsti mano duomenis</a> <a class="btn small ghost" href="/profilis/istrinti">Ištrinti paskyrą</a></p>'
         .'<h2>Prisijungimai</h2><p class="meta">Jei prisijungėte svetimame ar pamestame įrenginyje, atjunkite visus įrenginius. Šiame įrenginyje taip pat reikės prisijungti iš naujo.</p>'
-        .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>'
+        .'<div class="venue-actions">'.post_button('/atsijungti/visur', 'Atsijungti visuose įrenginiuose', [], 'btn small ghost', 'Atsijungti visuose įrenginiuose, įskaitant šį?').'</div>' : '')
         .'</section>'.name_check_script().phone_check_script().photo_resize_script(), ['noindex' => true]);
 }
 
@@ -596,7 +599,7 @@ function manager_dashboard(array $u): string
     $candidates = array_sum(array_column($waiting, 1));
     $next = match (true) {
         (bool) $alert => ['warn', ($alert['shift_date'] === today() ? 'Šiandien' : 'Rytoj').': atvykimas dar nepatvirtintas', $alert['worker_name'].' · '.(ROLES[$alert['role']] ?? $alert['role']).'. Parašykite darbuotojui, o prireikus raskite pakaitinį.', replacement_url($alert), 'Rasti pakaitinį'],
-        (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. Pirmoji paieška: '.(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
+        (bool) $waiting => ['', 'Laukia jūsų sprendimo', 'Kandidatūrų: '.$candidates.'. '.(count($waiting) > 1 ? 'Pirmoji iš '.count($waiting).' paieškų: ' : '').(ROLES[$waiting[0][0]['role']] ?? '').' · '.$waiting[0][0]['venue_name'].', '.rtrim(period($waiting[0][0]), '.').'.', '/darbas/'.(int) $waiting[0][0]['id'], 'Peržiūrėti kandidatus'],
         (bool) $toReview => ['', 'Įvertinkite darbuotoją', $toReview[0]['worker_name'].' · '.(ROLES[$toReview[0]['role']] ?? '').'. Įvertinimas padeda kitiems darbdaviams.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         !$open => ['', 'Aktyvių paieškų nėra', 'Jei susirgo darbuotojas, artėja sezonas ar didelis renginys, paskelbkite paiešką.', '/poreikis/naujas', '+ Paskelbti paiešką'],
         default => ['calm', 'Paieškos aktyvios', 'Kai darbuotojai pateiks kandidatūras, pranešime el. paštu.', '/mano/paieskos', 'Peržiūrėti'],
