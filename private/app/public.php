@@ -86,8 +86,6 @@ function home_page(): never
         $items = str_repeat($items, (int) ceil(10 / count($tickJobs)));
         $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
     }
-    $workers = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0")->fetchColumn();
-    $proof = $workers >= 50 ? '<li><strong>'.$workers.'</strong> registruotų darbuotojų</li>' : '';
 
     // Hero: every camera that has a photo, cross-faded by the script below.
     $slides = $tabs = '';
@@ -140,7 +138,7 @@ function home_page(): never
     <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     $heroCta
-    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li>$proof</ul>
+    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li></ul>
   </div>
   $tabs
 </section>

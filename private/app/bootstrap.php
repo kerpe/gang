@@ -26,6 +26,27 @@ const ROLE_GROUPS = [
     'Virtuvė' => ['sefas', 'virejas', 'pagalbinis', 'plovejas'],
     'Aptarnavimas' => ['padavejas', 'runneris', 'administratorius', 'someljee'],
 ];
+// Photos shown on a job ad by role (public_html/img/job-{key}.jpg, made by tools/jobimg.sh): key => camera label.
+const JOB_PHOTOS = [
+    'bar' => 'Main floor', 'club' => 'Club bar', 'wedding' => 'Event bar', 'stock' => 'Stock room',
+    'cafe' => 'Coffee bar', 'roastery' => 'Roastery', 'pass' => 'Chef\'s pass', 'kitchen' => 'Kitchen',
+    'streetfood' => 'Open kitchen', 'dish' => 'Dish pit', 'dining' => 'Dining room', 'briefing' => 'Briefing', 'door' => 'Entrance',
+];
+// A role with several photos: ads take turns by id, so a list of the same role does not repeat one picture.
+const ROLE_PHOTOS = [
+    'barmenas' => ['bar', 'club', 'wedding'],
+    'barback' => ['club', 'stock'],
+    'barista' => ['cafe', 'roastery'],
+    'padavejas' => ['dining', 'briefing'],
+    'runneris' => ['dining', 'pass'],
+    'sefas' => ['pass', 'kitchen'],
+    'virejas' => ['kitchen', 'streetfood'],
+    'pagalbinis' => ['streetfood', 'kitchen'],
+    'plovejas' => ['dish'],
+    'administratorius' => ['door', 'briefing'],
+    'vadovas' => ['stock', 'bar'],
+    'someljee' => ['briefing', 'dining'],
+];
 const KINDS = [
     'trumpai' => 'Trumpam',
     'sezonas' => 'Sezonui',
