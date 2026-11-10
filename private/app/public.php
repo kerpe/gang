@@ -48,7 +48,7 @@ const TEAM_PAGES = [
 // Home hero "camera wall": four screens, each switching between its own photos (keys of JOB_PHOTOS).
 const CAM_WALL = [
     ['bar', 'club', 'wedding'],
-    ['kitchen', 'pass', 'streetfood'],
+    ['kitchen', 'pass'],
     ['dining', 'briefing', 'cafe'],
     ['dish', 'stock', 'roastery'],
 ];
