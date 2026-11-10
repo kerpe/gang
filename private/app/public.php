@@ -101,7 +101,7 @@ function home_page(): never
         $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
     }
 
-    // Hero: a wall of four camera screens; each screen cross-fades between its photos (script below).
+    // Hero: a wall of four camera screens behind the text; each screen cross-fades between its photos (script below).
     $wall = $preload = '';
     foreach (CAM_WALL as $c => $keys) {
         $wall .= '<div class="wall-cell">';
@@ -109,10 +109,11 @@ function home_page(): never
             $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
             $src = '/img/job-'.$key.'-sm.jpg?v=2';
             // Only the first photo of a screen loads with the page; the script fetches the rest when idle.
-            $wall .= '<figure class="'.($k === 0 ? 'on' : '').'"><img '.($k === 0 ? 'src' : 'data-src').'="'.$src.'" alt="" width="640" height="480"'.($k === 0 && $c === 0 ? ' fetchpriority="high"' : '').'>'
+            $set = $src.' 640w, /img/job-'.$key.'.jpg?v=2 1200w';
+            $wall .= '<figure class="'.($k === 0 ? 'on' : '').'"><img '.($k === 0 ? 'src="'.$src.'" srcset="'.$set.'"' : 'data-src="'.$src.'" data-srcset="'.$set.'"').' sizes="50vw" alt="" width="640" height="480"'.($k === 0 && $c === 0 ? ' fetchpriority="high"' : '').'>'
                 .'<figcaption>CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</figcaption></figure>';
             if ($k === 0) {
-                $preload .= '<link rel="preload" as="image" href="'.$src.'">';
+                $preload .= '<link rel="preload" as="image" href="'.$src.'" imagesrcset="'.$set.'" imagesizes="50vw">';
             }
         }
         $wall .= '</div>';
@@ -210,7 +211,7 @@ $finalCta
 (function () {
   var cells = document.querySelectorAll('.cam-wall .wall-cell'), c = 0;
   if (!cells.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  function load() { document.querySelectorAll('.cam-wall img[data-src]').forEach(function (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }); }
+  function load() { document.querySelectorAll('.cam-wall img[data-src]').forEach(function (img) { img.srcset = img.dataset.srcset; img.src = img.dataset.src; img.removeAttribute('data-src'); }); }
   window.addEventListener('load', function () { setTimeout(load, 1500); });
   // One screen switches at a time, in turn, like an operator flipping through cameras.
   setInterval(function () {
