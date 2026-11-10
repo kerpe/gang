@@ -85,12 +85,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .wall-cell figure.on { opacity: 1; }
 .wall-cell img { width: 100%; height: 100%; object-fit: cover; }
 .wall-cell figcaption { position: absolute; top: 10px; left: 12px; font: 600 .68rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
+/* The lower screens sit under the headline: their labels would run into the text. */
+.wall-cell:nth-child(n+3) figcaption { display: none; }
 @media (max-width: 1099px) {
-  .home-hero .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.96) 0%, rgba(14,14,13,.8) 48%, rgba(14,14,13,.2) 100%); }
+  .home-hero .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.94) 0%, rgba(14,14,13,.74) 50%, rgba(14,14,13,.5) 100%); }
   .wall-cell figcaption { font-size: .58rem; top: 8px; left: 8px; letter-spacing: .1em; }
-  .wall-cell:nth-child(n+3) figcaption { display: none; }
 }
-.hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.78) 0%, rgba(14,14,13,.3) 45%, rgba(14,14,13,.05) 80%, rgba(14,14,13,.2) 100%), linear-gradient(90deg, rgba(14,14,13,.72) 0%, rgba(14,14,13,.42) 45%, transparent 75%); }
+/* All four screens are dimmed evenly, a little more towards the bottom where the text ends. */
+.hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.82) 0%, rgba(14,14,13,.6) 40%, rgba(14,14,13,.5) 100%); }
 /* Moving film grain on top of the grain baked into the photo. */
 .grain { inset: -100%; opacity: .06; pointer-events: none; mix-blend-mode: overlay; animation: grain 1s steps(6) infinite;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
