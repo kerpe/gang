@@ -88,8 +88,15 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 /* The lower screens sit under the headline: their labels would run into the text. */
 .wall-cell:nth-child(n+3) figcaption { display: none; }
 @media (max-width: 1099px) {
-  .home-hero .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.94) 0%, rgba(14,14,13,.74) 50%, rgba(14,14,13,.5) 100%); }
-  .wall-cell figcaption { font-size: .58rem; top: 8px; left: 8px; letter-spacing: .1em; }
+  .home-hero .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.94) 0%, rgba(14,14,13,.74) 50%, rgba(14,14,13,.45) 100%); }
+}
+/* Phones: one screen at a time; the script moves from camera to camera. */
+@media (max-width: 720px) {
+  .cam-wall { grid-template: 1fr / 1fr; gap: 0; }
+  .wall-cell { grid-area: 1 / 1; opacity: 0; transition: opacity 1s ease; }
+  .wall-cell.show { opacity: 1; }
+  .wall-cell:nth-child(n+3) figcaption { display: block; }
+  .wall-cell figcaption { top: 14px; left: 16px; }
 }
 /* All four screens are dimmed evenly, a little more towards the bottom where the text ends. */
 .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.82) 0%, rgba(14,14,13,.6) 40%, rgba(14,14,13,.5) 100%); }
@@ -118,7 +125,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .cta .btn { flex: 1 1 100%; }
   .rec { top: 14px; right: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { .grain, .rec i { animation: none; } .wall-cell figure { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .grain, .rec i { animation: none; } .wall-cell, .wall-cell figure { transition: none; } }
 
 
 .home-block { padding-top: 8px; }

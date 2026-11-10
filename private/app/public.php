@@ -101,10 +101,10 @@ function home_page(): never
         $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
     }
 
-    // Hero: a wall of four camera screens behind the text; each screen cross-fades between its photos (script below).
+    // Hero: four camera screens behind the text (phones show one of them at a time); each screen cross-fades between its photos (script below).
     $wall = $preload = '';
     foreach (CAM_WALL as $c => $keys) {
-        $wall .= '<div class="wall-cell">';
+        $wall .= '<div class="wall-cell'.($c === 0 ? ' show' : '').'">';
         foreach ($keys as $k => $key) {
             $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
             $src = '/img/job-'.$key.'-sm.jpg?v=2';
@@ -213,13 +213,31 @@ $finalCta
   if (!cells.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   function load() { document.querySelectorAll('.cam-wall img[data-src]').forEach(function (img) { img.srcset = img.dataset.srcset; img.src = img.dataset.src; img.removeAttribute('data-src'); }); }
   window.addEventListener('load', function () { setTimeout(load, 1500); });
-  // One screen switches at a time, in turn, like an operator flipping through cameras.
-  setInterval(function () {
-    var figs = cells[c].querySelectorAll('figure'), on = cells[c].querySelector('figure.on'), i = Array.prototype.indexOf.call(figs, on);
-    var next = figs[(i + 1) % figs.length], img = next.querySelector('img');
-    if (img.complete && img.naturalWidth) { on.classList.remove('on'); next.classList.add('on'); }
-    c = (c + 1) % cells.length;
-  }, 2600);
+  // Wide screens: one of the four screens switches at a time, in turn, like an operator flipping through cameras.
+  // Phones show a single screen (CSS), so there the whole view moves on to the next camera.
+  var phone = matchMedia('(max-width: 720px)');
+  function ready(fig) { var img = fig.querySelector('img'); return img.complete && img.naturalWidth; }
+  function advance(cell) {
+    var figs = cell.querySelectorAll('figure'), on = cell.querySelector('figure.on');
+    var next = figs[(Array.prototype.indexOf.call(figs, on) + 1) % figs.length];
+    if (next !== on && ready(next)) { on.classList.remove('on'); next.classList.add('on'); }
+  }
+  (function tick() {
+    setTimeout(function () {
+      c = (c + 1) % cells.length;
+      if (phone.matches) {
+        // A hidden screen changes its photo before it comes back, so every visit shows something new.
+        if (cells[c].dataset.seen) advance(cells[c]);
+        if (ready(cells[c].querySelector('figure.on'))) {
+          cells.forEach(function (cell, k) { cell.classList.toggle('show', k === c); });
+          cells[c].dataset.seen = 1;
+        }
+      } else {
+        advance(cells[c]);
+      }
+      tick();
+    }, phone.matches ? 5000 : 2600);
+  })();
 })();
 </script>
 HTML, ['canonical' => '/', 'head' => $preload]);
