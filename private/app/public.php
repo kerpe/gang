@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-// The three teams: home tiles "Visa komanda vienoje vietoje" and the pages /baras, /virtuve, /aptarnavimas.
+// Home page "cameras": photos processed by tools/cctv.sh into public_html/img/cam-NN.jpg.
+// A camera without a photo yet shows a "no signal" tile instead.
 const CAMS = [
     '01' => ['Baras', 'Barmenai, baristos, baro vadovai.'],
     '02' => ['Virtuvė', 'Šefai, virėjai, virtuvės pagalbiniai darbuotojai, indų plovėjai.'],
@@ -57,6 +58,11 @@ const TEAM_PHOTOS = [
     '02' => ['kitchen', 'pass', 'dish'],
     '03' => ['dining', 'briefing', 'wedding'],
 ];
+
+function cam_photo(string $n): string
+{
+    return is_file(__DIR__.'/../../public_html/img/cam-'.$n.'.jpg') ? '/img/cam-'.$n : '';
+}
 
 // Sign-up buttons for visitors; a signed-in member gets the next step for their own role instead.
 function join_cta(string $workerClass = 'btn', string $employerClass = 'btn light'): string
@@ -115,8 +121,11 @@ function home_page(): never
 
     $tiles = '';
     foreach (CAMS as $n => [$label, $roles]) {
-        // The same new photos as the team pages (second one, so it differs from their header), label in HTML.
-        $tiles .= '<a class="cam-tile" href="/'.TEAM_PAGES[$n]['slug'].'">'.cam_frame(TEAM_PHOTOS[$n][1], 'cam-media', '-sm')
+        $src = cam_photo($n);
+        // The first photos, with their own burned-in camera label. Kept here on purpose (Vilius 2026-11-10)
+        // until he asks to change them.
+        $media = $src !== '' ? '<img src="'.$src.'-sm.jpg" alt="" loading="lazy" width="800" height="600">' : '<span class="no-signal">Vaizdas netrukus</span><span class="cam-label">CAM '.$n.'</span>';
+        $tiles .= '<a class="cam-tile" href="/'.TEAM_PAGES[$n]['slug'].'"><div class="cam-media">'.$media.'</div>'
             .'<strong>'.e($label).'</strong><span>'.e($roles).'</span></a>';
     }
 
