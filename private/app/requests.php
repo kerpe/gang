@@ -164,11 +164,13 @@ function venue_form_page(?int $id = null): never
 const WEEKDAYS_ROMAN = [1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
 const WEEKDAYS_FULL = [1 => 'Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'];
 
-// Every half hour of the day, "00:00" … "23:30".
+// Every half hour of the day, from 06:00 round to 05:30: the list opens where venues open, and
+// closing times after midnight come right after 23:30.
 function venue_hour_options(): array
 {
     $out = [];
-    for ($m = 0; $m < 1440; $m += 30) {
+    for ($i = 0; $i < 1440; $i += 30) {
+        $m = ($i + 360) % 1440;
         $t = sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
         $out[$t] = $t;
     }

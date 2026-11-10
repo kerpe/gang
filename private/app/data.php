@@ -275,13 +275,15 @@ function notify_workers(array $r, array $skip = []): int
         queue_mail($w['email'], $subject, array_merge($mail, ['footnote' => job_mail_footnote($w)]), job_mail_headers($w), $priority);
         job_mailed((int) $r['id'], (int) $w['id']);
     }
-    sql('UPDATE requests SET notified = ? WHERE id = ?', [count($workers), $r['id']]);
     return count($workers);
 }
 
+// Every email about a job counts in "gavo pranešimą el. paštu" on its page: the first send, a resend
+// after a cancelled contract and the offers a worker gets on finishing or changing their account.
 function job_mailed(int $requestId, int $workerId): void
 {
     insert('job_mails', ['request_id' => $requestId, 'worker_id' => $workerId, 'created_at' => now()]);
+    sql('UPDATE requests SET notified = notified + 1 WHERE id = ?', [$requestId]);
 }
 
 // [subject, mail] for one job offer.
