@@ -45,6 +45,20 @@ const TEAM_PAGES = [
     ],
 ];
 
+// Home hero "camera wall": four screens, each switching between its own photos (keys of JOB_PHOTOS).
+const CAM_WALL = [
+    ['bar', 'club', 'wedding'],
+    ['kitchen', 'pass', 'streetfood'],
+    ['dining', 'briefing', 'cafe'],
+    ['dish', 'stock', 'roastery'],
+];
+// Photos beside the text of /baras, /virtuve and /aptarnavimas: one large, two small.
+const TEAM_PHOTOS = [
+    '01' => ['bar', 'club', 'cafe'],
+    '02' => ['kitchen', 'pass', 'dish'],
+    '03' => ['dining', 'briefing', 'wedding'],
+];
+
 function cam_photo(string $n): string
 {
     return is_file(__DIR__.'/../../public_html/img/cam-'.$n.'.jpg') ? '/img/cam-'.$n : '';
@@ -87,23 +101,22 @@ function home_page(): never
         $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
     }
 
-    // Hero: every camera that has a photo, cross-faded by the script below.
-    $slides = $tabs = '';
-    $preload = '';
-    foreach (CAMS as $n => [$label]) {
-        $src = cam_photo($n);
-        if ($src === '') {
-            continue;
+    // Hero: a wall of four camera screens; each screen cross-fades between its photos (script below).
+    $wall = $preload = '';
+    foreach (CAM_WALL as $c => $keys) {
+        $wall .= '<div class="wall-cell">';
+        foreach ($keys as $k => $key) {
+            $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
+            $src = '/img/job-'.$key.'-sm.jpg?v=2';
+            // Only the first photo of a screen loads with the page; the script fetches the rest when idle.
+            $wall .= '<figure class="'.($k === 0 ? 'on' : '').'"><img '.($k === 0 ? 'src' : 'data-src').'="'.$src.'" alt="" width="640" height="480"'.($k === 0 && $c === 0 ? ' fetchpriority="high"' : '').'>'
+                .'<figcaption>CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</figcaption></figure>';
+            if ($k === 0) {
+                $preload .= '<link rel="preload" as="image" href="'.$src.'">';
+            }
         }
-        $first = $slides === '';
-        $slides .= '<picture class="cam'.($first ? ' on' : '').'" data-cam="'.$n.'"><source media="(max-width: 720px)" srcset="'.$src.'-sm.jpg">'
-            .'<img src="'.$src.'.jpg" alt="" width="1600" height="1200"'.($first ? ' fetchpriority="high"' : ' loading="lazy"').'></picture>';
-        $tabs .= '<button type="button" class="'.($first ? 'on' : '').'" data-cam="'.$n.'">CAM '.$n.' · '.e($label).'</button>';
-        if ($first) {
-            $preload = '<link rel="preload" as="image" href="'.$src.'-sm.jpg" media="(max-width: 720px)"><link rel="preload" as="image" href="'.$src.'.jpg" media="(min-width: 721px)">';
-        }
+        $wall .= '</div>';
     }
-    $tabs = substr_count($tabs, '<button') > 1 ? '<div class="cam-tabs">'.$tabs.'</div>' : '';
 
     $tiles = '';
     foreach (CAMS as $n => [$label, $roles]) {
@@ -130,7 +143,7 @@ function home_page(): never
 </section>';
     page('', <<<HTML
 <section class="hero home-hero">
-  <div class="cams">$slides</div>
+  <div class="cam-wall" aria-hidden="true">$wall</div>
   <div class="hero-shade"></div>
   <div class="grain" aria-hidden="true"></div>
   <p class="rec" aria-hidden="true"><i></i>REC</p>
@@ -140,7 +153,6 @@ function home_page(): never
     $heroCta
     <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li></ul>
   </div>
-  $tabs
 </section>
 $ticker
 $list
@@ -196,15 +208,17 @@ $list
 $finalCta
 <script>
 (function () {
-  var cams = document.querySelectorAll('.home-hero .cam'), tabs = document.querySelectorAll('.cam-tabs button'), i = 0, timer;
-  if (cams.length < 2) return;
-  function show(n) {
-    i = (n + cams.length) % cams.length;
-    cams.forEach(function (c, k) { c.classList.toggle('on', k === i); });
-    tabs.forEach(function (t, k) { t.classList.toggle('on', k === i); });
-  }
-  tabs.forEach(function (t, k) { t.addEventListener('click', function () { clearInterval(timer); show(k); }); });
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) timer = setInterval(function () { show(i + 1); }, 7000);
+  var cells = document.querySelectorAll('.cam-wall .wall-cell'), c = 0;
+  if (!cells.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function load() { document.querySelectorAll('.cam-wall img[data-src]').forEach(function (img) { img.src = img.dataset.src; img.removeAttribute('data-src'); }); }
+  window.addEventListener('load', function () { setTimeout(load, 1500); });
+  // One screen switches at a time, in turn, like an operator flipping through cameras.
+  setInterval(function () {
+    var figs = cells[c].querySelectorAll('figure'), on = cells[c].querySelector('figure.on'), i = Array.prototype.indexOf.call(figs, on);
+    var next = figs[(i + 1) % figs.length], img = next.querySelector('img');
+    if (img.complete && img.naturalWidth) { on.classList.remove('on'); next.classList.add('on'); }
+    c = (c + 1) % cells.length;
+  }, 2600);
 })();
 </script>
 HTML, ['canonical' => '/', 'head' => $preload]);
@@ -251,10 +265,14 @@ HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
 // Two-column text page: sticky heading, CCTV photo and section index on the left,
 // numbered sections on the right. $sections is [[id, heading, html], ...].
 // With $numbered = false the sections carry no numbers, headings or side index (Baras, Virtuvė, Salė).
-function split_page(string $title, string $eyebrow, string $heading, string $cam, array $sections, string $canonical, bool $numbered = true, bool $cta = false): never
+// $photos: keys of JOB_PHOTOS shown under the heading (the first large, the rest in a row); a section may carry
+// its own photo as a fourth element.
+function split_page(string $title, string $eyebrow, string $heading, array $photos, array $sections, string $canonical, bool $numbered = true, bool $cta = false): never
 {
     $index = $body = '';
-    foreach ($sections as $i => [$id, $h, $html]) {
+    foreach ($sections as $i => $sec) {
+        [$id, $h, $html] = $sec;
+        $html = (isset($sec[3]) ? cam_frame($sec[3], 'sec-photo', '-sm') : '').$html;
         $n = sprintf('%02d', $i + 1);
         if (!$numbered) {
             $body .= '<section class="sec plain" id="'.$id.'"><div>'.$html.'</div></section>';
@@ -264,8 +282,11 @@ function split_page(string $title, string $eyebrow, string $heading, string $cam
         $body .= '<section class="sec" id="'.$id.'"><span class="num" aria-hidden="true">'.$n.'</span><div><h2>'.e($h).'</h2>'.$html.'</div></section>';
     }
     $index = $index !== '' ? '<ol class="side-index">'.$index.'</ol>' : '';
-    $photo = cam_photo($cam);
-    $photo = $photo !== '' ? '<div class="side-cam"><img src="'.$photo.'-sm.jpg" alt="" width="800" height="600"></div>' : '';
+    $photo = '';
+    foreach ($photos as $k => $key) {
+        $photo .= cam_frame($key, $k === 0 ? 'main' : 'small', '-sm', $k === 0);
+    }
+    $photo = $photo !== '' ? '<div class="side-cams">'.$photo.'</div>' : '';
     if ($cta) {
         $body .= '<div class="split-cta">'.(current_user() ? '' : '<h2>Prisijunkite prie GANG</h2><p>Registracija trunka kelias minutes.</p>').join_cta('btn dark', 'btn dark ghost').'</div>';
     }
@@ -280,7 +301,7 @@ function team_page(string $n): never
     $chips = '<p class="chips">'.implode('', array_map(fn ($r) => '<span>'.e($r).'</span>', $t['roles'])).'</p>';
     $me = current_user();
     $join = ($me && $me['kind'] === 'manager' ? '' : '<p>'.e($t['join']).'</p>').join_cta();
-    split_page($t['title'], '', $t['heading'], $n, [
+    split_page($t['title'], '', $t['heading'], TEAM_PHOTOS[$n], [
         ['apie', $t['about'], $t['intro'].$chips],
         ['gang', 'Darbas per GANG', $join],
     ], '/'.$t['slug'], false);
@@ -289,22 +310,22 @@ function team_page(string $n): never
 function how_page(): never
 {
     $days = REVIEW_HIDE_DAYS;
-    split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo paieškos iki pamainos', '03', [
+    split_page('Kaip veikia GANG', 'Kaip veikia GANG', 'Nuo paieškos iki pamainos', [], [
         ['darbdaviams', 'Darbdaviams', '<p>Užregistruokite savo barą, restoraną ar kavinę ir paskelbkite paiešką: nurodykite, kokio darbuotojo reikia, kokios patirties tikitės, kada ir kokiomis valandomis. Visi darbuotojai, kurių paskyroje pažymėtos atitinkamos pareigos ir jūsų miestas bei kurių patirtis atitinka jūsų reikalavimą, gauna pranešimą el. paštu. Kandidatus matote savo paskyroje kartu su jų patirtimi ir įvertinimais. Su kandidatais galite susirašinėti GANG pokalbyje.</p>'
-            .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>'],
+            .'<p class="chips"><span>Pareigos</span><span>Patirtis</span><span>Data ir valandos</span><span>Atlygis</span></p>', 'stock'],
         ['darbuotojams', 'Darbuotojams', '<p>Susikurkite paskyrą, pažymėkite pareigas, prie kiekvienų nurodykite savo patirtį ir pasirinkite miestus. Pateikite kandidatūrą jums tinkantiems pasiūlymams. Su darbdaviu galite susirašinėti GANG pokalbyje. Darbdaviui patvirtinus jūsų kandidatūrą, darbas automatiškai atsiras jūsų GANG kalendoriuje.</p>'
-            .'<p class="chips"><span>Paskyra</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>'],
-        ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atsiskaitymą ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>'],
+            .'<p class="chips"><span>Paskyra</span><span>GANG kalendorius</span><span>Pranešimai el. paštu</span></p>', 'roastery'],
+        ['kontraktas', 'GANG kontraktas', '<p>GANG kontraktas sudaromas, kai darbdavys patvirtina darbuotojo kandidatūrą. GANG tik padeda šalims susisiekti: darbo sutartį, atsiskaitymą ir kitas sąlygas darbdavys ir darbuotojas suderina tiesiogiai.</p>', 'dining'],
         ['ivertinimai', 'Įvertinimai', '<ul>'
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
             .'<li>Įvertinimo autorius neskelbiamas: prie darbuotojų įvertinimų rodomas darbdavio miestas ir data, prie darbdavių įvertinimų – tik data.</li>'
-            .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>'],
+            .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>', 'pass'],
     ], '/kaip-veikia', true, true);
 }
 
 function about_page(): never
 {
-    split_page('Apie GANG', 'Apie GANG', 'Get ready to meet the GANG', '01', [
+    split_page('Apie GANG', 'Apie GANG', 'Get ready to meet the GANG', ['briefing'], [
         ['problema', 'Problemos', '<ul>'
             .'<li><strong>Skubus pavadavimas.</strong> Darbuotojas suserga likus kelioms valandoms iki pamainos, ir vadovui tenka skambinti visiems pažįstamiems arba pačiam stoti už baro ar prie viryklės.</li>'
             .'<li><strong>Sezono ir renginių įkarštis.</strong> Vasarą, per šventes ir didelius renginius papildomų rankų reikia čia ir dabar, tačiau patikimų žmonių trumpam laikotarpiui rasti sunku.</li>'

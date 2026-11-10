@@ -86,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=91">
+<link rel="stylesheet" href="/style.css?v=92">
 $head
 </head>
 <body$bodyClass>
@@ -313,18 +313,20 @@ function request_card_short(array $r): string
         .'<p class="card-when-short">'.e(KINDS[$r['kind']] ?? $r['kind']).' · '.e($when).'</p></a></div>';
 }
 
-// The CCTV-style photo of a job ad, chosen by role; '' when the role has none. $size: '' (1200 px) or '-sm' (640 px).
+// One CCTV frame from JOB_PHOTOS with its camera label. $size: '' (1200 px) or '-sm' (640 px); $eager for a photo at the top of a page.
+function cam_frame(string $key, string $class, string $size = '', bool $eager = false): string
+{
+    $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
+    [$w, $h] = $size === '' ? [1200, 900] : [640, 480];
+    return '<div class="job-photo '.$class.'" aria-hidden="true"><img src="/img/job-'.$key.$size.'.jpg?v=2" alt="" width="'.$w.'" height="'.$h.'"'.($eager ? ' fetchpriority="high"' : ' loading="lazy"').'>'
+        .'<span class="cam-label">CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</span></div>';
+}
+
+// The photo of a job ad, chosen by role; '' when the role has none.
 function job_photo(array $r, string $class, string $size = ''): string
 {
     $keys = ROLE_PHOTOS[$r['role']] ?? [];
-    if (!$keys) {
-        return '';
-    }
-    $key = $keys[(int) $r['id'] % count($keys)];
-    $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
-    [$w, $h] = $size === '' ? [1200, 900] : [640, 480];
-    return '<div class="job-photo '.$class.'" aria-hidden="true"><img src="/img/job-'.$key.$size.'.jpg?v=1" alt="" width="'.$w.'" height="'.$h.'"'.($size === '' ? ' fetchpriority="high"' : ' loading="lazy"').'>'
-        .'<span class="cam-label">CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</span></div>';
+    return $keys ? cam_frame($keys[(int) $r['id'] % count($keys)], $class, $size, $size === '') : '';
 }
 
 // $goodTag: false on cards of jobs the viewer already posted or applied for.
