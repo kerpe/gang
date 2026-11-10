@@ -1146,3 +1146,17 @@ table.data td.actions form + form { margin-left: 6px; }
   .hours-day.off { grid-template-columns: 1fr auto; }
   .hours-time select { flex: 1; width: auto; }
 }
+
+/* Role photo on job ads (job_photo): a banner on the ad, a strip on the cards of offer lists */
+.job-photo { position: relative; overflow: hidden; background: #0e0e0d; }
+.job-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.job-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,14,13,.35), transparent 35%, transparent 70%, rgba(14,14,13,.45)); pointer-events: none; }
+.job-photo .cam-label { z-index: 1; }
+.job-banner { aspect-ratio: 16 / 9; border: 1px solid var(--line); border-radius: var(--radius); margin: 0 0 22px; }
+.job-card.has-photo .card-link { padding-top: 0; }
+.card-photo { aspect-ratio: 5 / 2; margin: 0 -18px; border-bottom: 1px solid var(--line); }
+.card-photo img { transition: transform .5s ease; }
+.job-card.has-photo:hover .card-photo img { transform: scale(1.04); }
+.card-photo .cam-label { top: 8px; left: 10px; font-size: .64rem; }
+@media (min-width: 700px) { .job-banner { aspect-ratio: 3 / 1; margin-bottom: 28px; } }
+@media (prefers-reduced-motion: reduce) { .card-photo img { transition: none; } }

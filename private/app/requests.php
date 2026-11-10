@@ -997,9 +997,11 @@ function request_page(int $id): never
             'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
+    $photo = job_photo($r, 'job-banner');
     page("$role – {$r['venue_name']}, $city", <<<HTML
 <article class="wrap job">
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
+  $photo
   <header class="job-head">
     <p class="job-tags">$kindTag$eventTag</p>
     <h1>{$e($role)}</h1>$eventLine

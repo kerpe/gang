@@ -86,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=90">
+<link rel="stylesheet" href="/style.css?v=91">
 $head
 </head>
 <body$bodyClass>
@@ -313,6 +313,20 @@ function request_card_short(array $r): string
         .'<p class="card-when-short">'.e(KINDS[$r['kind']] ?? $r['kind']).' · '.e($when).'</p></a></div>';
 }
 
+// The CCTV-style photo of a job ad, chosen by role; '' when the role has none. $size: '' (1200 px) or '-sm' (640 px).
+function job_photo(array $r, string $class, string $size = ''): string
+{
+    $keys = ROLE_PHOTOS[$r['role']] ?? [];
+    if (!$keys) {
+        return '';
+    }
+    $key = $keys[(int) $r['id'] % count($keys)];
+    $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
+    [$w, $h] = $size === '' ? [1200, 900] : [640, 480];
+    return '<div class="job-photo '.$class.'" aria-hidden="true"><img src="/img/job-'.$key.$size.'.jpg?v=1" alt="" width="'.$w.'" height="'.$h.'"'.($size === '' ? ' fetchpriority="high"' : ' loading="lazy"').'>'
+        .'<span class="cam-label">CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</span></div>';
+}
+
 // $goodTag: false on cards of jobs the viewer already posted or applied for.
 function request_card(array $r, string $extra = '', bool $goodTag = true): string
 {
@@ -332,7 +346,9 @@ function request_card(array $r, string $extra = '', bool $goodTag = true): strin
         $first = array_key_first(request_needs($r)) ?? $first;
     }
     $soon = $r['kind'] !== 'nuolat' ? starts_in($first) : '';
-    return '<div class="card job-card"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
+    // Lists of offers get the role photo; cards with the viewer's own actions under them stay compact.
+    $photo = $extra === '' ? job_photo($r, 'card-photo', '-sm') : '';
+    return '<div class="card job-card'.($photo !== '' ? ' has-photo' : '').'"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'.$photo
         .'<div class="card-head">'.$logo.'<div><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
         .$event.'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').$people.'</p></div></div>'
         .$pay
