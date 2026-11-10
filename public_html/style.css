@@ -77,11 +77,29 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Home */
 .home-hero { position: relative; overflow: hidden; min-height: min(86vh, 860px); display: flex; flex-direction: column; justify-content: flex-end; border-bottom: 1px solid var(--line); background: #0e0e0d; }
-.cams, .cam, .cam img, .hero-shade, .grain { position: absolute; inset: 0; }
-.cam { opacity: 0; transition: opacity 1.2s ease; }
-.cam.on { opacity: 1; }
-.cam img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
-.hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.92) 0%, rgba(14,14,13,.45) 40%, rgba(14,14,13,.05) 75%, rgba(14,14,13,.35) 100%), linear-gradient(90deg, rgba(14,14,13,.82) 0%, rgba(14,14,13,.5) 40%, transparent 70%); }
+.hero-shade, .grain { position: absolute; inset: 0; }
+/* Camera wall: four screens behind the hero text */
+.cam-wall { position: absolute; inset: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; }
+.wall-cell { position: relative; overflow: hidden; background: #0e0e0d; }
+.wall-cell figure { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .9s ease; }
+.wall-cell figure.on { opacity: 1; }
+.wall-cell img { width: 100%; height: 100%; object-fit: cover; }
+.wall-cell figcaption { position: absolute; top: 10px; left: 12px; font: 600 .68rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
+/* The lower screens sit under the headline: their labels would run into the text. */
+.wall-cell:nth-child(n+3) figcaption { display: none; }
+@media (max-width: 1099px) {
+  .home-hero .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.94) 0%, rgba(14,14,13,.74) 50%, rgba(14,14,13,.45) 100%); }
+}
+/* Phones: one screen at a time; the script moves from camera to camera. */
+@media (max-width: 720px) {
+  .cam-wall { grid-template: 1fr / 1fr; gap: 0; }
+  .wall-cell { grid-area: 1 / 1; opacity: 0; transition: opacity 1s ease; }
+  .wall-cell.show { opacity: 1; }
+  .wall-cell:nth-child(n+3) figcaption { display: block; }
+  .wall-cell figcaption { top: 14px; left: 16px; }
+}
+/* All four screens are dimmed evenly, a little more towards the bottom where the text ends. */
+.hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.82) 0%, rgba(14,14,13,.6) 40%, rgba(14,14,13,.5) 100%); }
 /* Moving film grain on top of the grain baked into the photo. */
 .grain { inset: -100%; opacity: .06; pointer-events: none; mix-blend-mode: overlay; animation: grain 1s steps(6) infinite;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
@@ -101,18 +119,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .btn.dark.ghost { background: transparent; color: #151515; border-color: rgba(21,21,21,.5); }
 .hero-facts { list-style: none; padding: 0; margin: 34px 0 0; display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: .9rem; color: var(--muted); }
 .hero-facts strong { color: var(--ink); margin-right: 6px; }
-.cam-tabs { position: relative; z-index: 1; display: flex; gap: 6px; flex-wrap: wrap; padding: 0 32px 24px; max-width: 1180px; margin: 0 auto; width: 100%; box-sizing: border-box; }
-.cam-tabs button { font: 600 .78rem/1 ui-monospace, Menlo, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: rgba(14,14,13,.6); border: 1px solid var(--line-strong); border-radius: 4px; padding: 8px 10px; cursor: pointer; }
-.cam-tabs button.on { color: #151515; background: var(--lime); border-color: var(--lime); }
 @media (max-width: 720px) {
   .home-hero { min-height: 92svh; }
   .hero-body { padding-top: 96px; padding-bottom: 36px; }
-  .hero-shade { background: linear-gradient(0deg, rgba(14,14,13,.96) 0%, rgba(14,14,13,.78) 50%, rgba(14,14,13,.15) 100%); }
   .cta .btn { flex: 1 1 100%; }
-  .cam-tabs { padding: 0 16px 20px; }
   .rec { top: 14px; right: 16px; }
 }
-@media (prefers-reduced-motion: reduce) { .grain, .rec i { animation: none; } .cam { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .grain, .rec i { animation: none; } .wall-cell, .wall-cell figure { transition: none; } }
 
 
 .home-block { padding-top: 8px; }
@@ -379,8 +392,11 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 /* Two-column text pages (Kaip veikia, Apie) */
 .split { padding-top: 40px; padding-bottom: 72px; }
 .side h1 { font-size: clamp(2.6rem, 5.4vw, 4.6rem); line-height: .95; }
-.side-cam { border-radius: 14px; overflow: hidden; margin-top: 26px; border: 1px solid var(--line); }
-.side-cam img { display: block; width: 100%; height: auto; }
+.side-cams { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 26px; }
+.side-cams .job-photo { border-radius: 12px; border: 1px solid var(--line); aspect-ratio: 4 / 3; }
+.side-cams .main { grid-column: 1 / -1; border-radius: 14px; }
+.side-cams .small .cam-label { font-size: .58rem; top: 8px; left: 8px; letter-spacing: .1em; }
+.sec-photo { aspect-ratio: 5 / 2; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 18px; }
 .side-index { list-style: none; padding: 0; margin: 26px 0 0; font: .8rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em; }
 .side-index li { border-top: 1px solid var(--line); }
 .side-index a { display: block; padding: 9px 0; color: var(--muted); text-decoration: none; }
