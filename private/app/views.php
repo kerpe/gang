@@ -310,7 +310,8 @@ function request_card_short(array $r): string
     $kind = KINDS[$r['kind']] ?? $r['kind'];
     $soon = request_urgent($r) ? starts_in($from) : '';
     $keys = ROLE_PHOTOS[$r['role']] ?? [];
-    $img = $keys ? '<img src="/img/job-'.$keys[(int) $r['id'] % count($keys)].'-sm.jpg?v=2" alt="" width="640" height="480" loading="lazy">' : '';
+    $key = $keys ? $keys[(int) $r['id'] % count($keys)] : '';
+    $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=2" srcset="/img/job-'.$key.'-sm.jpg?v=2 640w, /img/job-'.$key.'.jpg?v=2 1200w" sizes="(max-width: 640px) 104px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
     return '<a class="card feed-card" href="/darbas/'.(int) $r['id'].'">'
         .'<div class="feed-media">'.$img
         .'<span class="feed-chips"><span class="feed-chip">'.e($kind).'</span>'.($soon !== '' ? '<span class="feed-chip soon">'.e($soon).'</span>' : '').'</span>'
