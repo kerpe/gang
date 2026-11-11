@@ -21,7 +21,7 @@ function profile_page(): never
 {
     $u = require_user();
     $worker = $u['kind'] === 'worker';
-    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'durations' => worker_durations($u), 'notify' => (bool) $u['notify']];
+    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'durations' => worker_durations($u), 'notify' => (bool) $u['notify'], 'lang' => (string) ($u['lang'] ?? 'lt')];
     $errors = [];
     if (is_post()) {
         // A file over post_max_size empties $_POST, so say that instead of "form expired".
@@ -31,7 +31,7 @@ function profile_page(): never
         }
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
-            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify'])];
+            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify']), 'lang' => isset(LANGS[input('lang')]) ? input('lang') : 'lt'];
         $v['name'] = preg_replace('/\s+/u', ' ', $v['name']);
         if (!full_name_ok($v['name']) || mb_strlen($v['name']) > 120) {
             $errors['name'] = NAME_ERROR;
@@ -83,8 +83,8 @@ function profile_page(): never
         if (!$errors) {
             $first = !profile_complete($u);
             $matchedBefore = $worker ? array_column(matching_jobs($u), 'id') : [];
-            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ? WHERE id = ?', [
-                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? to_list($v['durations'], KINDS) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $u['id'],
+            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ?, lang = ? WHERE id = ?', [
+                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? to_list($v['durations'], KINDS) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $v['lang'], $u['id'],
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
@@ -146,6 +146,8 @@ function profile_page(): never
         .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required data-nocount aria-describedby="name-live">'.err($errors, 'name').'<span class="err-live" id="name-live" role="alert" hidden></span></label>'
         .'<label>Telefono numeris <small>'.$phoneNote.'</small><input type="tel" name="phone" value="'.e($v['phone']).'" autocomplete="tel" inputmode="tel" maxlength="24" placeholder="+370 600 00000" aria-describedby="phone-live">'.err($errors, 'phone').'<span class="err-live" id="phone-live" role="alert" hidden></span></label>'
         .$workerFields
+        // Emails go in Lithuanian unless the member chooses English here (browsing in English does not change it).
+        .'<label>GANG pranešimų kalba <select name="lang">'.options(['lt' => 'Lietuvių', 'en' => 'English'], $v['lang']).'</select></label>'
         .'<p class="meta">El. paštas: '.e($u['email']).'</p>'
         .'<button class="btn">Išsaugoti</button></form>'
         // Data download, account deletion and signing out everywhere only once the account exists,
@@ -921,7 +923,7 @@ function account_export(): never
     $u = require_user();
     $id = (int) $u['id'];
     $rows = fn (string $q, ?array $p = null) => sql($q, $p ?? [$id])->fetchAll(PDO::FETCH_ASSOC);
-    $profile = array_intersect_key($u, array_flip(['kind', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
+    $profile = array_intersect_key($u, array_flip(['kind', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
     $venues = $rows('SELECT id, name, type, concept, city, address, about, hours, team_size, perks, website, instagram, facebook, tiktok, created_at FROM venues WHERE manager_id = ?');
     $venueIds = array_map('intval', array_column($venues, 'id')) ?: [0];
     $in = implode(',', $venueIds);

@@ -25,6 +25,8 @@ function page(string $title, string $body, array $opt = []): never
     // Phones: a guest menu behind one button; signed-in members get a bottom tab bar.
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
     $menuLinks = '<a href="/darbai">Darbo pasiūlymai</a><a href="/kaip-veikia">Kaip veikia</a><a href="/apie">Apie GANG</a>'.($user ? post_button('/atsijungti', 'Atsijungti', [], 'mnav-logout') : '<a href="/prisijungti">Prisijungti</a>');
+    // The other language: a short „EN“ / „LT“ next to the menu, on every screen size.
+    $nav .= lang_link();
     $nav .= '<details class="mnav"><summary aria-label="Meniu"><span></span><span></span><span></span></summary><div class="mnav-links">'.$menuLinks.'</div></details>';
     $tabbar = '';
     if ($user && profile_complete($user)) {
@@ -86,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=95">
+<link rel="stylesheet" href="/style.css?v=96">
 $head
 </head>
 <body$bodyClass>
