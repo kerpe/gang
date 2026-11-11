@@ -122,7 +122,10 @@ function legal_page(string $title, string $canonical, string $intro, array $sect
         $body .= '<h2 id="'.$id.'">'.$n.'. '.e($h).'</h2>'.$html;
     }
     page($title, '<section class="wrap narrow prose legal"><h1>'.e($title).'</h1>'
-        .'<p class="meta">Redakcija galioja nuo '.terms_date().'</p>'.$intro
+        .'<p class="meta">Redakcija galioja nuo '.terms_date().'</p>'
+        // The English text is a translation: the Lithuanian one is the binding version.
+        .(lang() === 'en' ? '<p class="note" data-i18n-skip>This is an English translation for your convenience. If the translation and the Lithuanian original differ, the <a href="?lang=lt">Lithuanian version</a> prevails.</p>' : '')
+        .$intro
         .'<nav class="legal-index" aria-label="Turinys"><ol>'.$index.'</ol></nav>'.$body
         .'</section>', ['canonical' => $canonical]);
 }
@@ -229,7 +232,8 @@ function privacy_page(): never
                 .'<p>Norėdami pasinaudoti teisėmis, rašykite '.$mail.' iš el. pašto adreso, kuriuo esate užsiregistravę. Atsakysime per 30 dienų. Jei manote, kad jūsų duomenys tvarkomi netinkamai, galite pateikti skundą Valstybinei duomenų apsaugos inspekcijai (<a href="https://vdai.lrv.lt" rel="noopener" target="_blank">vdai.lrv.lt</a>).</p>'],
             ['slapukai', 'Slapukai', '<p>Naudojame tik būtinuosius slapukus, be kurių svetainė neveiktų:</p><ul>'
                 .'<li><strong>PHPSESSID</strong> – išlaiko jus prisijungusius ir apsaugo formas; galioja iki 60 dienų;</li>'
-                .'<li><strong>gang_preview</strong> – kol svetainė neatidaryta, suteikia prieigą GANG komandai; galioja iki 90 dienų.</li></ul>'
+                .'<li><strong>gang_preview</strong> – kol svetainė neatidaryta, suteikia prieigą GANG komandai; galioja iki 90 dienų;</li>'
+                .'<li><strong>gang_lang</strong> – prisimena jūsų pasirinktą svetainės kalbą; galioja iki 1 metų.</li></ul>'
                 .'<p>Analitikos slapukus naudojame tik tada, kai su jais sutinkate svetainės apačioje rodomoje juostoje („Sutinku“). Jie padeda suprasti, kaip lankytojai naudojasi GANG (kuriuos puslapius atidaro, iš kur atėjo, kur susiduria su sunkumais), kad galėtume svetainę tobulinti:</p><ul>'
                 .'<li><strong>Google Analytics</strong> (Google Ireland Ltd.) – <strong>_ga</strong>, <strong>_ga_*</strong>: lankomumo statistika; galioja iki 2 metų;</li>'
                 .'<li><strong>Microsoft Clarity</strong> (Microsoft Ireland Operations Ltd.), kai įjungta – <strong>_clck</strong>, <strong>_clsk</strong>: kaip naudojamasi puslapiais (paspaudimai, slinkimas); galioja iki 1 metų. Formų laukeliuose įvestas tekstas neįrašomas.</li></ul>'

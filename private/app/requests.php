@@ -420,7 +420,11 @@ document.querySelectorAll('.picker').forEach(function (box) {
   function addMonth(ym, n) { var y = +ym.slice(0, 4), m = +ym.slice(5) - 1 + n; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); }
   function nextDay(s) { var d = new Date(s + 'T12:00:00'); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); }
   function lt(s) { return MG[+s.slice(5, 7) - 1] + ' ' + +s.slice(8); }
+  // English: "12 November", "12–14 November", "30 November – 2 December".
+  var EN = document.documentElement.lang === 'en', ME = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  function en(s) { return +s.slice(8) + ' ' + ME[+s.slice(5, 7) - 1]; }
   function label(r) {
+    if (EN) return r[0] === r[1] ? en(r[0]) : r[0].slice(0, 7) === r[1].slice(0, 7) ? +r[0].slice(8) + '–' + en(r[1]) : en(r[0]) + ' – ' + en(r[1]);
     if (r[0] === r[1]) return lt(r[0]) + ' d.';
     if (r[0].slice(0, 7) === r[1].slice(0, 7)) return lt(r[0]) + '–' + +r[1].slice(8) + ' d.';
     return lt(r[0]) + ' d. – ' + lt(r[1]) + ' d.';
@@ -466,7 +470,7 @@ document.querySelectorAll('.picker').forEach(function (box) {
     var first = view < min.slice(0, 7) ? min.slice(0, 7) : view, last = addMonth(max.slice(0, 7), 1 - shown);
     if (first > last) first = last; view = first;
     var status = pending
-      ? '<p class="pick-status">Pažymėta ' + label(pending) + ' Spustelėkite paskutinę laikotarpio dieną arba <button type="button" class="linkish" data-single>palikite vieną dieną</button>.</p>'
+      ? '<p class="pick-status">Pažymėta ' + label(pending).replace(/([^.])$/, '$1.') + ' Spustelėkite paskutinę laikotarpio dieną arba <button type="button" class="linkish" data-single>palikite vieną dieną</button>.</p>'
       : '';
     var chips = ranges.length
       ? '<div class="chips">' + ranges.map(function (r, i) { return '<span class="chip">' + label(r) + '<button type="button" data-rm="' + i + '" aria-label="Pašalinti ' + label(r) + '">×</button></span>'; }).join('') + '</div>'
@@ -701,7 +705,9 @@ function request_form_page(): never
     foreach (array_unique(array_column($venues, 'city')) as $city) {
         foreach (ROLES as $role => $_) {
             if ($g = pay_guide($role, $city)) {
-                $guide[$role][$city] = [$g[0], $g[1], $g[2], ROLES_DATIVE[$role] ?? '', CITIES_IN[$city] ?? ''];
+                $guide[$role][$city] = lang() === 'en'
+                    ? [$g[0], $g[1], $g[2], mb_strtolower(i18n_text(ROLES[$role]) ?? $role).'s', CITIES[$city] ?? '']
+                    : [$g[0], $g[1], $g[2], ROLES_DATIVE[$role] ?? '', CITIES_IN[$city] ?? ''];
             }
         }
     }
@@ -832,7 +838,9 @@ function request_preview_script(): string
   function showGuide() {
     var role = f.querySelector('select[name=role]').value, city = f.dataset['c' + val('venue_id')] || '', g = guide[role] && guide[role][city];
     if (!g) { guideOut.hidden = true; return; }
-    var text = (g[2] ? g[4] + ' ' + g[3] + ' GANG paieškose' : g[3].charAt(0).toUpperCase() + g[3].slice(1)) + ' dažniausiai siūloma ' + money(g[0]) + '\u2060–\u2060' + money(g[1]) + '\u00a0€/val. į rankas.';
+    var text = document.documentElement.lang === 'en'
+      ? 'Usual pay for ' + g[3] + ' in ' + g[4] + (g[2] ? ' on GANG' : '') + ': ' + money(g[0]) + '\u2060–\u2060' + money(g[1]) + '\u00a0€/h net.'
+      : (g[2] ? g[4] + ' ' + g[3] + ' GANG paieškose' : g[3].charAt(0).toUpperCase() + g[3].slice(1)) + ' dažniausiai siūloma ' + money(g[0]) + '\u2060–\u2060' + money(g[1]) + '\u00a0€/val. į rankas.';
     var p = payIn.value.trim().replace(',', '.');
     if (payOk(payIn.value.trim())) {
       if (+p < g[0]) text += ' Jūsų siūlomas atlygis mažesnis nei įprasta, todėl darbuotoją rasti gali būti sunkiau.';

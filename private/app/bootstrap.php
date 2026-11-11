@@ -327,11 +327,16 @@ function check_csrf(): void
 
 // $mail: the email's parts (see mail.php); sent as HTML with a plain-text alternative.
 // $headers: extra headers, e.g. List-Unsubscribe on job-offer emails (job_mail_headers()).
-function send_mail(string $to, string $subject, array $mail, string $replyTo = '', array $headers = []): bool
+// $lang: '' = the language the recipient chose in their account (Lithuanian by default).
+function send_mail(string $to, string $subject, array $mail, string $replyTo = '', array $headers = [], string $lang = ''): bool
 {
     $c = config();
-    $text = mail_text($mail);
-    $html = mail_html($mail, $subject);
+    $lang = $lang !== '' ? $lang : mail_lang($to);
+    if ($lang === 'en') {
+        [$subject, $mail] = i18n_mail($subject, $mail);
+    }
+    $text = mail_text($mail, $lang);
+    $html = mail_html($mail, $subject, $lang);
     if (defined('GANG_MAIL_CAPTURE')) {
         $extra = implode('', array_map(fn ($k, $v) => "$k: $v\n", array_keys($headers), $headers));
         file_put_contents(GANG_MAIL_CAPTURE, "To: $to\nSubject: $subject\n$extra\n$text\n-----\n", FILE_APPEND);
@@ -437,3 +442,4 @@ function span_lt(string $from, string $to): string
 }
 
 require_once __DIR__.'/mail.php';
+require_once __DIR__.'/i18n.php';

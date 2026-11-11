@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 27;
+const SCHEMA_VERSION = 28;
 
 function migrate(PDO $db): void
 {
@@ -248,6 +248,8 @@ function migrate(PDO $db): void
         'users ADD signup_reminders INT NOT NULL DEFAULT 0',
         'users ADD signup_reminder_at DATETIME NULL',
         'users ADD signup_reminders_off TINYINT NOT NULL DEFAULT 0',
+        // Version 28: the language of the member's emails (lt | en), chosen in the account form.
+        "users ADD lang VARCHAR(2) NOT NULL DEFAULT 'lt'",
     ];
     foreach ($columns as $column) {
         try {
