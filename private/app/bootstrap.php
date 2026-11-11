@@ -31,20 +31,22 @@ const JOB_PHOTOS = [
     'bar' => 'Main floor', 'club' => 'Club bar', 'wedding' => 'Event bar', 'stock' => 'Stock room',
     'cafe' => 'Coffee bar', 'roastery' => 'Roastery', 'pass' => 'Chef\'s pass', 'kitchen' => 'Kitchen',
     'streetfood' => 'Open kitchen', 'dish' => 'Dish pit', 'dining' => 'Dining room', 'briefing' => 'Briefing',
+    'vip' => 'VIP lounge', 'festival' => 'Festival bar', 'sportsbar' => 'Sports bar', 'barprep' => 'Bar prep',
+    'window' => 'Coffee window',
 ];
 // A role with several photos: ads take turns by id, so a list of the same role does not repeat one picture.
 const ROLE_PHOTOS = [
-    'barmenas' => ['bar', 'club', 'wedding'],
-    'barback' => ['club', 'stock'],
-    'barista' => ['cafe', 'roastery'],
+    'barmenas' => ['sportsbar', 'bar', 'club', 'wedding'],
+    'barback' => ['festival', 'club', 'stock'],
+    'barista' => ['window', 'cafe', 'roastery'],
     'padavejas' => ['dining', 'briefing'],
     'runneris' => ['dining', 'pass'],
     'sefas' => ['pass', 'kitchen'],
     'virejas' => ['kitchen', 'pass'],
     'pagalbinis' => ['streetfood', 'kitchen'],
     'plovejas' => ['dish'],
-    'administratorius' => ['dining', 'briefing'],
-    'vadovas' => ['stock', 'bar'],
+    'administratorius' => ['vip', 'dining', 'briefing'],
+    'vadovas' => ['barprep', 'stock', 'bar'],
     'someljee' => ['briefing', 'dining'],
 ];
 const KINDS = [
