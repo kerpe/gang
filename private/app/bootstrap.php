@@ -133,6 +133,9 @@ const CANCEL_REASONS = [
 const NO_SHOW_DAYS = 7;
 // A job that starts within this many days counts as urgent: listed and emailed first.
 const URGENT_DAYS = 2;
+// Sample venues made before launch (Orbita, Kopa, Kampas): their jobs stay visible on gang.lt
+// but are kept out of Google (no sitemap entry, no JobPosting, noindex). Remove ids once deleted.
+const SEO_HIDDEN_VENUES = [3, 4, 5];
 // Review criteria by author: the employer rates the worker, the worker rates the employer.
 const REVIEW_CRITERIA = [
     'manager' => ['c1' => 'Punktualumas', 'c2' => 'Darbo kokybė', 'c3' => 'Bendradarbiavimas'],
