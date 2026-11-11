@@ -47,16 +47,16 @@ const TEAM_PAGES = [
 
 // Home hero "camera wall": four screens, each switching between its own photos (keys of JOB_PHOTOS).
 const CAM_WALL = [
-    ['bar', 'club', 'wedding'],
+    ['bar', 'sportsbar', 'club', 'wedding'],
     ['kitchen', 'pass'],
-    ['dining', 'briefing', 'cafe'],
-    ['dish', 'stock', 'roastery'],
+    ['dining', 'vip', 'briefing', 'window'],
+    ['dish', 'festival', 'stock', 'roastery'],
 ];
 // Photos beside the text of /baras, /virtuve and /aptarnavimas: one large, two small.
 const TEAM_PHOTOS = [
-    '01' => ['bar', 'club', 'cafe'],
+    '01' => ['sportsbar', 'barprep', 'window'],
     '02' => ['kitchen', 'pass', 'dish'],
-    '03' => ['dining', 'briefing', 'wedding'],
+    '03' => ['dining', 'vip', 'briefing'],
 ];
 
 function cam_photo(string $n): string
