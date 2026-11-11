@@ -227,7 +227,8 @@ function login_page(): never
                     'lead' => 'norėdami prisijungti prie GANG.lt, įveskite šį kodą:',
                     'code' => $code,
                     'after' => 'Kodas galioja 15 minučių. Jei kodo neprašėte, šį laišką galite ištrinti.',
-                ]);
+                // The code goes in the language of the page the visitor is on: they must understand it now.
+                ], lang: lang());
                 $_SESSION['login_email'] = $email;
                 if ($kind !== '') {
                     $_SESSION['terms_ok'] = TERMS_VERSION;

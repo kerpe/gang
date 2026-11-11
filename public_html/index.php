@@ -33,6 +33,8 @@ $m = [];
 $is = function (string $pattern) use ($path, &$m): bool {
     return (bool) preg_match('#^'.$pattern.'$#', $path, $m);
 };
+lang_switch();
+i18n_start();
 preview_gate($path);
 // Bulk email left in the queue goes out after this page is sent (see mail.php).
 if (!str_starts_with($path, '/nuotrauka/') && mail_queue_pending()) {

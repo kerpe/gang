@@ -52,9 +52,16 @@ function mail_inline_html(string $s, string $link = '#f3f0e8'): string
     return nl2br($s);
 }
 
-function mail_text(array $m): string
+// Fixed words of every email, per language.
+const MAIL_WORDS = [
+    'lt' => ['hello' => 'Laba diena,', 'regards' => 'Pagarbiai', 'team' => 'GANG komanda', 'slogan' => 'Suburk savo komandą'],
+    'en' => ['hello' => 'Hello,', 'regards' => 'Kind regards,', 'team' => 'The GANG team', 'slogan' => 'Build your team at'],
+];
+
+function mail_text(array $m, string $lang = 'lt'): string
 {
-    $out = ['Laba diena,'];
+    $w = MAIL_WORDS[$lang] ?? MAIL_WORDS['lt'];
+    $out = [$w['hello']];
     foreach (mail_paras($m['lead'] ?? null) as $p) {
         $out[] = mail_inline_text($p);
     }
@@ -76,16 +83,17 @@ function mail_text(array $m): string
     foreach (mail_paras($m['after'] ?? null) as $p) {
         $out[] = mail_inline_text($p);
     }
-    $out[] = "Pagarbiai\nGANG komanda";
+    $out[] = $w['regards']."\n".$w['team'];
     if (!empty($m['footnote'])) {
         $out[] = mail_inline_text($m['footnote']);
     }
-    $out[] = "--\nSuburk savo komandą GANG.LT\n".url('/');
+    $out[] = "--\n".$w['slogan']." GANG.LT\n".url('/');
     return implode("\n\n", $out);
 }
 
-function mail_html(array $m, string $subject): string
+function mail_html(array $m, string $subject, string $lang = 'lt'): string
 {
+    $w = MAIL_WORDS[$lang] ?? MAIL_WORDS['lt'];
     $font = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
     $display = "'Anton','Bebas Neue',Impact,'Arial Narrow Bold','Helvetica Neue',Arial,sans-serif";
     $p = fn (string $s, string $extra = '') => '<p style="margin:0 0 16px;font-family:'.$font.';font-size:16px;line-height:1.6;color:#e9e6de;'.$extra.'">'.mail_inline_html($s).'</p>';
@@ -99,7 +107,7 @@ function mail_html(array $m, string $subject): string
     if (!empty($m['title'])) {
         $rows .= '<h1 style="margin:0 0 24px;font-family:'.$display.';font-size:40px;line-height:1.18;font-weight:400;text-transform:uppercase;letter-spacing:.5px;color:#f3f0e8">'.$e($m['title']).'</h1>';
     }
-    $rows .= $p('Laba diena,');
+    $rows .= $p($w['hello']);
     foreach (mail_paras($m['lead'] ?? null) as $s) {
         $rows .= $p($s);
     }
@@ -138,7 +146,7 @@ function mail_html(array $m, string $subject): string
     foreach (mail_paras($m['after'] ?? null) as $s) {
         $rows .= $p($s);
     }
-    $rows .= $p("Pagarbiai\n**GANG komanda**", 'margin-bottom:0');
+    $rows .= $p($w['regards']."\n**".$w['team'].'**', 'margin-bottom:0');
 
     $foot = !empty($m['footnote'])
         ? '<p style="margin:0 0 12px;font-family:'.$font.';font-size:12px;line-height:1.6;color:#8a867d">'.mail_inline_html($m['footnote'], '#a39f95').'</p>'
@@ -146,7 +154,7 @@ function mail_html(array $m, string $subject): string
     $home = url('/');
     $logo = url('/img/mail-logo.png');
 
-    return '<!doctype html><html lang="lt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    return '<!doctype html><html lang="'.($lang === 'en' ? 'en' : 'lt').'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
         .'<meta name="color-scheme" content="dark light"><meta name="supported-color-schemes" content="dark light"><title>'.$e($subject).'</title>'
         .'<style>@font-face{font-family:Anton;src:url('.$e(url('/fonts/anton-latin-ext.woff2')).') format("woff2");unicode-range:U+0100-02BA}'
         .'@font-face{font-family:Anton;src:url('.$e(url('/fonts/anton-latin.woff2')).') format("woff2");unicode-range:U+0000-00FF,U+2000-206F}'
@@ -165,7 +173,7 @@ function mail_html(array $m, string $subject): string
         .'</td></tr>'
         // Footer.
         .'<tr><td style="padding:22px 40px 0" class="gang-pad">'.$foot
-        .'<p style="margin:0;font-family:'.$font.';font-size:12px;line-height:1.6;color:#8a867d">Suburk savo komandą <a href="'.$e($home).'" style="color:#d8ff36;text-decoration:none;font-weight:700">GANG.LT</a></p>'
+        .'<p style="margin:0;font-family:'.$font.';font-size:12px;line-height:1.6;color:#8a867d">'.$e($w['slogan']).' <a href="'.$e($home).'" style="color:#d8ff36;text-decoration:none;font-weight:700">GANG.LT</a></p>'
         .'</td></tr>'
         .'</table></td></tr></table></body></html>';
 }

@@ -65,6 +65,7 @@ main > section.wrap, main > article.wrap { padding-top: 36px; }
 .top nav { display: flex; align-items: center; gap: 22px; }
 .top nav a:not(.btn) { text-decoration: none; font-size: .95rem; color: var(--ink); opacity: .85; white-space: nowrap; }
 .top nav a:not(.btn):hover { opacity: 1; color: var(--lime); }
+.top nav a.lang { font-size: .8rem; font-weight: 700; letter-spacing: .08em; opacity: .7; padding: 6px 2px; }
 @media (max-width: 860px) { .top nav .hide-sm { display: none; } }
 
 /* Buttons */
