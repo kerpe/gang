@@ -1097,15 +1097,6 @@ table.data td.actions form + form { margin-left: 6px; }
 @media (max-width: 719px) { .home-block:has(> .bento) { display: none; } }
 
 /* Moving strip of open jobs under the hero. */
-.ticker { display: block; overflow: hidden; border-bottom: 1px solid var(--line); background: var(--lime); color: #151515; text-decoration: none; }
-.ticker-track { display: flex; width: max-content; animation: ticker 40s linear infinite; }
-.ticker-track > div { display: flex; align-items: center; }
-.ticker span { font-family: var(--display); text-transform: uppercase; font-size: 1.15rem; letter-spacing: .03em; line-height: 1; padding: 12px 0; white-space: nowrap; }
-.ticker i { display: inline-block; width: 8px; height: 8px; margin: 0 22px; background: #151515; transform: rotate(45deg); }
-.ticker + .home-block .section-head { border-top: 0; padding-top: 0; margin-top: 0; }
-.ticker:hover .ticker-track, .ticker:focus-visible .ticker-track { animation-play-state: paused; }
-@keyframes ticker { to { transform: translateX(-50%); } }
-@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
 
 /* Join buttons at the end of Kaip veikia / Apie GANG. */
 .split-cta { margin-top: 40px; border-radius: 16px; background: var(--lime); color: #151515; padding: clamp(24px, 4vw, 40px); }

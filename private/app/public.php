@@ -87,20 +87,6 @@ function home_page(): never
     $urgent = $latest && !array_filter($latest, fn ($r) => !request_urgent($r));
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi pasiūlymai →</a></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
-    // Moving strip of open jobs under the hero (stands still for reduced motion).
-    $ticker = '';
-    $tickJobs = open_requests([], 12);
-    if (count($tickJobs) >= 3) {
-        $items = '';
-        foreach ($tickJobs as $r) {
-            $parts = $r['pay'] !== '' ? pay_parts($r['pay']) : null;
-            $items .= '<span>'.e(ROLES[$r['role']] ?? $r['role']).' · '.e(CITIES[$r['city']] ?? '').($parts ? ' · '.e($parts[0]).'/val.' : '').'</span><i aria-hidden="true"></i>';
-        }
-        // Each half must be wider than the widest screen, or the loop shows a gap.
-        $items = str_repeat($items, (int) ceil(10 / count($tickJobs)));
-        $ticker = '<a class="ticker" href="/darbai" aria-label="Visi darbo pasiūlymai"><div class="ticker-track" aria-hidden="true"><div>'.$items.'</div><div>'.$items.'</div></div></a>';
-    }
-
     // Hero: four camera screens behind the text (phones show one of them at a time); each screen cross-fades between its photos (script below).
     $wall = $preload = '';
     foreach (CAM_WALL as $c => $keys) {
@@ -156,7 +142,6 @@ function home_page(): never
     <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li></ul>
   </div>
 </section>
-$ticker
 $list
 
 <section class="wrap home-block">
