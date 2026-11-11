@@ -313,7 +313,7 @@ function request_card_short(array $r): string
     $soon = request_urgent($r) ? starts_in($from) : '';
     $keys = ROLE_PHOTOS[$r['role']] ?? [];
     $key = $keys ? $keys[(int) $r['id'] % count($keys)] : '';
-    $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=2" srcset="/img/job-'.$key.'-sm.jpg?v=2 640w, /img/job-'.$key.'.jpg?v=2 1200w" sizes="(max-width: 640px) 104px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
+    $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=3" srcset="/img/job-'.$key.'-sm.jpg?v=3 640w, /img/job-'.$key.'.jpg?v=3 960w" sizes="(max-width: 640px) 104px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
     return '<a class="card feed-card" href="/darbas/'.(int) $r['id'].'">'
         .'<div class="feed-media">'.$img
         .'<span class="feed-chips"><span class="feed-chip">'.e($kind).'</span>'.($soon !== '' ? '<span class="feed-chip soon">'.e($soon).'</span>' : '').'</span>'
@@ -324,12 +324,12 @@ function request_card_short(array $r): string
         .'<div class="feed-foot">'.$pay.'<p class="feed-when"><span class="feed-when-kind">'.e($kind).' · </span>'.e($when).'</p></div></div></a>';
 }
 
-// One CCTV frame from JOB_PHOTOS with its camera label. $size: '' (1200 px) or '-sm' (640 px); $eager for a photo at the top of a page.
+// One CCTV frame from JOB_PHOTOS with its camera label. $size: '' (960 px) or '-sm' (640 px); $eager for a photo at the top of a page.
 function cam_frame(string $key, string $class, string $size = '', bool $eager = false): string
 {
     $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
-    [$w, $h] = $size === '' ? [1200, 900] : [640, 480];
-    return '<div class="job-photo '.$class.'" aria-hidden="true"><img src="/img/job-'.$key.$size.'.jpg?v=2" alt="" width="'.$w.'" height="'.$h.'"'.($eager ? ' fetchpriority="high"' : ' loading="lazy"').'>'
+    [$w, $h] = $size === '' ? [960, 720] : [640, 480];
+    return '<div class="job-photo '.$class.'" aria-hidden="true"><img src="/img/job-'.$key.$size.'.jpg?v=3" alt="" width="'.$w.'" height="'.$h.'"'.($eager ? ' fetchpriority="high"' : ' loading="lazy"').'>'
         .'<span class="cam-label">CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</span></div>';
 }
 

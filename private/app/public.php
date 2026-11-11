@@ -93,9 +93,9 @@ function home_page(): never
         $wall .= '<div class="wall-cell'.($c === 0 ? ' show' : '').'">';
         foreach ($keys as $k => $key) {
             $n = str_pad((string) (array_search($key, array_keys(JOB_PHOTOS), true) + 1), 2, '0', STR_PAD_LEFT);
-            $src = '/img/job-'.$key.'-sm.jpg?v=2';
+            $src = '/img/job-'.$key.'-sm.jpg?v=3';
             // Only the first photo of a screen loads with the page; the script fetches the rest when idle.
-            $set = $src.' 640w, /img/job-'.$key.'.jpg?v=2 1200w';
+            $set = $src.' 640w, /img/job-'.$key.'.jpg?v=3 960w';
             $wall .= '<figure class="'.($k === 0 ? 'on' : '').'"><img '.($k === 0 ? 'src="'.$src.'" srcset="'.$set.'"' : 'data-src="'.$src.'" data-srcset="'.$set.'"').' sizes="50vw" alt="" width="640" height="480"'.($k === 0 && $c === 0 ? ' fetchpriority="high"' : '').'>'
                 .'<figcaption>CAM '.$n.' · '.e(mb_strtoupper(JOB_PHOTOS[$key])).'</figcaption></figure>';
             if ($k === 0) {
@@ -197,16 +197,24 @@ $finalCta
 (function () {
   var cells = document.querySelectorAll('.cam-wall .wall-cell'), c = 0;
   if (!cells.length || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  function load() { document.querySelectorAll('.cam-wall img[data-src]').forEach(function (img) { img.srcset = img.dataset.srcset; img.src = img.dataset.src; img.removeAttribute('data-src'); }); }
-  window.addEventListener('load', function () { setTimeout(load, 1500); });
+  // Each screen fetches only its next photo, shortly before it is shown, so a visitor who leaves early
+  // (or a phone, which shows one screen at a time) does not download the whole wall.
+  function nextFig(cell) {
+    var figs = cell.querySelectorAll('figure'), on = cell.querySelector('figure.on');
+    return figs[(Array.prototype.indexOf.call(figs, on) + 1) % figs.length];
+  }
+  function prime(cell) {
+    var img = nextFig(cell).querySelector('img');
+    if (img.dataset.src) { img.srcset = img.dataset.srcset; img.src = img.dataset.src; img.removeAttribute('data-src'); }
+  }
+  window.addEventListener('load', function () { setTimeout(function () { cells.forEach(prime); }, 1500); });
   // Wide screens: one of the four screens switches at a time, in turn, like an operator flipping through cameras.
   // Phones show a single screen (CSS), so there the whole view moves on to the next camera.
   var phone = matchMedia('(max-width: 720px)');
   function ready(fig) { var img = fig.querySelector('img'); return img.complete && img.naturalWidth; }
   function advance(cell) {
-    var figs = cell.querySelectorAll('figure'), on = cell.querySelector('figure.on');
-    var next = figs[(Array.prototype.indexOf.call(figs, on) + 1) % figs.length];
-    if (next !== on && ready(next)) { on.classList.remove('on'); next.classList.add('on'); }
+    var on = cell.querySelector('figure.on'), next = nextFig(cell);
+    if (next !== on && ready(next)) { on.classList.remove('on'); next.classList.add('on'); prime(cell); }
   }
   (function tick() {
     setTimeout(function () {
