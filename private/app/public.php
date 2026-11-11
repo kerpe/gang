@@ -357,6 +357,9 @@ function sitemap(): never
         $paths[] = '/darbai?miestas='.$c;
     }
     foreach (open_requests([], 1000) as $r) {
+        if (in_array((int) $r['venue_id'], SEO_HIDDEN_VENUES, true)) {
+            continue;
+        }
         $paths[] = '/darbas/'.$r['id'];
     }
     foreach ($paths as $p) {

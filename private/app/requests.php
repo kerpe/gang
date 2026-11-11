@@ -984,7 +984,10 @@ function request_page(int $id): never
     }
     $eventTag = $r['event_title'] !== '' ? '<span class="tag event">Renginys</span>' : '';
     $eventLine = $r['event_title'] !== '' ? '<p class="event-name">'.e($r['event_title']).'</p>' : '';
-    if ($isOpen) {
+    // Search engines see only open jobs of real venues.
+    $indexable = $isOpen && !in_array((int) $r['venue_id'], SEO_HIDDEN_VENUES, true);
+    if ($indexable) {
+        $rate = preg_match('/^\d+(?:,\d+)?/', (string) $r['pay'], $pm) ? (float) str_replace(',', '.', $pm[0]) : 0;
         $ld = '<script type="application/ld+json">'.json_encode([
             '@context' => 'https://schema.org',
             '@type' => 'JobPosting',
@@ -997,7 +1000,7 @@ function request_page(int $id): never
                 + ($r['venue_website'] ? ['sameAs' => $r['venue_website']] : [])
                 + ($r['venue_logo'] ? ['logo' => rtrim(config()['public_url'], '/').venue_logo_url(['id' => $r['venue_id'], 'logo' => $r['venue_logo']])] : []),
             'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
-        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
+        ] + ($rate > 0 ? ['baseSalary' => ['@type' => 'MonetaryAmount', 'currency' => 'EUR', 'value' => ['@type' => 'QuantitativeValue', 'value' => $rate, 'unitText' => 'HOUR']]] : []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
     $photo = job_photo($r, 'job-banner');
     page("$role – {$r['venue_name']}, $city", <<<HTML
@@ -1022,7 +1025,7 @@ HTML, [
         'description' => mb_substr("$role, {$r['venue_name']}, $city: ".preg_replace('/\s+/', ' ', $r['description']), 0, 155),
         'canonical' => '/darbas/'.$id,
         'head' => $ld,
-        'noindex' => !$isOpen,
+        'noindex' => !$indexable,
     ]);
 }
 
