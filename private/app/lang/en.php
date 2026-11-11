@@ -1222,6 +1222,7 @@ return [
         '/^Kandidatūrų: (\d+)\. Pirmoji iš (\d+) paieškų: (.+)$/u' => 'Applications: {1}. The first of {2} job posts: {3}',
         '/^el\. pašto adresą (.+) ir sutikimų įrašus\.$/u' => 'your email address {1} and your consent records.',
         '/^nuo (.+)$/u' => 'from {1}',
+        '/^Po (\d+) d\.$/u' => 'In {1} days',
         '/^Kasdien (.+)$/u' => 'Daily {1}',
         '/^(.+) \((iki 1 metų|1–3 metai|3–5 metai|daugiau nei 5 metai|be patirties)\)$/u' => '{1} ({2})',
         // Numbered headings: "3. Registracija ir paskyra".
