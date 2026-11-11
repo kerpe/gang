@@ -86,7 +86,7 @@ function home_page(): never
     }
     $urgent = $latest && !array_filter($latest, fn ($r) => !request_urgent($r));
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
-    $list = $latest ? '<section class="wrap home-block"><div class="section-head"><h2>'.$listTitle.'</h2><a href="/darbai">Visi pasiūlymai →</a></div><div class="cards home-cards">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
+    $list = $latest ? '<section class="wrap home-block"><div class="section-head feed-head"><h2><span class="live-dot" aria-hidden="true"></span>'.$listTitle.'</h2><a href="/darbai">Visi pasiūlymai →</a></div><div class="feed">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
     // Hero: four camera screens behind the text (phones show one of them at a time); each screen cross-fades between its photos (script below).
     $wall = $preload = '';
     foreach (CAM_WALL as $c => $keys) {

@@ -86,7 +86,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=95">
+<link rel="stylesheet" href="/style.css?v=96">
 $head
 </head>
 <body$bodyClass>
@@ -293,24 +293,32 @@ function starts_in(string $date): string
     };
 }
 
-// Home page version (Vilius 2026-11-05: calmer): role, workplace, pay and one muted line
-// "Sezonui · nuo birželio 1 d." – no colour tags, calendar leaf, hours or countdown.
+// Home page "live feed" card (2026-11-11): the role's CCTV photo on top with the duration chip
+// (and "Rytoj" / "Po 2 d." when the work starts soon), the venue logo on the photo's edge, then the role,
+// workplace, pay and start date. Phones show it as a row: a square photo on the left, text on the right.
 function request_card_short(array $r): string
 {
-    $logo = venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo'] ?? null], 'card-logo');
+    $logo = venue_logo(['id' => $r['venue_id'], 'name' => $r['venue_name'], 'logo' => $r['venue_logo'] ?? null], 'feed-logo');
     $parts = $r['pay'] !== '' ? pay_parts($r['pay']) : null;
     $pay = $r['pay'] === '' ? '' : ($parts
-        ? '<p class="card-pay"><strong>'.e($parts[0]).'</strong> <span>'.e($parts[1]).'</span></p>'
-        : '<p class="card-pay text"><strong>'.e($r['pay']).'</strong></p>');
+        ? '<p class="feed-pay"><strong>'.e($parts[0]).'</strong> <span>'.e($parts[1]).'</span></p>'
+        : '<p class="feed-pay text"><strong>'.e($r['pay']).'</strong></p>');
     $ranges = !empty($r['dates']) ? explode(',', $r['dates']) : [$r['start_date'].':'.($r['end_date'] ?: $r['start_date'])];
     [$from, $to] = explode(':', $ranges[0]) + [1 => ''];
     $oneDay = count($ranges) === 1 && $from === $to && $r['kind'] !== 'nuolat';
     $when = ($oneDay ? '' : 'nuo ').date_lt($from);
-    return '<div class="card job-card short"><a class="card-link" href="/darbas/'.(int) $r['id'].'">'
-        .'<div class="card-head">'.$logo.'<div><h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
-        .'<p class="meta">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').'</p></div></div>'
-        .$pay
-        .'<p class="card-when-short">'.e(KINDS[$r['kind']] ?? $r['kind']).' · '.e($when).'</p></a></div>';
+    $kind = KINDS[$r['kind']] ?? $r['kind'];
+    $soon = request_urgent($r) ? starts_in($from) : '';
+    $keys = ROLE_PHOTOS[$r['role']] ?? [];
+    $img = $keys ? '<img src="/img/job-'.$keys[(int) $r['id'] % count($keys)].'-sm.jpg?v=2" alt="" width="640" height="480" loading="lazy">' : '';
+    return '<a class="card feed-card" href="/darbas/'.(int) $r['id'].'">'
+        .'<div class="feed-media">'.$img
+        .'<span class="feed-chips"><span class="feed-chip">'.e($kind).'</span>'.($soon !== '' ? '<span class="feed-chip soon">'.e($soon).'</span>' : '').'</span>'
+        .'<span class="feed-go" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17 17 7M8 7h9v9"/></svg></span></div>'
+        .'<div class="feed-body">'.$logo
+        .'<h3>'.e(ROLES[$r['role']] ?? $r['role']).'</h3>'
+        .'<p class="feed-venue">'.e($r['venue_name']).' · '.e(CITIES[$r['city']] ?? '').'</p>'
+        .'<div class="feed-foot">'.$pay.'<p class="feed-when"><span class="feed-when-kind">'.e($kind).' · </span>'.e($when).'</p></div></div></a>';
 }
 
 // One CCTV frame from JOB_PHOTOS with its camera label. $size: '' (1200 px) or '-sm' (640 px); $eager for a photo at the top of a page.
