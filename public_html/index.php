@@ -62,6 +62,8 @@ match (true) {
     $path === '/mano' => dashboard_page(),
     $path === '/mano/pasiulymai' => worker_offers_page(),
     $path === '/mano/paieskos' => manager_requests_page(),
+    $path === '/mano/puse' && $post => side_switch_action(),
+    $path === '/mano/prideti' && $post => side_add_action(),
     $path === '/profilis' => profile_page(),
     $path === '/profilis/duomenys' => account_export(),
     $path === '/profilis/istrinti' => account_delete_page(),

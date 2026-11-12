@@ -93,10 +93,11 @@ function delete_photo(?string $name): void
 function photo_page(int $id): never
 {
     $u = is_admin() ? current_user() : require_user();
-    $w = sql('SELECT id, kind, photo FROM users WHERE id = ?', [$id])->fetch();
-    // An employer's photo is seen by the workers the employer talks to: candidates, past workers and the team.
-    $allowed = $w && ($w['kind'] === 'worker' ? sees_worker_profile($u, $id)
-        : is_admin() || ($u && ((int) $u['id'] === $id || ($u['kind'] === 'worker' && manager_knows_worker($id, (int) $u['id'])))));
+    $w = sql('SELECT id, kind, dual, photo FROM users WHERE id = ?', [$id])->fetch();
+    // A worker's photo: see sees_worker_profile(). An employer's photo is seen by the workers the employer
+    // talks to: candidates and past workers. A member with both sides: either rule.
+    $allowed = $w && ((has_side($w, 'worker') && sees_worker_profile($u, $id))
+        || (has_side($w, 'manager') && (is_admin() || ($u && ((int) $u['id'] === $id || (has_side($u, 'worker') && manager_knows_worker($id, (int) $u['id'])))))));
     $file = $w && $w['photo'] && preg_match('/^[0-9a-f]{24}\.jpg$/', $w['photo']) ? photo_dir().'/'.$w['photo'] : '';
     if (!$allowed || $file === '' || !is_file($file)) {
         http_response_code(404);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 28;
+const SCHEMA_VERSION = 29;
 
 function migrate(PDO $db): void
 {
@@ -16,7 +16,7 @@ function migrate(PDO $db): void
     $id = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT UNSIGNED AUTO_INCREMENT PRIMARY KEY';
     $tail = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
     $tables = [
-        // kind: worker | manager. blocked users cannot log in.
+        // kind: worker | manager (with dual = 1, the side the member is on now). blocked users cannot log in.
         'users' => "id $id,
             kind VARCHAR(10) NOT NULL,
             email VARCHAR(190) NOT NULL UNIQUE,
@@ -250,6 +250,9 @@ function migrate(PDO $db): void
         'users ADD signup_reminders_off TINYINT NOT NULL DEFAULT 0',
         // Version 28: the language of the member's emails (lt | en), chosen in the account form.
         "users ADD lang VARCHAR(2) NOT NULL DEFAULT 'lt'",
+        // Version 29: one account can have both sides (Vilius 2026-11-12). dual = 1: the member also added
+        // the other side; users.kind is then the side they are on right now (the switch on Mano paskyra).
+        'users ADD dual TINYINT NOT NULL DEFAULT 0',
     ];
     foreach ($columns as $column) {
         try {

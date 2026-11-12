@@ -237,15 +237,21 @@ function chat_unread(int $contractId, int $userId): int
 }
 
 // Unread messages across all of the user's contracts (the "Mano paskyra" link in the menu).
-function unread_messages_total(int $userId): int
+// $side: only the chats where the user is the worker or the employer ('' = both; a member with both sides).
+function unread_messages_total(int $userId, string $side = ''): int
 {
+    $mine = fn (string $worker) => match ($side) {
+        'worker' => "$worker = ? AND ? > 0",
+        'manager' => '? > 0 AND v.manager_id = ?',
+        default => "($worker = ? OR v.manager_id = ?)",
+    };
     return (int) sql('SELECT COUNT(*) FROM messages m JOIN contracts c ON c.id = m.contract_id JOIN venues v ON v.id = c.venue_id
         LEFT JOIN chat_reads cr ON cr.contract_id = m.contract_id AND cr.user_id = ?
-        WHERE (c.worker_id = ? OR v.manager_id = ?) AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)', [$userId, $userId, $userId, $userId])->fetchColumn()
+        WHERE '.$mine('c.worker_id').' AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)', [$userId, $userId, $userId, $userId])->fetchColumn()
         // Chats on applications still waiting for the employer's decision.
         + (int) sql("SELECT COUNT(*) FROM messages m JOIN responses s ON m.contract_id = -s.id JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id
         LEFT JOIN chat_reads cr ON cr.contract_id = m.contract_id AND cr.user_id = ?
-        WHERE m.contract_id < 0 AND s.status = 'sent' AND r.status = 'open' AND (s.worker_id = ? OR v.manager_id = ?) AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)", [$userId, $userId, $userId, $userId])->fetchColumn();
+        WHERE m.contract_id < 0 AND s.status = 'sent' AND r.status = 'open' AND ".$mine('s.worker_id')." AND m.sender_id <> ? AND m.id > COALESCE(cr.last_id, 0)", [$userId, $userId, $userId, $userId])->fetchColumn();
 }
 
 // A ready first message, offered until the user has written anything in this chat.

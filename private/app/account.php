@@ -62,7 +62,7 @@ function profile_page(): never
         }
         if ($worker && mb_strlen($v['about']) < WORKER_ABOUT_MIN) {
             $errors['about'] = 'Trumpai papasakokite apie save – bent '.WORKER_ABOUT_MIN.' simbolių: darbo patirtis, ankstesnės darbovietės, įgūdžiai. Tai padeda darbdaviams jus pasirinkti.';
-        } elseif (mb_strlen($v['about']) > 2000) {
+        } elseif ($worker && mb_strlen($v['about']) > 2000) {
             $errors['about'] = 'Tekstas gali būti ne ilgesnis nei 2000 simbolių.';
         }
         $photo = $u['photo'];
@@ -83,8 +83,11 @@ function profile_page(): never
         if (!$errors) {
             $first = !profile_complete($u);
             $matchedBefore = $worker ? array_column(matching_jobs($u), 'id') : [];
-            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ?, lang = ? WHERE id = ?', [
-                $v['name'], $v['phone'], $v['about'], $worker ? to_list($v['roles'], ROLES) : '', $worker ? to_list($v['cities'], CITIES) : '', $worker ? to_list($v['durations'], KINDS) : '', $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $v['lang'], $u['id'],
+            // The employer's form has no worker fields: a member with both sides keeps them as they are.
+            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ?, lang = ? WHERE id = ?', $worker ? [
+                $v['name'], $v['phone'], $v['about'], to_list($v['roles'], ROLES), to_list($v['cities'], CITIES), to_list($v['durations'], KINDS), $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $v['lang'], $u['id'],
+            ] : [
+                $v['name'], $v['phone'], $u['about'], $u['roles'], $u['cities'], $u['durations'], $u['experience'], $u['notify'], $photo, $v['lang'], $u['id'],
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
@@ -99,11 +102,11 @@ function profile_page(): never
             }
             // One sentence about the emails: either some offers went out just now or they will come later.
             $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : ($first ? ' Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.' : '');
-            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : 'Paskyra sukurta.').$jobsNote);
+            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : (!empty($u['dual']) ? 'Darbuotojo paskyra paruošta.' : 'Paskyra sukurta.')).$jobsNote);
             redirect('/mano');
         }
     }
-    $title = profile_complete($u) ? 'Redaguoti paskyrą' : ($worker ? 'Susikurkite paskyrą' : 'Jūsų duomenys');
+    $title = profile_complete($u) ? 'Redaguoti paskyrą' : ($worker ? (!empty($u['dual']) ? 'Užpildykite darbuotojo paskyrą' : 'Susikurkite paskyrą') : 'Jūsų duomenys');
     $workerFields = '';
     $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
     $photoField = '<fieldset class="photo-field"><legend>Paskyros nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
@@ -140,7 +143,7 @@ function profile_page(): never
     }
     $phoneNote = '(neprivaloma, naudojamas tik sisteminiams pranešimams siųsti)';
     $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
-    page($title, '<section class="wrap narrow">'.$step.'<h1>'.$title.'</h1>'
+    page($title, '<section class="wrap narrow">'.side_switch($u).$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$photoField
         .'<label>Vardas ir pavardė <input name="name" value="'.e($v['name']).'" maxlength="120" autocomplete="name" required data-nocount aria-describedby="name-live">'.err($errors, 'name').'<span class="err-live" id="name-live" role="alert" hidden></span></label>'
@@ -312,7 +315,7 @@ function dashboard_page(): never
     if (!profile_complete($u)) {
         redirect('/profilis');
     }
-    $body = ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u));
+    $body = ($u['kind'] === 'worker' ? worker_dashboard($u) : manager_dashboard($u)).side_add_box($u);
     $kind = $u['kind'] === 'worker' ? 'Darbuotojo paskyra' : 'Darbdavio paskyra';
     $rating = '';
     if ($u['kind'] === 'worker') {
@@ -320,7 +323,7 @@ function dashboard_page(): never
         // A newcomer sees just "GANG naujokas", not "Įvertinimų dar nėra" next to it.
         $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>';
     }
-    page('Mano paskyra', '<section class="wrap">'
+    page('Mano paskyra', '<section class="wrap">'.side_switch($u)
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
         .'<div class="account-who"><span class="eyebrow">'.$kind.'</span><h1 class="account-name">'.e($u['name']).'</h1><span class="meta">'.e($u['email']).'</span>'.$rating.'</div>'
         .'<div class="account-actions"><a class="btn small" href="/profilis">Redaguoti paskyrą</a></div>'
@@ -447,7 +450,7 @@ function contract_ics(int $id): never
 // Open offers for a worker, not yet answered: [personal invitations, other matching offers].
 function worker_open_offers(array $u): array
 {
-    $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 30);
+    $jobs = open_requests(['roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u), 'not_manager' => (int) $u['id']], 30);
     $responded = array_column(sql('SELECT request_id, status FROM responses WHERE worker_id = ?', [$u['id']])->fetchAll(), 'status', 'request_id');
     return array_values(array_filter($jobs, fn ($r) => !isset($responded[$r['id']])));
 }
@@ -456,9 +459,10 @@ function worker_open_offers(array $u): array
 function worker_offers_page(): never
 {
     $u = require_user();
-    if ($u['kind'] !== 'worker') {
+    if (!has_side($u, 'worker')) {
         redirect('/mano');
     }
+    $u = switch_side($u, 'worker');
     $jobs = worker_open_offers($u);
     $cards = $jobs ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
         : '<div class="empty-state"><span class="empty-mark" aria-hidden="true">0</span><div><h3>Naujų pasiūlymų kol kas nėra</h3>'
@@ -550,9 +554,10 @@ function manager_open_requests(string $in): array
 function manager_requests_page(): never
 {
     $u = require_user();
-    if ($u['kind'] !== 'manager') {
+    if (!has_side($u, 'manager')) {
         redirect('/mano');
     }
+    $u = switch_side($u, 'manager');
     $ids = sql('SELECT id FROM venues WHERE manager_id = ?', [$u['id']])->fetchAll(PDO::FETCH_COLUMN);
     if (!$ids) {
         redirect('/darboviete/nauja');
@@ -912,8 +917,8 @@ HTML;
 // Contracts that still lie ahead (not cancelled, not over): the account cannot be deleted until they are cancelled.
 function upcoming_contracts(array $u): array
 {
-    $where = $u['kind'] === 'worker' ? 'c.worker_id = ?' : 'v.manager_id = ?';
-    $rows = sql(CONTRACT_SELECT.' WHERE '.$where.' AND c.cancelled_at IS NULL', [$u['id']])->fetchAll();
+    // Both sides: a member who is a worker and an employer cannot leave either side's work behind.
+    $rows = sql(CONTRACT_SELECT.' WHERE (c.worker_id = ? OR v.manager_id = ?) AND c.cancelled_at IS NULL', [$u['id'], $u['id']])->fetchAll();
     return array_values(array_filter($rows, fn ($c) => contract_end($c) >= today()));
 }
 
@@ -923,7 +928,7 @@ function account_export(): never
     $u = require_user();
     $id = (int) $u['id'];
     $rows = fn (string $q, ?array $p = null) => sql($q, $p ?? [$id])->fetchAll(PDO::FETCH_ASSOC);
-    $profile = array_intersect_key($u, array_flip(['kind', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
+    $profile = array_intersect_key($u, array_flip(['kind', 'dual', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
     $venues = $rows('SELECT id, name, type, concept, city, address, about, hours, team_size, perks, website, instagram, facebook, tiktok, created_at FROM venues WHERE manager_id = ?');
     $venueIds = array_map('intval', array_column($venues, 'id')) ?: [0];
     $in = implode(',', $venueIds);
@@ -939,8 +944,11 @@ function account_export(): never
         'kandidaturu_papildymai' => $rows('SELECT s.request_id, n.body, n.created_at FROM response_notes n JOIN responses s ON s.id = n.response_id WHERE s.worker_id = ?'),
         'kontraktai' => $rows("SELECT id, request_id, venue_id, start_date, end_date, dates, created_at, cancelled_at, cancelled_by, cancel_reason, cancel_note, no_show_at FROM contracts WHERE id IN ($cin)", []),
         'mano_zinutes' => $rows('SELECT contract_id, body, created_at FROM messages WHERE sender_id = ?'),
-        'mano_ivertinimai' => $rows("SELECT contract_id, rating, c1, c2, c3, text, created_at FROM reviews WHERE contract_id IN ($cin) AND author = ?", [$u['kind']]),
-        'gauti_ivertinimai' => $rows("SELECT contract_id, rating, c1, c2, c3, text, created_at FROM reviews WHERE contract_id IN ($cin) AND author <> ?", [$u['kind']]),
+        // Written by the member: as the worker on their own contracts, as the employer on their venues' ones.
+        'mano_ivertinimai' => $rows("SELECT rv.contract_id, rv.rating, rv.c1, rv.c2, rv.c3, rv.text, rv.created_at FROM reviews rv JOIN contracts c ON c.id = rv.contract_id
+            WHERE (rv.author = 'worker' AND c.worker_id = ?) OR (rv.author = 'manager' AND c.venue_id IN ($in))"),
+        'gauti_ivertinimai' => $rows("SELECT rv.contract_id, rv.rating, rv.c1, rv.c2, rv.c3, rv.text, rv.created_at FROM reviews rv JOIN contracts c ON c.id = rv.contract_id
+            WHERE (rv.author = 'manager' AND c.worker_id = ?) OR (rv.author = 'worker' AND c.venue_id IN ($in))"),
         'sutikimai' => $rows('SELECT version, accepted_at, ip, user_agent FROM consents WHERE user_id = ?'),
     ];
     header('Content-Type: application/json; charset=utf-8');
@@ -977,14 +985,15 @@ function account_delete_page(): never
             redirect('/');
         }
     }
-    $worker = $u['kind'] === 'worker';
-    $what = $worker
-        ? '<li>paskyros duomenys, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>'
-        : '<li>paskyros duomenys, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>';
+    $what = match (true) {
+        !empty($u['dual']) => '<li>paskyros duomenys, nuotrauka, pareigos ir miestai, visos jūsų darbovietės ir jų logotipai;</li><li>kandidatūros, paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti, jums ir jūsų darbovietėms skirti įvertinimai;</li>',
+        $u['kind'] === 'worker' => '<li>paskyros duomenys, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>',
+        default => '<li>paskyros duomenys, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>',
+    };
     if ($upcoming) {
         $list = '';
         foreach ($upcoming as $c) {
-            $who = $worker ? $c['venue_name'] : $c['worker_name'].' · '.$c['venue_name'];
+            $who = (int) $c['worker_id'] === (int) $u['id'] ? $c['venue_name'] : $c['worker_name'].' · '.$c['venue_name'];
             $list .= '<li>'.e((ROLES[$c['role']] ?? $c['role']).', '.$who.', '.rtrim(period($c), '.')).' – <a href="/kontraktas/'.(int) $c['id'].'/atsaukti">atšaukti</a></li>';
         }
         $body = '<div class="panel"><p><strong>Turite būsimų darbų.</strong> Kad kita pusė nebūtų palikta be žinios, prieš ištrindami paskyrą atšaukite juos:</p><ul>'.$list.'</ul></div>';
@@ -1005,7 +1014,7 @@ function account_delete_page(): never
 function unsubscribe_page(int $id, string $token): never
 {
     header('X-Robots-Tag: noindex, nofollow');
-    $u = sql("SELECT * FROM users WHERE id = ? AND kind = 'worker'", [$id])->fetch();
+    $u = sql('SELECT * FROM users WHERE id = ? AND '.side_sql('worker'), [$id])->fetch();
     if (!$u || !hash_equals(unsubscribe_token($id), $token)) {
         not_found();
     }
@@ -1050,7 +1059,8 @@ function send_signup_reminders(): void
         // The second one waits a week from sign-up, and at least 6 days after the first.
         $due = $u['created_at'] < date('Y-m-d H:i:s', strtotime('-'.SIGNUP_REMINDER_DAYS[$n].' days'))
             && ($n === 1 || $u['signup_reminder_at'] < date('Y-m-d H:i:s', strtotime('-6 days')));
-        if ($step === '' || !$due) {
+        // A member who later added the other side and left it half-done is already signed up.
+        if ($step === '' || !$due || signup_finished($u)) {
             continue;
         }
         $left = match (true) {
@@ -1097,4 +1107,85 @@ function signup_reminders_off_page(int $id, string $token): never
         : '<p class="lead">Nebesiųsime priminimų užbaigti registraciją adresu <strong>'.e($u['email']).'</strong>.</p>'
             .'<form method="post" class="form"><button class="btn">Atsisakyti priminimų</button></form>';
     page('Atsisakyti priminimų', '<section class="wrap narrow"><h1>Atsisakyti priminimų</h1>'.$body.'</section>', ['noindex' => true]);
+}
+
+// Both sides on one account (see has_side() in auth.php). The button that adds the other side, at the
+// bottom of Mano paskyra, and the switch between the two sides at the top.
+function side_add_label(string $side): string
+{
+    return $side === 'manager' ? 'Ieškau ir darbuotojų' : 'Ieškau ir darbo';
+}
+
+function side_add_box(array $u): string
+{
+    if (!empty($u['dual'])) {
+        return '';
+    }
+    $other = other_side($u['kind']);
+    $text = $other === 'manager'
+        ? 'Taip pat ieškote darbuotojų savo barui, restoranui ar kavinei? Pridėkite darbdavio paskyrą prie šios – užteks to paties el. pašto.'
+        : 'Taip pat ieškote darbo? Pridėkite darbuotojo paskyrą prie šios – užteks to paties el. pašto.';
+    $confirm = $other === 'manager'
+        ? 'Pridėti darbdavio paskyrą? Užregistruosite darbovietę, o GANG ją patikrins. Darbuotojo paskyra liks tokia pati, o tarp jų persijungsite „Mano paskyroje“.'
+        : 'Pridėti darbuotojo paskyrą? Nurodysite pareigas, patirtį ir miestus. Darbdavio paskyra liks tokia pati, o tarp jų persijungsite „Mano paskyroje“.';
+    return '<div class="side-add"><p class="meta">'.e($text).'</p>'.post_button('/mano/prideti', side_add_label($other), [], 'btn small ghost', $confirm).'</div>';
+}
+
+// "Darbuotojas | Darbdavys" for a member with both sides. A count on the other side: new messages,
+// and what waits there (employer: candidates to decide on; worker: a shift to confirm).
+function side_switch(array $u): string
+{
+    if (empty($u['dual'])) {
+        return '';
+    }
+    $out = '<form method="post" action="/mano/puse" class="side-switch" aria-label="Paskyra">'.csrf_field();
+    foreach (SIDES as $side => $label) {
+        $on = $u['kind'] === $side;
+        $n = $on ? 0 : side_attention($u, $side);
+        $out .= '<button name="side" value="'.$side.'"'.($on ? ' aria-pressed="true" class="on"' : ' aria-pressed="false"').'>'.e($label)
+            .($n ? ' <span class="count" aria-label="Laukia: '.$n.'">'.$n.'</span>' : '').'</button>';
+    }
+    return $out.'</form>';
+}
+
+function side_attention(array $u, string $side): int
+{
+    $id = (int) $u['id'];
+    $n = unread_messages_total($id, $side);
+    if ($side === 'manager') {
+        return $n + (int) sql("SELECT COUNT(*) FROM responses s JOIN requests r ON r.id = s.request_id JOIN venues v ON v.id = r.venue_id
+            WHERE v.manager_id = ? AND s.status = 'sent' AND r.status = 'open'", [$id])->fetchColumn();
+    }
+    return $n + (int) sql('SELECT COUNT(*) FROM shift_checks s JOIN contracts c ON c.id = s.contract_id
+        WHERE c.worker_id = ? AND s.shift_date >= ? AND s.confirmed_at IS NULL AND s.declined_at IS NULL', [$id, today()])->fetchColumn();
+}
+
+// POST /mano/puse: to the other side, or to where its sign-up stopped.
+function side_switch_action(): never
+{
+    $u = require_user();
+    check_csrf();
+    $side = input('side');
+    if (!isset(SIDES[$side]) || !has_side($u, $side)) {
+        redirect('/mano');
+    }
+    $u = switch_side($u, $side);
+    redirect(signup_step_url($u) ?: '/mano');
+}
+
+// POST /mano/prideti: the other side is added and opened. A worker who becomes an employer is checked by
+// GANG like any new employer (verified_at stays empty until then); the worker side stays as it was.
+function side_add_action(): never
+{
+    $u = require_user();
+    check_csrf();
+    if (empty($u['dual'])) {
+        sql('UPDATE users SET dual = 1, kind = ? WHERE id = ?', [other_side($u['kind']), $u['id']]);
+        $u = current_user(true);
+    }
+    $step = signup_step_url($u);
+    if ($step === '') {
+        flash($u['kind'] === 'manager' ? 'Darbdavio paskyra pridėta.' : 'Darbuotojo paskyra pridėta.');
+    }
+    redirect($step ?: '/mano');
 }
