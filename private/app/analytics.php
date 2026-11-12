@@ -188,8 +188,9 @@ function admin_analytics(): string
     $prevSince = $prevFrom.' 00:00:00';
     $signups = $count('SELECT COUNT(*) FROM users WHERE created_at >= ?', [$since]);
     $signupsPrev = $count('SELECT COUNT(*) FROM users WHERE created_at >= ? AND created_at < ?', [$prevSince, $since]);
-    $workers = $count("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND created_at >= ?", [$since]);
-    $managers = $signups - $workers;
+    // A member with both sides counts on both.
+    $workers = $count('SELECT COUNT(*) FROM users WHERE '.side_sql('worker').' AND created_at >= ?', [$since]);
+    $managers = $count('SELECT COUNT(*) FROM users WHERE '.side_sql('manager').' AND created_at >= ?', [$since]);
     $requests = $count('SELECT COUNT(*) FROM requests WHERE created_at >= ?', [$since]);
 
     $html = '<p class="meta">Paskutinės '.ANALYTICS_DAYS.' dienos ('.e($from).' – '.e($today).'), lyginant su ankstesne savaite. Skaičiuojami tik lankytojai, paspaudę „Sutinku“ slapukų juostoje.</p>';

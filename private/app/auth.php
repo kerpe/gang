@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-function current_user(): ?array
+// $reload: read the member again (after switching sides, see switch_side()).
+function current_user(bool $reload = false): ?array
 {
     static $user = false;
-    if ($user === false) {
+    if ($user === false || $reload) {
         start_session();
         $user = null;
         if (!empty($_SESSION['uid'])) {
@@ -56,8 +57,12 @@ function require_user(?string $kind = null): array
         redirect('/prisijungti');
     }
     if ($kind !== null && $user['kind'] !== $kind) {
-        flash($kind === 'manager' ? 'Šis veiksmas skirtas darbdaviams.' : 'Šis veiksmas skirtas darbuotojams.');
-        redirect('/mano');
+        // A member with both sides opened a page of the other side (e.g. from an email): switch to it.
+        if (!has_side($user, $kind)) {
+            flash($kind === 'manager' ? 'Šis veiksmas skirtas darbdaviams.' : 'Šis veiksmas skirtas darbuotojams.');
+            redirect('/mano');
+        }
+        $user = switch_side($user, $kind);
     }
     if (needs_consent($user)) {
         if (!is_post()) {
@@ -68,23 +73,70 @@ function require_user(?string $kind = null): array
     return $user;
 }
 
-function profile_complete(array $u): bool
+// Both sides on one account (Vilius 2026-11-12): users.kind is the side the member is on now, and
+// dual = 1 means they also have the other one. Signing up still picks one side; the other is added
+// later on Mano paskyra ("Taip pat ieškote …?"), and the switch there moves between the two.
+// Pages and buttons follow the side the member is on (kind); what makes someone a worker or an employer
+// for others – job emails, profile and photo access, admin – asks has_side() / side_sql() instead.
+const SIDES = ['worker' => 'Darbuotojas', 'manager' => 'Darbdavys'];
+
+function has_side(?array $u, string $side): bool
 {
+    return $u !== null && ($u['kind'] === $side || !empty($u['dual']));
+}
+
+// SQL condition for members who have $side, e.g. side_sql('worker', 'u') = "(u.kind = 'worker' OR u.dual = 1)".
+function side_sql(string $side, string $alias = ''): string
+{
+    $p = $alias !== '' ? $alias.'.' : '';
+    return '('.$p."kind = '".($side === 'manager' ? 'manager' : 'worker')."' OR ".$p.'dual = 1)';
+}
+
+function other_side(string $side): string
+{
+    return $side === 'manager' ? 'worker' : 'manager';
+}
+
+// Moves a member with both sides to $side; returns the member as they are now.
+function switch_side(array $u, string $side): array
+{
+    if ($u['kind'] !== $side && has_side($u, $side)) {
+        sql('UPDATE users SET kind = ? WHERE id = ? AND dual = 1', [$side, $u['id']]);
+    }
+    return current_user(true) ?? $u;
+}
+
+// $side: which side to check; by default the one the member is on.
+function profile_complete(array $u, ?string $side = null): bool
+{
+    $side ??= $u['kind'];
     // The phone number is optional (Vilius 2026-11-09): email, full name and, for workers, roles and cities are enough.
-    return $u['name'] !== '' && ($u['kind'] === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
+    return $u['name'] !== '' && ($side === 'manager' || ($u['roles'] !== '' && $u['cities'] !== '' && (int) $u['experience'] > 0));
 }
 
 // Where a member who has not finished signing up goes next: own details first, then (employers)
 // the venue. '' = sign-up finished. Only then GANG is asked to check a new employer.
-function signup_step_url(array $u): string
+// $side: as in profile_complete().
+function signup_step_url(array $u, ?string $side = null): string
 {
-    if (!profile_complete($u)) {
+    $side ??= $u['kind'];
+    if (!profile_complete($u, $side)) {
         return '/profilis';
     }
-    if ($u['kind'] === 'manager' && !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$u['id']])->fetchColumn()) {
+    if ($side === 'manager' && !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$u['id']])->fetchColumn()) {
         return '/darboviete/nauja';
     }
     return '';
+}
+
+// Signed up: at least one of the member's sides is ready. A member who added the other side and has
+// not filled it in yet stays a registered member (admin lists, "Užbaikite registraciją" reminders).
+function signup_finished(array $u): bool
+{
+    if (signup_step_url($u) === '') {
+        return true;
+    }
+    return !empty($u['dual']) && signup_step_url($u, other_side($u['kind'])) === '';
 }
 
 // One network (IP address) may ask for this many sign-in codes, to any addresses, so the form
@@ -260,12 +312,13 @@ function login_page(): never
 function already_member_page(string $email, string $memberKind, string $wantedKind): never
 {
     $role = $memberKind === 'manager' ? 'darbdavio' : 'darbuotojo';
+    $dual = (bool) sql('SELECT dual FROM users WHERE email = ?', [$email])->fetchColumn();
     $other = $wantedKind !== '' && $wantedKind !== $memberKind
-        ? '<p>Viena paskyra turi vieną vaidmenį. Jei norite '.($wantedKind === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyros, registruokitės kitu el. pašto adresu.</p>'
+        ? '<p>'.($wantedKind === 'manager' ? 'Ieškoti darbuotojų' : 'Ieškoti darbo').' galite su ta pačia paskyra: prisijunkite ir „Mano paskyroje“ paspauskite „'.side_add_label($wantedKind).'“.</p>'
         : '';
     page('Paskyra jau yra', '<section class="wrap narrow"><h1>Jūs jau turite GANG paskyrą</h1>'
-        .'<p class="lead">Adresu <strong>'.e($email).'</strong> jau užregistruota '.$role.' paskyra, todėl naujos kurti nereikia. Prisijunkite prie esamos paskyros.</p>'
-        .$other
+        .'<p class="lead">Adresu <strong>'.e($email).'</strong> jau užregistruota '.($dual ? '' : $role.' ').'paskyra, todėl naujos kurti nereikia. Prisijunkite prie esamos paskyros.</p>'
+        .($dual ? '' : $other)
         .'<form method="post" action="/prisijungti" class="form" novalidate'.ONE_SUBMIT.'>'.csrf_field()
         .'<input type="hidden" name="email" value="'.e($email).'"><input type="hidden" name="prisijungti" value="1">'
         .'<button class="btn">Prisijungti</button></form>'
@@ -309,9 +362,9 @@ function login_code_page(): never
                 $kind = $_SESSION['signup_kind'] ?? '';
                 if ($user && ($kind !== '' || !empty($_SESSION['signup_intent']))) {
                     // Came through "Registruotis" but already a member: sign in and say so.
-                    flash($kind === '' || $user['kind'] === $kind
+                    flash($kind === '' || has_side($user, $kind)
                         ? 'Šiuo el. paštu jau turite GANG paskyrą, todėl prisijungėte prie jos.'
-                        : 'Šiuo el. paštu jau turite '.($user['kind'] === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrą, todėl prisijungėte prie jos. Viena paskyra turi vieną vaidmenį: '.($kind === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrai registruokitės kitu el. pašto adresu.');
+                        : 'Šiuo el. paštu jau turite '.($user['kind'] === 'manager' ? 'darbdavio' : 'darbuotojo').' paskyrą, todėl prisijungėte prie jos. '.($kind === 'manager' ? 'Ieškoti darbuotojų' : 'Ieškoti darbo').' galite su ta pačia paskyra: „Mano paskyroje“ paspauskite „'.side_add_label($kind).'“.');
                 }
                 if (!$user) {
                     if ($kind === '') {
@@ -351,7 +404,7 @@ function choose_kind_page(): never
             finish_login($existing ? (int) $existing : create_user($kind, $email));
         }
     }
-    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, ko ieškote GANG – vėliau pakeisti nebegalėsite.</p>'
+    page('Kas jūs esate?', '<section class="wrap narrow"><h1>Sveiki atvykę į GANG</h1><p class="lead">Pasirinkite, ko ieškote GANG.</p>'
         .'<form method="post" class="pick">'.csrf_field()
         .'<div class="pick-consent">'.consent_field($error).'</div>'
         .'<button name="kind" value="worker" class="pick-card"><strong>Ieškau darbo</strong><span>Barmenas, padavėjas, virėjas ar kitas hospitality darbuotojas</span></button>'

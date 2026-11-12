@@ -276,7 +276,7 @@ function admin_attention(): string
     if ($urgent) {
         $items[] = '<a href="/admin?tab=requests">Skubios paieškos be kandidatų: '.$urgent.'</a>';
     }
-    $pending = (int) sql("SELECT COUNT(*) FROM users u WHERE u.kind = 'manager' AND u.verified_at IS NULL AND u.blocked = 0 AND u.name <> '' AND EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id)")->fetchColumn();
+    $pending = (int) sql('SELECT COUNT(*) FROM users u WHERE '.side_sql('manager', 'u')." AND u.verified_at IS NULL AND u.blocked = 0 AND u.name <> '' AND EXISTS (SELECT 1 FROM venues v WHERE v.manager_id = u.id)")->fetchColumn();
     if ($pending) {
         $items[] = '<a href="/admin?tab=users&amp;kind=manager">Darbdaviai laukia patvirtinimo: '.$pending.'</a>';
     }
@@ -454,7 +454,7 @@ function admin_stats(): string
     $since = date('Y-m-d H:i:s', strtotime('-30 days'));
     $week = date('Y-m-d H:i:s', strtotime('-7 days'));
     $tiles = [
-        ['Darbuotojai', $count("SELECT COUNT(*) FROM users WHERE kind = 'worker'"), $count("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND created_at > ?", [$week]), admin_spark('users', "kind = 'worker'")],
+        ['Darbuotojai', $count('SELECT COUNT(*) FROM users WHERE '.side_sql('worker')), $count('SELECT COUNT(*) FROM users WHERE '.side_sql('worker').' AND created_at > ?', [$week]), admin_spark('users', side_sql('worker'))],
         ['Darbovietės', $count('SELECT COUNT(*) FROM venues'), $count('SELECT COUNT(*) FROM venues WHERE created_at > ?', [$week]), admin_spark('venues')],
         ['Darbo skelbimai (30 d.)', $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM requests WHERE created_at > ?', [$week]), admin_spark('requests')],
         ['Kontraktai (30 d.)', $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$since]), $count('SELECT COUNT(*) FROM contracts WHERE created_at > ?', [$week]), admin_spark('contracts')],
@@ -559,23 +559,25 @@ function admin_users(): string
     $params = array_fill(0, 4, admin_like());
     $kinds = ['worker' => 'Darbuotojai', 'manager' => 'Darbdaviai'];
     if (isset($kinds[$_GET['kind'] ?? ''])) {
-        $where[] = 'u.kind = ?';
-        $params[] = $_GET['kind'];
+        $where[] = side_sql($_GET['kind'], 'u');
     }
     $rows = sql('SELECT u.*, (SELECT COUNT(*) FROM contracts c WHERE c.worker_id = u.id OR c.venue_id IN (SELECT id FROM venues WHERE manager_id = u.id)) AS contracts,
         (SELECT GROUP_CONCAT(v.name) FROM venues v WHERE v.manager_id = u.id) AS venues
         FROM users u WHERE '.implode(' AND ', $where).' ORDER BY u.created_at DESC LIMIT 1000', $params)->fetchAll();
     // Members who confirmed their email but have not saved their details yet (workers: name, roles,
     // cities; employers: also the venue) are kept out of the main list, in their own table below it.
-    $done = array_filter($rows, fn ($r) => signup_step_url($r) === '');
+    $done = array_filter($rows, 'signup_finished');
     $unfinished = array_diff_key($rows, $done);
     $head = '<div class="scroll"><table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos / darbovietės</th><th>Kontr.</th><th>Paskutinį kartą</th></tr>';
     $table = function (array $list, string $empty) use ($head): string {
         $html = $head;
         foreach ($list as $r) {
-            $what = $r['kind'] === 'worker' ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : e((string) $r['venues']);
-            $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.($r['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys').'</td>'
-                .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').($r['kind'] === 'manager' && !$r['verified_at'] && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
+            $what = implode('<br>', array_filter([
+                has_side($r, 'worker') ? e(labels($r['cities'], CITIES)).'<br><small>'.e(labels($r['roles'], ROLES)).'</small>' : '',
+                has_side($r, 'manager') ? e((string) $r['venues']) : '',
+            ]));
+            $html .= '<tr'.($r['blocked'] ? ' class="blocked"' : '').'><td>'.e(substr($r['created_at'], 0, 10)).'</td><td>'.e(admin_kind_label($r)).'</td>'
+                .'<td><a href="/admin?tab=user&amp;id='.(int) $r['id'].'">'.e($r['name'] !== '' ? $r['name'] : '(be vardo)').'</a>'.($r['blocked'] ? ' <small>užblokuotas</small>' : '').(has_side($r, 'manager') && !$r['verified_at'] && $r['venues'] ? ' <small><strong>laukia patvirtinimo</strong></small>' : '').'</td><td>'.e($r['email']).'</td><td>'.e($r['phone']).'</td>'
                 .'<td>'.$what.'</td><td>'.(int) $r['contracts'].'</td><td>'.e($r['last_login_at'] ? substr($r['last_login_at'], 0, 10) : '–').'</td></tr>';
         }
         return $html.($list ? '' : '<tr><td colspan="8">'.$empty.'</td></tr>').'</table></div>';
@@ -589,11 +591,16 @@ function admin_users(): string
     return $html;
 }
 
+function admin_kind_label(array $u): string
+{
+    return !empty($u['dual']) ? 'Darbuotojas ir darbdavys' : ($u['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys');
+}
+
 // The employer may publish searches and see the profiles of workers who apply. Mails them once.
 function admin_verify_manager(int $id): bool
 {
-    $u = sql("SELECT * FROM users WHERE id = ? AND kind = 'manager' AND verified_at IS NULL", [$id])->fetch();
-    if (!$u || signup_step_url($u) !== '') {
+    $u = sql('SELECT * FROM users WHERE id = ? AND '.side_sql('manager').' AND verified_at IS NULL', [$id])->fetch();
+    if (!$u || signup_step_url($u, 'manager') !== '') {
         return false;
     }
     sql('UPDATE users SET verified_at = ? WHERE id = ?', [now(), $id]);
@@ -614,10 +621,12 @@ function admin_user(int $id): string
     if (!$u) {
         return '<p>Narys nerastas. <a href="/admin?tab=users">Visi nariai</a></p>';
     }
-    $worker = $u['kind'] === 'worker';
+    // A member with both sides gets both parts below.
+    $worker = has_side($u, 'worker');
+    $manager = has_side($u, 'manager');
     $back = '/admin?tab=user&id='.$id;
     $facts = [
-        'Tipas' => $worker ? 'Darbuotojas' : 'Darbdavys',
+        'Tipas' => e(admin_kind_label($u)),
         'El. paštas' => e($u['email']),
         'Telefonas' => e($u['phone'] ?: '–'),
         'Registruotas' => e(substr($u['created_at'], 0, 16)),
@@ -626,7 +635,7 @@ function admin_user(int $id): string
         'Sutiko su taisyklėmis' => $u['terms_accepted_at'] ? e(substr($u['terms_accepted_at'], 0, 16).' (redakcija '.$u['terms_version'].')').($u['terms_version'] !== TERMS_VERSION ? ' – <strong>senesnė redakcija</strong>' : '') : 'Dar nesutiko',
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
-    if (!$worker) {
+    if ($manager) {
         $missing = array_keys(array_filter(['vardas ir pavardė' => $u['name'] === '', 'darbovietė' => !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$id])->fetchColumn()]));
         $facts['Patvirtinimas'] = match (true) {
             (bool) $u['verified_at'] => 'Patvirtintas '.e(substr($u['verified_at'], 0, 10)),
@@ -649,7 +658,7 @@ function admin_user(int $id): string
         $html .= '<dt>'.$k.'</dt><dd>'.$v.'</dd>';
     }
     $html .= '</dl>'.($u['about'] ? '<p>'.nl2br(e($u['about'])).'</p>' : '');
-    if (!$worker) {
+    if ($manager) {
         $venues = sql('SELECT v.*, (SELECT COUNT(*) FROM requests r WHERE r.venue_id = v.id) AS requests FROM venues v WHERE v.manager_id = ? ORDER BY v.id', [$id])->fetchAll();
         $html .= '<h3>Darbovietės</h3>'.($venues ? '' : '<p class="meta">Darbovietės dar neužregistruotos.</p>');
         foreach ($venues as $v) {
@@ -663,7 +672,7 @@ function admin_user(int $id): string
                 .'<dt>Paieškų</dt><dd>'.(int) $v['requests'].'</dd></dl>'
                 .($v['about'] !== '' ? '<p>'.nl2br(e($v['about'])).'</p>' : '').venue_links_html($v).'</div>';
         }
-        if (!$u['verified_at'] && $venues && signup_step_url($u) === '') {
+        if (!$u['verified_at'] && $venues && signup_step_url($u, 'manager') === '') {
             $html .= '<div class="admin-decision"><p><strong>Ar darbovietė tikra?</strong> Patvirtintas darbdavys galės skelbti paieškas ir matyti į jas atsiliepusių darbuotojų paskyras.</p>'
                 .post_button($back, 'Patvirtinti darbdavį', ['action' => 'verify', 'id' => $id], 'btn', 'Patvirtinti šį darbdavį?').'</div>';
         }
@@ -678,7 +687,7 @@ function admin_user(int $id): string
         ? post_button($back, 'Atblokuoti', ['action' => 'unblock', 'id' => $id], 'btn small ghost')
         : post_button($back, 'Blokuoti', ['action' => 'block', 'id' => $id], 'btn small ghost', 'Užblokuotas narys negalės prisijungti. Tęsti?');
     $delete = post_button('/admin?tab=users', 'Ištrinti narį', ['action' => 'delete_user', 'id' => $id], 'btn small danger',
-        'Ištrinti '.($u['name'] ?: $u['email']).' ir visus jo duomenis'.($worker ? '' : ', darbovietes ir paieškas').'? To atšaukti negalima.');
+        'Ištrinti '.($u['name'] ?: $u['email']).' ir visus jo duomenis'.($manager ? ', darbovietes ir paieškas' : '').'? To atšaukti negalima.');
     return $html.'<h3>Paskyra</h3><div class="account-actions">'.$block.$delete.'</div>';
 }
 
@@ -744,7 +753,7 @@ function admin_reviews(): string
 function admin_waitlist(): string
 {
     $rows = sql('SELECT w.*, u.id AS user_id FROM waitlist w LEFT JOIN users u ON u.email = w.email ORDER BY w.created_at DESC LIMIT 2000')->fetchAll();
-    $profiles = (int) sql("SELECT COUNT(*) FROM users WHERE kind = 'worker' AND blocked = 0 AND roles <> '' AND name <> ''")->fetchColumn();
+    $profiles = (int) sql('SELECT COUNT(*) FROM users WHERE '.side_sql('worker')." AND blocked = 0 AND roles <> '' AND name <> ''")->fetchColumn();
     $pending = waitlist_pending();
     $invite = $pending ? post_button('/admin?tab=waitlist', 'Pakviesti užsiregistruoti ('.$pending.')', ['action' => 'invite_waitlist', 'id' => 0], 'btn small',
         'Išsiųsti kvietimą užsiregistruoti visiems sąraše esantiems, kurie paskyros dar nesusikūrė ir kvietimo negavo?') : '<p class="meta">Visi kvietimai išsiųsti.</p>';

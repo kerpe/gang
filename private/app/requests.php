@@ -150,7 +150,7 @@ function venue_form_page(?int $id = null): never
     $first = !$venue && !sql('SELECT 1 FROM venues WHERE manager_id = ?', [$u['id']])->fetchColumn();
     $cancel = $first ? '' : '<a class="btn ghost" href="'.($venue ? '/darboviete/'.(int) $venue['id'] : '/mano').'">Atšaukti</a>';
     $step = $first ? onboarding_step(2) : '';
-    page($title, '<section class="wrap venue-edit">'.$step.'<h1>'.$title.'</h1>'
+    page($title, '<section class="wrap venue-edit">'.($first ? side_switch($u) : '').$step.'<h1>'.$title.'</h1>'
         .'<form method="post" class="form venue-form" enctype="multipart/form-data" novalidate>'.csrf_field()
         .$body
         .'<div class="form-actions"><button class="btn">'.($venue ? 'Išsaugoti pakeitimus' : 'Užregistruoti darbovietę').'</button>'.$cancel.'</div></form></section>'
@@ -522,7 +522,7 @@ function venue_type_text(array $venue): string
 // Ratings and reliability of a venue are for workers (and the venue itself), not for other employers.
 function sees_venue_reviews(?array $u, array $venue): bool
 {
-    return $u && ($u['kind'] === 'worker' || (int) $venue['manager_id'] === (int) $u['id'] || is_admin($u));
+    return $u && (has_side($u, 'worker') || (int) $venue['manager_id'] === (int) $u['id'] || is_admin($u));
 }
 
 // The venue's description is public: everyone, signed in or not, sees it. Phone and e-mail are never shown here.
@@ -963,7 +963,7 @@ function request_page(int $id): never
         // Workers see the venue's name and address in the "Apie darbovietę" card; the owner has no such card.
         .($owner ? '<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
             .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>' : '')
-        .($venueReliable !== null && $u && $u['kind'] === 'worker' ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '')
+        .($venueReliable !== null && has_side($u, 'worker') ? '<div><dt>Darbdavio patikimumas</dt><dd>'.$venueReliable.' % sutartų darbų įvyko</dd></div>' : '')
         // What the job offers closes the facts card, so the right column reads as one whole.
         .($perks !== '' ? '<div class="job-perks"><dt>Darbuotojams siūlome</dt><dd>'.$perks.'</dd></div>' : '').'</dl>';
     $venue = sql('SELECT * FROM venues WHERE id = ?', [$r['venue_id']])->fetch();
@@ -1063,7 +1063,7 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
     if (!$u) {
         return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
-    if ($u['kind'] !== 'worker') {
+    if (!has_side($u, 'worker')) {
         return '';
     }
     $mine = sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$r['id'], $u['id']])->fetch();
@@ -1091,9 +1091,10 @@ function worker_panel(array $r, ?array $u, bool $isOpen): string
         return '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
     // The employer sees the candidate's name, roles and experience, so the profile comes first.
-    if (!profile_complete($u)) {
+    if (!profile_complete($u, 'worker')) {
         return '<div class="panel apply-panel" id="atsiliepti"><h2>Atsiliepti į pasiūlymą</h2><p>Prieš teikdami kandidatūrą, užpildykite paskyros duomenis: darbdavys matys jūsų vardą, pareigas ir patirtį.</p>'
-            .'<p><a class="btn" href="/profilis">Užpildyti paskyrą</a></p></div>';
+            // A member on the employer side first moves to the worker side, where /profilis has the worker fields.
+            .'<p>'.($u['kind'] === 'worker' ? '<a class="btn" href="/profilis">Užpildyti paskyrą</a>' : post_button('/mano/puse', 'Užpildyti paskyrą', ['side' => 'worker'], 'btn')).'</p></div>';
     }
     $below = (int) $r['min_experience'] > 1 && (role_experience((int) $u['id'])[$r['role']] ?? 0) < (int) $r['min_experience']
         ? '<p class="notice tip">Darbdavio reikalaujama patirtis: '.e(mb_strtolower(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '')).'. Jūsų paskyroje šioms pareigoms nurodyta mažesnė patirtis, todėl rekomenduojame žinutėje trumpai paaiškinti, kodėl šis darbas jums tinka.</p>'
@@ -1129,7 +1130,7 @@ function application_state(array $r, array $mine): string
 function application_state_poll(int $id): never
 {
     $u = current_user();
-    $r = $u && $u['kind'] === 'worker' ? find_request($id) : null;
+    $r = has_side($u, 'worker') ? find_request($id) : null;
     $mine = $r ? sql('SELECT * FROM responses WHERE request_id = ? AND worker_id = ?', [$id, $u['id']])->fetch() : false;
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -1339,7 +1340,7 @@ function owner_panel(array $r, bool $isOpen): string
             .'</div><div class="actions">'.$buttons.'</div>'.$chat.'</div>';
     }
     $list .= $chats ? chat_script() : '';
-    $total = matching_workers_count($r['role'], $r['city'], (int) $r['min_experience'], $r['kind']);
+    $total = matching_workers_count($r['role'], $r['city'], (int) $r['min_experience'], $r['kind'], (int) $r['manager_id']);
     $leftover = leftover_question($r, $isOpen);
     $reach = $leftover.'<ul class="reach"><li><b>'.(int) $r['notified'].'</b> gavo pranešimą el. paštu</li><li><b>'.$total.'</b> tinkami darbuotojai mieste</li></ul>';
     $status = ['open' => 'Aktyvi', 'filled' => 'Užpildyta', 'cancelled' => 'Atšaukta', 'expired' => 'Pasibaigusi'][$r['status']] ?? $r['status'];
@@ -1643,6 +1644,11 @@ function respond_action(int $id): never
     if (!$r || !sql("SELECT 1 FROM requests r WHERE r.id = ? AND $where", array_merge([$id], $params))->fetchColumn()) {
         not_found();
     }
+    // A member with both sides cannot apply to a job of their own venue.
+    if ((int) $r['manager_id'] === (int) $u['id']) {
+        flash('Tai jūsų darbovietės paieška, todėl į ją kandidatuoti negalite.');
+        redirect('/darbas/'.$id);
+    }
     if (!profile_complete($u)) {
         flash('Prieš teikdami kandidatūrą, užpildykite paskyros duomenis.');
         redirect('/profilis');
@@ -1852,13 +1858,13 @@ function verification_requested(array $u, int $venueId): void
 function worker_profile_page(int $id): never
 {
     $u = is_admin() ? current_user() : require_user();
-    $w = sql("SELECT * FROM users WHERE id = ? AND kind = 'worker'", [$id])->fetch();
+    $w = sql('SELECT * FROM users WHERE id = ? AND '.side_sql('worker'), [$id])->fetch();
     if (!$w) {
         not_found();
     }
     if (!sees_worker_profile($u, $id)) {
         flash(match (true) {
-            $u['kind'] !== 'manager' => 'Darbuotojų paskyras gali peržiūrėti tik darbdaviai.',
+            !has_side($u, 'manager') => 'Darbuotojų paskyras gali peržiūrėti tik darbdaviai.',
             default => 'Darbuotojo paskyrą matysite, kai jis pateiks kandidatūrą į jūsų paiešką.',
         });
         redirect('/mano');

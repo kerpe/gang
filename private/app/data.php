@@ -152,6 +152,11 @@ function open_requests(array $filters = [], int $limit = 200): array
         $where .= " AND v.city IN ($in)";
         array_push($params, ...$filters['cities']);
     }
+    // Offers for a worker who is also an employer: not their own venues' jobs.
+    if (!empty($filters['not_manager'])) {
+        $where .= ' AND v.manager_id <> ?';
+        $params[] = (int) $filters['not_manager'];
+    }
     $order = "CASE WHEN r.kind <> 'nuolat' AND r.start_date <= ? THEN 0 ELSE 1 END, r.created_at DESC";
     $params[] = urgent_until();
     return sql(REQUEST_SELECT." WHERE $where ORDER BY $order LIMIT $limit", $params)->fetchAll();
@@ -262,10 +267,11 @@ function first_name(string $name): string
 // Emails every matching worker about a new request; available workers are told it is urgent first.
 function notify_workers(array $r, array $skip = []): int
 {
-    $workers = sql("SELECT * FROM users WHERE kind = 'worker' AND blocked = 0 AND notify = 1 AND cities LIKE ?
+    // Not the employer who posted it, if they are a worker too.
+    $workers = sql('SELECT * FROM users WHERE '.side_sql('worker')." AND id <> ? AND blocked = 0 AND notify = 1 AND cities LIKE ?
         AND (durations = '' OR durations LIKE ?)
         AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = users.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1)) LIMIT 500",
-        ['%,'.$r['city'].',%', '%,'.$r['kind'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
+        [(int) $r['manager_id'], '%,'.$r['city'].',%', '%,'.$r['kind'].',%', $r['role'], (int) $r['min_experience'], (int) $r['min_experience']])->fetchAll();
     // Workers who already applied or were told about the job.
     $workers = array_values(array_filter($workers, fn ($w) => !in_array((int) $w['id'], $skip, true)));
     [$subject, $mail] = job_offer_mail($r);
@@ -350,10 +356,10 @@ function job_mail_headers(array $w): array
 function matching_jobs(array $u): array
 {
     $xp = role_experience((int) $u['id']);
-    if ($u['kind'] !== 'worker' || !$xp || from_list($u['cities']) === []) {
+    if (!has_side($u, 'worker') || !$xp || from_list($u['cities']) === []) {
         return [];
     }
-    $jobs = open_requests(['roles' => array_keys($xp), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u)], 50);
+    $jobs = open_requests(['roles' => array_keys($xp), 'cities' => from_list($u['cities']), 'kinds' => worker_durations($u), 'not_manager' => (int) $u['id']], 50);
     return array_values(array_filter($jobs, fn ($r) => (int) $r['min_experience'] <= 1 || ($xp[$r['role']] ?? 0) >= (int) $r['min_experience']));
 }
 
@@ -363,7 +369,7 @@ function matching_jobs(array $u): array
 // matching are emailed, so editing the about text sends nothing.
 function notify_worker_of_open_jobs(array $u, array $before = []): int
 {
-    if ($u['kind'] !== 'worker' || (int) $u['blocked'] || !(int) $u['notify']) {
+    if (!has_side($u, 'worker') || (int) $u['blocked'] || !(int) $u['notify']) {
         return 0;
     }
     $seen = array_map('intval', sql('SELECT request_id FROM job_mails WHERE worker_id = ?
@@ -402,11 +408,12 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
 }
 
 // How many workers match the role, city, experience and duration.
-function matching_workers_count(string $role, string $city, int $minExperience = 1, string $kind = ''): int
+// $exclude: the employer asking, when they are a worker too.
+function matching_workers_count(string $role, string $city, int $minExperience = 1, string $kind = '', int $exclude = 0): int
 {
-    return (int) sql("SELECT COUNT(*) FROM users u
-        WHERE kind = 'worker' AND blocked = 0 AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
-        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", ['%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetchColumn();
+    return (int) sql('SELECT COUNT(*) FROM users u
+        WHERE '.side_sql('worker', 'u')." AND u.id <> ? AND blocked = 0 AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
+        AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$exclude, '%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetchColumn();
 }
 
 // The worker's GANG work: confirmed, not cancelled contracts, per day from $from. [day => [contract, …]], sorted.
@@ -471,7 +478,7 @@ function roles_with_experience(int $userId): string
 // or open worker profiles.
 function manager_verified(array $u): bool
 {
-    return $u['kind'] === 'manager' && !empty($u['verified_at']);
+    return has_side($u, 'manager') && !empty($u['verified_at']);
 }
 
 // A worker who applied to one of the employer's searches or worked for them.
@@ -484,7 +491,7 @@ function manager_knows_worker(int $managerId, int $workerId): bool
 // Worker profiles and photos: the worker, GANG, and employers the worker applied to or worked for. Only checked employers can publish searches, so only they get applicants.
 function sees_worker_profile(?array $u, int $workerId): bool
 {
-    return is_admin() || ($u && (int) $u['id'] === $workerId) || ($u && $u['kind'] === 'manager' && manager_knows_worker((int) $u['id'], $workerId));
+    return is_admin() || ($u && (int) $u['id'] === $workerId) || (has_side($u, 'manager') && manager_knows_worker((int) $u['id'], $workerId));
 }
 
 // Words for the personal link /k/{word}: what the person does, a noun of honour with a wink.
