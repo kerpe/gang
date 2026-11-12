@@ -162,6 +162,7 @@ function venue_form_page(?int $id = null): never
 // A closing time at or before the opening time is past midnight. Older free-text hours stay as typed
 // until the employer edits the venue.
 const WEEKDAYS_ROMAN = [1 => 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+const WEEKDAYS_SHORT_EN = [1 => 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const WEEKDAYS_FULL = [1 => 'Pirmadienis', 'Antradienis', 'Trečiadienis', 'Ketvirtadienis', 'Penktadienis', 'Šeštadienis', 'Sekmadienis'];
 
 // Every half hour of the day, from 06:00 round to 05:30: the list opens where venues open, and
@@ -261,8 +262,13 @@ function venue_hours_parse(string $text): ?array
 }
 
 // One line per group of days on venue pages: "I–IV 12:00–23:00" / "V–VI 12:00–02:00".
+// Stored with Roman day numbers (the form reads them back); shown with short day names: "Pr–Kt 12:00–23:00".
 function venue_hours_html(string $text): string
 {
+    if (venue_hours_parse($text) !== null) {
+        $short = lang() === 'en' ? WEEKDAYS_SHORT_EN : WEEKDAYS_SHORT;
+        $text = preg_replace_callback('/\b(?:VII|VI|IV|V|III|II|I)\b/u', fn ($m) => $short[array_search($m[0], WEEKDAYS_ROMAN, true)], $text);
+    }
     return implode('<br>', array_map('e', explode('; ', $text)));
 }
 
@@ -1010,20 +1016,27 @@ function request_page(int $id): never
             'jobLocation' => ['@type' => 'Place', 'address' => ['@type' => 'PostalAddress'] + (trim($r['address']) !== '' ? ['streetAddress' => trim($r['address'])] : []) + ['addressLocality' => $city, 'addressCountry' => 'LT']],
         ] + ($rate > 0 ? ['baseSalary' => ['@type' => 'MonetaryAmount', 'currency' => 'EUR', 'value' => ['@type' => 'QuantitativeValue', 'value' => $rate, 'unitText' => 'HOUR']]] : []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG).'</script>';
     }
+    // The title sits on the photo, so the pay and the apply button fit on the first screen (audit 2026-11-12).
     $photo = job_photo($r, 'job-banner');
+    $venueLine = $owner ? '' : '<p class="job-venue">'.e($r['venue_name']).' · '.e($city).'</p>';
+    // On a computer the pay card carries its own button to the apply form (phones have the bar at the bottom).
+    $applyBtn = str_contains($action, 'apply-panel') ? '<p class="job-apply"><a class="btn" href="#atsiliepti">Pateikti kandidatūrą</a></p>' : '';
+    $topClass = $photo !== '' ? 'job-top has-photo' : 'job-top';
     page("$role – {$r['venue_name']}, $city", <<<HTML
 <article class="wrap job">
   <p class="back"><a href="/darbai">← Visi darbo pasiūlymai</a></p>
-  $photo
-  <header class="job-head">
-    <p class="job-tags">$kindTag$eventTag</p>
-    <h1>{$e($role)}</h1>$eventLine
-  </header>
+  <div class="$topClass">
+    $photo
+    <header class="job-head">
+      <p class="job-tags">$kindTag$eventTag</p>
+      <h1>{$e($role)}</h1>$eventLine$venueLine
+    </header>
+  </div>
   <div class="job-grid">
-    <div class="job-side job-card">$payBox$facts</div>
+    <div class="job-side job-card">$payBox$applyBtn$facts</div>
     <div class="job-main">
-      $venueSec
       <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      $venueSec
       $event
       $action
     </div>
@@ -1061,7 +1074,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
 function worker_panel(array $r, ?array $u, bool $isOpen): string
 {
     if (!$u) {
-        return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą ir atsiliepti</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
+        return $isOpen ? '<div class="panel apply-panel" id="atsiliepti"><h2>Šis pasiūlymas jums tinka?</h2><p>Atsiliepti į darbo pasiūlymus gali registruoti GANG nariai. Registracija trunka vos kelias minutes.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas&amp;grizti=/darbas/'.(int) $r['id'].'">Susikurti paskyrą ir atsiliepti</a> <a href="/prisijungti?grizti=/darbas/'.(int) $r['id'].'">Jau turiu paskyrą</a></p></div>' : '<div class="panel"><p>Šis darbo pasiūlymas nebegalioja.</p></div>';
     }
     if (!has_side($u, 'worker')) {
         return '';
