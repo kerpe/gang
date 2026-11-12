@@ -88,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=97">
+<link rel="stylesheet" href="/style.css?v=100">
 $head
 </head>
 <body$bodyClass>
@@ -296,7 +296,7 @@ function starts_in(string $date): string
 }
 
 // Home page "live feed" card (2026-11-11): the role's CCTV photo on top with the duration chip
-// (and "Rytoj" / "Po 2 d." when the work starts soon), the venue logo on the photo's edge, then the role,
+// (and "Rytoj" / "Po 2 d." when the work starts soon), the venue logo in the text block's top right corner beside the role,
 // workplace, pay and start date. Phones show it as a row: a square photo on the left, text on the right.
 function request_card_short(array $r): string
 {
@@ -313,7 +313,7 @@ function request_card_short(array $r): string
     $soon = request_urgent($r) ? starts_in($from) : '';
     $keys = ROLE_PHOTOS[$r['role']] ?? [];
     $key = $keys ? $keys[(int) $r['id'] % count($keys)] : '';
-    $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=3" srcset="/img/job-'.$key.'-sm.jpg?v=3 640w, /img/job-'.$key.'.jpg?v=3 960w" sizes="(max-width: 640px) 104px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
+    $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=3" srcset="/img/job-'.$key.'-sm.jpg?v=3 640w, /img/job-'.$key.'.jpg?v=3 960w" sizes="(max-width: 380px) 100px, (max-width: 640px) 136px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
     return '<a class="card feed-card" href="/darbas/'.(int) $r['id'].'">'
         .'<div class="feed-media">'.$img
         .'<span class="feed-chips"><span class="feed-chip">'.e($kind).'</span>'.($soon !== '' ? '<span class="feed-chip soon">'.e($soon).'</span>' : '').'</span>'
