@@ -88,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=98">
+<link rel="stylesheet" href="/style.css?v=99">
 $head
 </head>
 <body$bodyClass>
@@ -296,7 +296,7 @@ function starts_in(string $date): string
 }
 
 // Home page "live feed" card (2026-11-11): the role's CCTV photo on top with the duration chip
-// (and "Rytoj" / "Po 2 d." when the work starts soon), the venue logo on the photo's edge (phones: the card's top right corner), then the role,
+// (and "Rytoj" / "Po 2 d." when the work starts soon), the venue logo in the text block's top right corner beside the role,
 // workplace, pay and start date. Phones show it as a row: a square photo on the left, text on the right.
 function request_card_short(array $r): string
 {

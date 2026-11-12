@@ -1196,8 +1196,9 @@ table.data td.actions form + form { margin-left: 6px; }
 .feed-chip.soon { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
 .feed-go { position: absolute; z-index: 1; top: 10px; right: 10px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
   background: var(--lime); color: var(--lime-ink); opacity: 0; transform: translate(-6px, 6px) scale(.8); transition: opacity .25s, transform .35s cubic-bezier(.2,.7,.2,1); }
-.feed-body { position: relative; display: flex; flex-direction: column; flex: 1; padding: 34px 20px 18px; }
-.feed-body .avatar.feed-logo { position: absolute; top: -26px; left: 20px; width: 52px; height: 52px; border-radius: 12px; font-size: 1.05rem; border: 3px solid var(--surface); box-sizing: content-box; }
+.feed-body { position: relative; display: flex; flex-direction: column; flex: 1; padding: 20px 20px 18px; }
+.feed-body .avatar.feed-logo { position: absolute; top: 18px; right: 18px; width: 52px; height: 52px; border-radius: 12px; font-size: 1.05rem; box-sizing: border-box; }
+.feed-body h3, .feed-venue { padding-right: 64px; }
 .feed-body .avatar.venue-logo.none.feed-logo { font-size: 1.3rem; }
 .feed-body h3 { overflow-wrap: normal; hyphens: manual; font: 400 clamp(1.6rem, 2.2vw, 2rem)/1 var(--display); text-transform: uppercase; letter-spacing: .01em; margin: 0 0 6px; }
 .feed-venue { margin: 0; color: var(--muted); font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1222,7 +1223,7 @@ table.data td.actions form + form { margin-left: 6px; }
   .feed-media::after { background: repeating-linear-gradient(0deg, rgba(0,0,0,.16) 0 1px, transparent 1px 3px), linear-gradient(90deg, transparent 60%, rgba(30,29,27,.5)); }
   .feed-chips, .feed-go { display: none; }
   .feed-body { position: relative; padding: 12px 14px; }
-  .feed-body .avatar.feed-logo { top: 12px; right: 12px; left: auto; width: 44px; height: 44px; border-radius: 10px; border: 0; font-size: .95rem; }
+  .feed-body .avatar.feed-logo { top: 12px; right: 12px; width: 44px; height: 44px; border-radius: 10px; font-size: .95rem; }
   .feed-body h3, .feed-venue { padding-right: 52px; }
   .feed-body .avatar.venue-logo.none.feed-logo { font-size: 1.1rem; }
   .feed-body h3 { font-size: 1.45rem; margin-bottom: 2px; }
