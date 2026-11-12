@@ -102,6 +102,13 @@ function profile_page(): never
             }
             // One sentence about the emails: either some offers went out just now or they will come later.
             $jobsNote = !empty($jobsMailed) ? ' Jums tinkančius darbo pasiūlymus išsiuntėme el. paštu.' : ($first ? ' Apie jums tinkančius darbo pasiūlymus pranešime el. paštu.' : '');
+            // Signed up from a job ad: straight back to it, so the application is one click away.
+            $back = $worker && $first ? (string) ($_SESSION['after_login'] ?? '') : '';
+            if (str_starts_with($back, '/darbas/')) {
+                unset($_SESSION['after_login']);
+                flash('Paskyra paruošta. Dabar galite pateikti kandidatūrą.');
+                redirect($back);
+            }
             flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : (!empty($u['dual']) ? 'Darbuotojo paskyra paruošta.' : 'Paskyra sukurta.')).$jobsNote);
             redirect('/mano');
         }
@@ -499,7 +506,7 @@ function worker_dashboard(array $u): string
         (bool) $check => ['warn', ($check['shift_date'] === today() ? 'Šiandien' : 'Rytoj').' dirbate', $what($check).'. Patvirtinkite, kad atvyksite.', '/pamaina/'.$check['token'], 'Patvirtinti atvykimą'],
         (bool) $toReview => ['', 'Įvertinkite darbą', $what($toReview[0]).'. Jūsų įvertinimas padeda kitiems kolegoms.', '/vertinti/'.(int) $toReview[0]['id'], 'Įvertinti'],
         (bool) $upcoming => ['', 'Kitas darbas', $what($upcoming[0]).', '.rtrim(period($upcoming[0]), '.').'.', '/darbas/'.(int) $upcoming[0]['request_id'], 'Darbo informacija'],
-        (bool) $jobs => ['', 'Jums tinkantys pasiūlymai', 'Pasiūlymų pagal jūsų pareigas ir miestus: '.count($jobs).'.', '/mano/pasiulymai', 'Peržiūrėti'],
+        // Matching offers are shown as cards below, so they need no "next step" card of their own.
         // Nothing to do now: no card at all.
         default => null,
     };
@@ -513,6 +520,10 @@ function worker_dashboard(array $u): string
     return ($next ? next_step(...$next) : '').$tiles
         .($contractHtml ? '<h2 id="kontraktai">Mano GANG kontraktai</h2><div class="contracts">'.$contractHtml.'</div>' : '')
         .($pendingHtml ? '<h2 id="kandidaturos">Pateiktos kandidatūros</h2><div class="cards">'.$pendingHtml.'</div>' : '')
+        // The newest matching offers right here, not only as a number (audit 2026-11-12); the rest on /mano/pasiulymai.
+        .($jobs ? '<section class="mine-offers"><div class="section-head"><h2 id="pasiulymai">Jums tinkantys pasiūlymai</h2>'
+            .(count($jobs) > 3 ? '<a href="/mano/pasiulymai">Visi ('.count($jobs).') →</a>' : '').'</div>'
+            .'<div class="feed">'.implode('', array_map('request_card_short', array_slice($jobs, 0, 3))).'</div></section>' : '')
         .$calendar
         .invite_box($u);
 }
@@ -684,6 +695,11 @@ function gang_calendar_panel(array $u): string
     $list = implode('', array_map(fn ($c) => '<li><a href="/darbas/'.(int) $c['request_id'].'"><strong>'.e($c['kind'] === 'nuolat' ? 'nuo '.date_lt($c['days'][0]) : days_text($c['days'])).'</strong>'
         .'<span>'.e($c['venue_name'].' · '.(ROLES[$c['role']] ?? '')).($c['hours'] !== '' ? ' · '.e($c['hours']) : '').'</span></a></li>', array_slice($rows, 0, 12)));
     $later = $work && array_key_last($work) > $last ? '<p class="meta">Vėlesni darbai rodomi sąraše.</p>' : '';
+    // No confirmed work yet: a short note instead of three empty months.
+    if (!$work) {
+        return '<section class="panel gang-cal empty-cal" id="kalendorius"><h2>Mano GANG kalendorius</h2>'
+            .'<p class="meta">Kai darbdavys patvirtins jūsų kandidatūrą, darbo dienos atsiras čia. Teikiant kandidatūrą, GANG įspės, jei tomis dienomis jau turite darbą.</p></section>';
+    }
     return '<section class="panel gang-cal" id="kalendorius"><h2>Mano GANG kalendorius</h2>'
         .'<p class="meta">Čia automatiškai atsiranda darbai, kuriems darbdavys patvirtino jūsų kandidatūrą. Teikiant kandidatūrą, GANG įspės, jei tomis dienomis jau turite darbą.</p>'
         .'<div class="pick-months n3">'.$months.'</div>'

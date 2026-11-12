@@ -227,6 +227,10 @@ function login_page(): never
         // "Registruotis" in the menu has no role yet; remember that the visitor meant to sign up,
         // so an existing member can be told they already have an account.
         $_SESSION['signup_intent'] = isset($_GET['registruotis']) || $_SESSION['signup_kind'] !== '';
+        // Came from a job ad ("Susikurti paskyrą ir atsiliepti"): back to that ad once signed up.
+        if (preg_match('#^/darbas/\d+$#', (string) ($_GET['grizti'] ?? ''))) {
+            $_SESSION['after_login'] = $_GET['grizti'].'#atsiliepti';
+        }
     }
     if (current_user()) {
         redirect('/mano');

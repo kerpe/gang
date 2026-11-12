@@ -85,7 +85,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .wall-cell figure { position: absolute; inset: 0; margin: 0; opacity: 0; transition: opacity .9s ease; }
 .wall-cell figure.on { opacity: 1; }
 .wall-cell img { width: 100%; height: 100%; object-fit: cover; }
-.wall-cell figcaption { position: absolute; top: 10px; left: 12px; font: 600 .68rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
+.wall-cell figcaption { position: absolute; top: 10px; left: 12px; font: 600 .75rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
 /* The lower screens sit under the headline: their labels would run into the text. */
 .wall-cell:nth-child(n+3) figcaption { display: none; }
 @media (max-width: 1099px) {
@@ -151,7 +151,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .cam-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s ease; }
 .cam-tile:hover .cam-media img { transform: scale(1.04); }
 .cam-tile:hover .cam-media { border-color: var(--lime); }
-.cam-label { position: absolute; top: 10px; left: 12px; font: 600 .72rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
+.cam-label { position: absolute; top: 10px; left: 12px; font: 600 .75rem/1 ui-monospace, Menlo, monospace; letter-spacing: .15em; color: var(--ink); background: rgba(14,14,13,.6); padding: 5px 7px; border-radius: 3px; }
 .no-signal { position: absolute; inset: 0; display: grid; place-items: center; font: 600 .8rem/1 ui-monospace, Menlo, monospace; letter-spacing: .2em; text-transform: uppercase; color: var(--muted);
   background: repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 2px, transparent 2px 4px), radial-gradient(ellipse at center, #22211e, #0e0e0d 75%); }
 
@@ -179,6 +179,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .filters { grid-template-columns: 1fr; }
   .filters.auto { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
   .filters.auto [name=pareigos] { grid-column: 1 / -1; grid-row: 2; }
+}
+/* Phones from 380 px: the three filters in one row, so the offers start higher. */
+@media (min-width: 380px) and (max-width: 720px) {
+  .filters.auto { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; }
+  .filters.auto [name=pareigos] { grid-column: auto; grid-row: auto; }
+  .filters.auto select { font-size: .86rem; padding: 9px 6px; text-overflow: ellipsis; }
 }
 select, input, textarea { width: 100%; font: inherit; color: var(--ink); padding: 11px 12px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--bg); }
 input::placeholder, textarea::placeholder { color: #6f6b63; }
@@ -229,7 +235,7 @@ input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .back a:hover { color: var(--lime); }
 .facts { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0; }
 .facts li { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
-.facts b { display: block; font-size: .7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
+.facts b { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
 .desc { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; overflow-wrap: anywhere; }
 .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin: 24px 0; }
 .panel h2 { margin-top: 0; }
@@ -445,7 +451,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 
 /* Worker profile: roles with experience per role */
 .role-list { display: grid; gap: 8px; }
-.role-group { margin: 14px 0 0; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.role-group { margin: 14px 0 0; font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
 .role-group:first-child { margin-top: 4px; }
 .role-xp { display: grid; grid-template-columns: 1fr minmax(170px, 220px); gap: 10px; align-items: center; }
 .role-xp .choice { margin: 0; }
@@ -580,7 +586,7 @@ a.sum-tile:hover { border-color: var(--lime); }
 @media (max-width: 600px) { .sum-tiles:has(> :nth-child(4)) { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
 h2[id] { scroll-margin-top: 84px; }
 .contract-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px 20px; margin: 14px 0; }
-.contract-info dt { font-size: .7rem; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); font-weight: 600; }
+.contract-info dt { font-size: .75rem; text-transform: uppercase; letter-spacing: .15em; color: var(--muted); font-weight: 600; }
 .contract-info dd { margin: 2px 0 0; }
 .contract-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
 .panel.ok .contract { margin-top: 16px; background: var(--bg); }
@@ -597,7 +603,7 @@ h2[id] { scroll-margin-top: 84px; }
 .badge { border: 1px solid var(--line-strong); border-radius: 99px; padding: 3px 10px; font-size: .78rem; color: var(--muted); }
 .badge.on { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.1); color: var(--lime); font-weight: 600; }
 .responder.accepted { border-color: rgba(216,255,54,.45); }
-.note.added .note-when { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-style: normal; }
+.note.added .note-when { display: block; margin-bottom: 2px; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-style: normal; }
 .responder .note { font-style: normal; color: var(--ink); background: var(--surface); border-left: 3px solid var(--lime); padding: 8px 12px; border-radius: 0 8px 8px 0; }
 .owner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
 .owner-actions form { margin: 0; }
@@ -688,7 +694,7 @@ select, input:not([type=checkbox]):not([type=radio]):not([type=file]) { min-heig
 .job-card .pay-box { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 18px; }
 .job-card .job-facts { background: none; border: 0; border-radius: 0; }
 .pay-box { background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.45); border-radius: var(--radius); padding: 18px 20px; }
-.pay-box .label, .job-sec h2, .job-facts dt { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.pay-box .label, .job-sec h2, .job-facts dt { display: block; font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
 .pay-box strong { display: block; font-size: 2.4rem; line-height: 1.1; color: var(--lime); margin: 6px 0 2px; }
 .pay-box strong.text { font-size: 1.3rem; }
 .pay-box .unit { color: var(--muted); }
@@ -833,10 +839,10 @@ table.data td.actions form + form { margin-left: 6px; }
 .venue-links { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 12px 0 0; }
 .venue-links a { display: inline-flex; gap: 8px; align-items: baseline; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 999px; text-decoration: none; font-size: .9rem; }
 .venue-links a:hover { border-color: var(--lime); }
-.link-kind { color: var(--muted); font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
+.link-kind { color: var(--muted); font-size: .75rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; }
 .venue-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 22px 0; }
 .venue-facts > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
-.venue-facts dt { font-size: .7rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
+.venue-facts dt { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-bottom: 2px; }
 .venue-facts dd { margin: 0; }
 .perk-list { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .perk-list li { padding: 7px 14px; border-radius: 8px; background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.35); font-size: .92rem; }
@@ -903,7 +909,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .venue-box .desc { margin: 16px 0 0; padding: 0; background: none; border: 0; }
 .venue-box .venue-facts { margin: 16px 0 0; }
 .venue-box .venue-facts > div { background: var(--surface-2); }
-.venue-box h3 { margin: 18px 0 8px; font-family: inherit; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.venue-box h3 { margin: 18px 0 8px; font-family: inherit; font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
 .venue-box .perk-list { margin: 0; }
 .job-perks .perk-list { margin: 8px 0 2px; gap: 6px; }
 .job-perks .perk-list li { padding: 5px 11px; font-size: .86rem; }
@@ -958,14 +964,14 @@ table.data td.actions form + form { margin-left: 6px; }
 .chat.here .chat-presence { display: inline; }
 @keyframes chat-pulse { 0% { box-shadow: 0 0 0 0 rgba(216,255,54,.55); } 70% { box-shadow: 0 0 0 9px rgba(216,255,54,0); } 100% { box-shadow: 0 0 0 0 rgba(216,255,54,0); } }
 @media (prefers-reduced-motion: reduce) { .chat-dot { animation: none; } }
-.chat-label { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.chat-label { font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
 .chat-list { display: flex; flex-direction: column; gap: 6px; max-height: 380px; min-height: 120px; overflow-y: auto; padding: 16px; overscroll-behavior: contain; scroll-behavior: smooth; }
 .chat-empty { margin: auto; max-width: 34ch; text-align: center; color: var(--muted); font-size: .9rem; }
-.chat-day { text-align: center; margin: 8px 0 4px; font-size: .72rem; color: var(--muted); }
+.chat-day { text-align: center; margin: 8px 0 4px; font-size: .75rem; color: var(--muted); }
 .chat-day span { background: var(--surface-2); border-radius: 999px; padding: 3px 10px; }
 .msg { align-self: flex-start; max-width: min(78%, 520px); background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px 16px 16px 4px; padding: 9px 13px 6px; }
 .msg p { margin: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.45; }
-.msg-time { display: block; margin-top: 3px; font-size: .68rem; color: var(--muted); text-align: right; }
+.msg-time { display: block; margin-top: 3px; font-size: .75rem; color: var(--muted); text-align: right; }
 .msg.mine { align-self: flex-end; background: var(--lime); border-color: var(--lime); color: var(--lime-ink); border-radius: 16px 16px 4px 16px; }
 .msg.mine .msg-time { color: rgba(21,21,21,.6); }
 .chat-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 12px 12px; border-top: 1px solid var(--line); background: var(--bg); }
@@ -975,7 +981,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .chat-send:disabled { opacity: .5; cursor: wait; }
 .chat-closed { padding: 12px 16px; margin: 0; border-top: 1px solid var(--line); }
 @media (max-width: 600px) { .chat-label { display: none; } .msg { max-width: 88%; } .chat-list { max-height: 60vh; } }
-.msg-tag { display: block; margin-bottom: 3px; font-size: .66rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
+.msg-tag { display: block; margin-bottom: 3px; font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; opacity: .65; }
 
 /* Employer's first steps: "Žingsnis 1 iš 3" above the form. */
 .onboard { list-style: none; padding: 0; margin: 0 0 18px; display: flex; gap: 6px; counter-reset: o; }
@@ -983,7 +989,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .onboard li::before { content: counter(o) ". "; }
 .onboard li.done { border-color: var(--lime); }
 .onboard li.now { border-color: var(--lime); color: var(--ink); font-weight: 700; }
-.onboard li small { display: block; font-size: .72rem; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.onboard li small { display: block; font-size: .75rem; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
 
 /* Changed job terms: the candidate confirms them again */
 .badge.wait { border-color: rgba(255,101,74,.45); background: rgba(255,101,74,.08); color: var(--ink); }
@@ -1046,7 +1052,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .msg.sticker .msg-reacts { bottom: 14px; }
 .react-chip { display: inline-flex; box-shadow: 0 2px 6px rgba(0,0,0,.35); align-items: center; gap: 2px; padding: 3px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--lime); cursor: pointer; font: inherit; line-height: 1; }
 .react-chip .ge { width: 17px; height: 17px; }
-.react-chip small { font-size: .7rem; color: var(--muted); }
+.react-chip small { font-size: .75rem; color: var(--muted); }
 .react-chip.by-me { border-color: var(--lime); }
 .react-chip:disabled { cursor: default; }
 .react-add { position: absolute; top: 50%; translate: 0 -50%; right: -34px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); display: grid; place-items: center; cursor: pointer; opacity: 0; transition: opacity .15s, color .15s; }
@@ -1061,7 +1067,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .chat-emoji svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; }
 .chat-emoji:hover, .chat-emoji[aria-expanded="true"] { color: var(--lime); transform: rotate(-10deg); }
 .emoji-panel { position: absolute; z-index: 5; left: 12px; right: 12px; max-width: 460px; margin-left: auto; background: var(--bg); border: 1px solid rgba(216,255,54,.45); border-radius: 14px; padding: 8px 10px 10px; box-shadow: 0 14px 40px rgba(0,0,0,.5); }
-.emoji-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 6px; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.emoji-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 6px; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .emoji-close { border: 0; background: none; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer; padding: 0 4px; }
 .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
 .emoji-grid button { display: grid; place-items: center; aspect-ratio: 1; padding: 6px; border: 1px solid transparent; border-radius: 10px; background: none; color: var(--lime); cursor: pointer; font: inherit; }
@@ -1163,7 +1169,26 @@ table.data td.actions form + form { margin-left: 6px; }
 .card-photo img { transition: transform .5s ease; }
 .job-card.has-photo:hover .card-photo img { transform: scale(1.04); }
 .card-photo .cam-label { top: 8px; left: 10px; font-size: .64rem; }
-@media (min-width: 700px) { .job-banner { aspect-ratio: 5 / 2; margin-bottom: 28px; } }
+/* Job page top: the title lies on the lower edge of the photo, so pay and the apply button stay on the first screen. */
+.job-top { margin-bottom: 26px; }
+.job-top .job-head { margin: 0; }
+.job-top.has-photo { position: relative; }
+.job-top.has-photo .job-banner { margin: 0; aspect-ratio: 16 / 11; }
+.job-top.has-photo .job-banner::after { background: linear-gradient(180deg, rgba(14,14,13,.35), transparent 30%, rgba(14,14,13,.55) 62%, rgba(14,14,13,.94)); }
+.job-top.has-photo .job-head { position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 0 18px 16px; }
+.job-top.has-photo h1 { margin-bottom: 4px; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+.job-venue { margin: 0; color: var(--ink); font-weight: 600; }
+.job-top:not(.has-photo) .job-venue { color: var(--muted); }
+.job-apply { display: none; }
+@media (min-width: 700px) {
+  .job-top.has-photo .job-banner { aspect-ratio: 3 / 1; }
+  .job-top.has-photo .job-banner img { object-position: center 40%; }
+  .job-top.has-photo .job-head { padding: 0 28px 22px; }
+}
+@media (min-width: 900px) {
+  .job-apply { display: block; margin: 0; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .job-apply .btn { width: 100%; text-align: center; }
+}
 @media (prefers-reduced-motion: reduce) { .card-photo img { transition: none; } }
 
 /* Home "live feed" of the newest offers (request_card_short): photo on top, logo on its edge, pay and date at the bottom.
@@ -1191,7 +1216,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .feed-card:focus-visible .feed-go { opacity: 1; transform: none; }
 .feed-card:active { transform: scale(.985); }
 .feed-chips { position: absolute; z-index: 1; top: 12px; left: 12px; display: flex; gap: 6px; }
-.feed-chip { font: 600 .7rem/1 "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); padding: 6px 9px; border-radius: 99px;
+.feed-chip { font: 600 .75rem/1 "Inter", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--ink); padding: 6px 9px; border-radius: 99px;
   background: rgba(14,14,13,.55); border: 1px solid rgba(243,240,232,.18); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .feed-chip.soon { background: var(--lime); border-color: var(--lime); color: var(--lime-ink); }
 .feed-go { position: absolute; z-index: 1; top: 10px; right: 10px; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%;
@@ -1260,3 +1285,8 @@ table.data td.actions form + form { margin-left: 6px; }
 .side-add { margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--line); }
 .side-add .meta { margin: 0 0 10px; max-width: 60ch; }
 .side-add form { margin: 0; }
+
+/* Worker's Mano paskyra: the newest matching offers as cards (audit 2026-11-12) */
+.mine-offers .section-head { margin: 32px 0 14px; padding-top: 22px; }
+.mine-offers .section-head h2 { margin: 0; }
+.empty-cal .meta { margin-bottom: 0; }

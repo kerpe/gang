@@ -246,7 +246,8 @@ function jobs_page(): never
     ];
     $jobs = open_requests($f);
     $count = count($jobs);
-    $cards = $count ? '<div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>'
+    // The same cards as "Naujausi darbo pasiūlymai" on the home page: rows on a phone, so a list of offers stays scannable.
+    $cards = $count ? '<div class="feed">'.implode('', array_map('request_card_short', $jobs)).'</div>'
         : '<p class="empty">Pagal pasirinktus filtrus darbo pasiūlymų šiuo metu nėra. '.(current_user() ? '' : 'Susikūrę paskyrą, apie naujus pasiūlymus gausite pranešimą el. paštu. <a href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą</a>').'</p>';
     $cities = options(['' => 'Visi miestai'] + CITIES, $f['city']);
     $roles = options(['' => 'Visos pareigos'] + ROLES, $f['role']);

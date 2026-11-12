@@ -667,7 +667,7 @@ function admin_user(int $id): string
             $html .= '<div class="admin-venue"><div class="venue-card-head">'.venue_logo($v, 'small').'<strong>'.$name.'</strong></div><dl class="admin-facts">'
                 .'<dt>Tipas</dt><dd>'.e(venue_type_text($v) ?: '–').'</dd>'
                 .'<dt>Adresas</dt><dd>'.e(full_address($v) ?: '–').'</dd>'
-                .($v['hours'] !== '' ? '<dt>Darbo laikas</dt><dd>'.e($v['hours']).'</dd>' : '')
+                .($v['hours'] !== '' ? '<dt>Darbo laikas</dt><dd>'.venue_hours_html($v['hours']).'</dd>' : '')
                 .(isset(TEAM_SIZES[$v['team_size']]) ? '<dt>Komanda</dt><dd>'.e(TEAM_SIZES[$v['team_size']]).'</dd>' : '')
                 .'<dt>Paieškų</dt><dd>'.(int) $v['requests'].'</dd></dl>'
                 .($v['about'] !== '' ? '<p>'.nl2br(e($v['about'])).'</p>' : '').venue_links_html($v).'</div>';
