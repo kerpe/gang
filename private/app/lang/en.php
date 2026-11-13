@@ -25,6 +25,14 @@ return [
         'Uždaryti' => 'Close',
         'Naujos žinutės: {n}' => 'New messages: {n}',
         'GANG – darbas hospitality komandoms' => 'GANG – jobs for hospitality teams',
+        'GANG – darbas restoranuose, kavinėse, baruose ir klubuose' => 'GANG – jobs in restaurants, cafés, bars and clubs',
+        'Darbo pasiūlymai restoranuose, kavinėse, baruose ir klubuose: pavadavimai, sezoninis ir nuolatinis darbas. Darbdaviai čia greitai randa patikimus darbuotojus.' => 'Jobs in restaurants, cafés, bars and clubs: cover shifts, seasonal and permanent work. Employers find reliable staff here fast.',
+        'Aktualūs darbo pasiūlymai barmenams, padavėjams, virėjams ir kitiems HoReCa specialistams. Kiekviename skelbime – atlygis, datos ir darbo laikas.' => 'Current jobs for bartenders, waiters, cooks and other hospitality professionals. Every listing shows the pay, dates and working hours.',
+        'Darbas bare: barmenų, baristų ir baro vadovų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje, Palangoje ir kituose miestuose.' => 'Bar jobs: openings for bartenders, baristas and bar managers in Vilnius, Kaunas, Klaipėda, Palanga and other cities.',
+        'Darbas virtuvėje: šefų, virėjų, virtuvės pagalbinių darbuotojų ir indų plovėjų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje ir kituose miestuose.' => 'Kitchen jobs: openings for chefs, cooks, kitchen assistants and dishwashers in Vilnius, Kaunas, Klaipėda and other cities.',
+        'Darbas salėje: padavėjų, runnerių, administratorių ir restoranų vadovų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje ir kituose miestuose.' => 'Front-of-house jobs: openings for waiters, runners, hosts and restaurant managers in Vilnius, Kaunas, Klaipėda and other cities.',
+        'Kaip veikia GANG: darbdavys paskelbia paiešką, darbuotojai pateikia kandidatūras, darbdavys patvirtina tinkamiausią, o po darbo abu vienas kitą įvertina.' => 'How GANG works: the employer posts a job, workers apply, the employer confirms the best fit, and after the job both rate each other.',
+        'Kodėl atsirado GANG: platforma, kuri padeda restoranams, kavinėms, barams ir klubams rasti patikimus darbuotojus, o specialistams – tinkamą darbą.' => 'Why GANG exists: a platform that helps restaurants, cafés, bars and clubs find reliable staff, and professionals find the right job.',
         'GANG – platforma, padedanti restoranams, kavinėms, barams ir klubams greitai rasti patikimus darbuotojus skubiam pavadavimui, sezonui ar nuolatiniam darbui.' => 'GANG is a platform that helps restaurants, cafés, bars and clubs quickly find reliable staff for urgent cover, the season or a permanent job.',
         'GANG.lt – patikimi žmonės restoranams, kavinėms, barams ir klubams' => 'GANG.lt – reliable people for restaurants, cafés, bars and clubs',
         '– patikimi kolegos restoranams, kavinėms, barams ir klubams.' => '– reliable colleagues for restaurants, cafés, bars and clubs.',
@@ -1235,6 +1243,7 @@ return [
     'patterns' => [
         // Page titles: "Darbas · GANG".
         '/^(.+) · GANG$/u' => '{1} · GANG',
+        '/^(.+): aktualūs darbo pasiūlymai barmenams, padavėjams, virėjams ir kitiems HoReCa specialistams\. Kiekviename skelbime – atlygis, datos ir darbo laikas\.$/u' => '{1}: current jobs for bartenders, waiters, cooks and other hospitality professionals. Every listing shows the pay, dates and working hours.',
         '/^(.+): patirtis$/u' => '{1}: experience',
         '/^Perskaityta (\d{1,2}:\d{2})$/u' => 'Seen {1}',
         '/^Labas, (.+)! Ačiū, kad atsiliepei\. Norėčiau pasitikslinti kelis dalykus\.$/u' => 'Hi {1}! Thanks for applying. I would like to clarify a few things.',

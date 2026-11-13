@@ -6,7 +6,7 @@ function page(string $title, string $body, array $opt = []): never
 {
     $e = 'e';
     $desc = $opt['description'] ?? 'GANG – platforma, padedanti restoranams, kavinėms, barams ir klubams greitai rasti patikimus darbuotojus skubiam pavadavimui, sezonui ar nuolatiniam darbui.';
-    $fullTitle = $title === '' ? 'GANG – darbas hospitality komandoms' : $title.' · GANG';
+    $fullTitle = $title === '' ? 'GANG – darbas restoranuose, kavinėse, baruose ir klubuose' : $title.' · GANG';
     $robots = !empty($opt['noindex']) ? '<meta name="robots" content="noindex">' : '';
     $canonical = isset($opt['canonical']) ? '<link rel="canonical" href="'.e(url($opt['canonical'])).'">' : '';
     $head = $opt['head'] ?? '';
