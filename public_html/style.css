@@ -1239,9 +1239,8 @@ table.data td.actions form + form { margin-left: 6px; }
   .feed > .feed-card:nth-child(3n+2) { animation-range: entry 6% entry 41%; }
   .feed > .feed-card:nth-child(3n) { animation-range: entry 12% entry 47%; }
 }
-@media (max-width: 960px) { .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-/* Phones: one row per offer – a square photo on the left, text beside it, the venue logo in the card's top right corner. */
-@media (max-width: 640px) {
+/* Phones and tablets: one row per offer (three offers never split 2 + 1) – a square photo on the left, text beside it, the venue logo in the card's top right corner. */
+@media (max-width: 960px) {
   .feed { grid-template-columns: 1fr; gap: 10px; }
   .feed-card { display: grid; grid-template-columns: 136px minmax(0, 1fr); border-radius: 12px; }
   .feed-media { aspect-ratio: auto; height: 100%; min-height: 128px; }
