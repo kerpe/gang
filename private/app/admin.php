@@ -735,6 +735,9 @@ function admin_settings(): string
         .'<h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
         .'<form method="post" action="/admin?tab=settings" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
         .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
+    $log = private_root().'/data/errors.log';
+    $lines = is_file($log) ? array_slice(file($log, FILE_IGNORE_NEW_LINES) ?: [], -30) : [];
+    $html .= '<h2>Serverio klaidos</h2>'.($lines ? '<pre class="err-log">'.e(implode("\n", array_reverse($lines))).'</pre>' : '<p class="meta">Klaidų neužregistruota.</p>');
     return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Narių dabar: '.$test.'.</p>';
 }
 

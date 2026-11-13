@@ -1290,3 +1290,4 @@ table.data td.actions form + form { margin-left: 6px; }
 .mine-offers .section-head { margin: 32px 0 14px; padding-top: 22px; }
 .mine-offers .section-head h2 { margin: 0; }
 .empty-cal .meta { margin-bottom: 0; }
+.err-log { white-space: pre-wrap; font: .8rem/1.5 ui-monospace, Menlo, monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 360px; overflow: auto; }
