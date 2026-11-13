@@ -16,6 +16,7 @@ const TEAM_PAGES = [
         'slug' => 'baras',
         'about' => 'Apie barą',
         'title' => 'Darbas bare',
+        'description' => 'Darbas bare: barmenų, baristų ir baro vadovų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje, Palangoje ir kituose miestuose.',
         'heading' => 'Baras',
         'intro' => '<p>Baras – tai vieta, kurioje svečias pirmiausia pajunta, ar jis čia laukiamas. Barmenas vienu metu ruošia gėrimus, palaiko pokalbį ir mato visą salę, o baristas savo žiniomis paverčia paprastą užsakymą patirtimi.</p>'
             .'<p>Geram barui neužtenka gerų receptų – jam reikia žmonių, kurie išmano savo amatą ir moka priimti svečią, bet galiausiai barmeno meistriškumą svečias vis tiek pajus taurėje.</p>',
@@ -26,6 +27,7 @@ const TEAM_PAGES = [
         'slug' => 'virtuve',
         'about' => 'Apie virtuvę',
         'title' => 'Darbas virtuvėje',
+        'description' => 'Darbas virtuvėje: šefų, virėjų, virtuvės pagalbinių darbuotojų ir indų plovėjų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje ir kituose miestuose.',
         'heading' => 'Virtuvė',
         'intro' => '<p>Virtuvė – restorano širdis. Čia viskas priklauso nuo pasiruošimo, tikslumo ir komandos: kiekvienas žino savo vietą, o pamaina pavyksta tik tada, kai visi dirba kaip vienas.</p>'
             .'<p>Šefas, virėjai, virtuvės pagalbiniai darbuotojai ir indų plovėjai yra vienodai svarbios grandys. Be bet kurios iš jų lėkštė iki svečio nenukeliauja, todėl GANG padeda virtuvėms rasti žmones, su kuriais pamaina vyksta sklandžiai.</p>',
@@ -36,6 +38,7 @@ const TEAM_PAGES = [
         'slug' => 'aptarnavimas',
         'about' => 'Apie aptarnavimą',
         'title' => 'Darbas aptarnavime',
+        'description' => 'Darbas salėje: padavėjų, runnerių, administratorių ir restoranų vadovų darbo pasiūlymai Vilniuje, Kaune, Klaipėdoje ir kituose miestuose.',
         'heading' => 'Aptarnavimas',
         'intro' => '<p>Salėje susitinka maistas, gėrimai ir svečias, o visa komanda kuria vakaro nuotaiką: pasitinka, pataria ir pastebi, ko reikia, dar prieš paprašant.</p>'
             .'<p>Šio darbo esmė – rūpintis kitais žmonėmis ir puoselėti žmogiškumą.</p>'
@@ -234,7 +237,7 @@ $finalCta
   })();
 })();
 </script>
-HTML, ['canonical' => '/', 'head' => $preload]);
+HTML, ['canonical' => '/', 'head' => $preload, 'description' => 'Darbo pasiūlymai restoranuose, kavinėse, baruose ir klubuose: pavadavimai, sezoninis ir nuolatinis darbas. Darbdaviai čia greitai randa patikimus darbuotojus.']);
 }
 
 function jobs_page(): never
@@ -273,7 +276,10 @@ function jobs_page(): never
   <h2 class="sr-only">Darbo pasiūlymai</h2>
   $cards
 </section>
-HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
+HTML, [
+        'canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : ''),
+        'description' => ($f['city'] ? CITIES[$f['city']].': a' : 'A').'ktualūs darbo pasiūlymai barmenams, padavėjams, virėjams ir kitiems HoReCa specialistams. Kiekviename skelbime – atlygis, datos ir darbo laikas.',
+    ]);
 }
 
 // Two-column text page: sticky heading, CCTV photo and section index on the left,
@@ -281,7 +287,7 @@ HTML, ['canonical' => '/darbai'.($f['city'] ? '?miestas='.$f['city'] : '')]);
 // With $numbered = false the sections carry no numbers, headings or side index (Baras, Virtuvė, Salė).
 // $photos: keys of JOB_PHOTOS shown under the heading (the first large, the rest in a row); a section may carry
 // its own photo as a fourth element.
-function split_page(string $title, string $eyebrow, string $heading, array $photos, array $sections, string $canonical, bool $numbered = true, bool $cta = false): never
+function split_page(string $title, string $eyebrow, string $heading, array $photos, array $sections, string $canonical, bool $numbered = true, bool $cta = false, string $description = ''): never
 {
     $index = $body = '';
     foreach ($sections as $i => $sec) {
@@ -305,7 +311,7 @@ function split_page(string $title, string $eyebrow, string $heading, array $phot
         $body .= '<div class="split-cta">'.(current_user() ? '' : '<h2>Prisijunkite prie GANG</h2><p>Registracija trunka kelias minutes.</p>').join_cta('btn dark', 'btn dark ghost').'</div>';
     }
     page($title, '<div class="wrap split"><div class="side">'.($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '').'<h1>'.e($heading).'</h1>'.$photo
-        .$index.'</div><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical]);
+        .$index.'</div><div class="split-body">'.$body.'</div></div>', ['canonical' => $canonical] + ($description !== '' ? ['description' => $description] : []));
 }
 
 function team_page(string $n): never
@@ -318,7 +324,7 @@ function team_page(string $n): never
     split_page($t['title'], '', $t['heading'], TEAM_PHOTOS[$n], [
         ['apie', $t['about'], $t['intro'].$chips],
         ['gang', 'Darbas per GANG', $join],
-    ], '/'.$t['slug'], false);
+    ], '/'.$t['slug'], false, false, $t['description']);
 }
 
 function how_page(): never
@@ -334,7 +340,7 @@ function how_page(): never
             .'<li>Įvertinti galima tik po GANG kontrakto, todėl vertina tik tie, kurie iš tiesų dirbo kartu.</li>'
             .'<li>Įvertinimo autorius neskelbiamas: prie darbuotojų įvertinimų rodomas darbdavio miestas ir data, prie darbdavių įvertinimų – tik data.</li>'
             .'<li>Darbuotojų įvertinimus mato tik prisijungę darbdaviai, o darbdavių įvertinimus – tik prisijungę darbuotojai.</li></ul>', 'pass'],
-    ], '/kaip-veikia', true, true);
+    ], '/kaip-veikia', true, true, 'Kaip veikia GANG: darbdavys paskelbia paiešką, darbuotojai pateikia kandidatūras, darbdavys patvirtina tinkamiausią, o po darbo abu vienas kitą įvertina.');
 }
 
 function about_page(): never
@@ -354,7 +360,7 @@ function about_page(): never
             .'<p>GANG padės skubiai rasti patikimą komandos narį, o geri specialistai čia lengvai ras sau tinkamiausią darbą.</p>'
             .'<p>Pastebėjau ir tai, kad pastaraisiais metais vis daugiau žmonių, neturinčių nieko bendro su HoReCa, teiraujasi, ar galėtų porą dienų pabandyti pasidarbuoti bare ar pagelbėti virtuvėje. Pasirodo, darbas restorane daugeliui atrodo viliojantis, tačiau, gyvenime neatsiradus tinkamai progai, taip ir lieka net neišbandytas – GANG tikrai rasime darbo ir žaliems.</p></blockquote>'
             .'<p><strong>Vilius</strong>, GANG įkūrėjas</p>'],
-    ], '/apie', true, true);
+    ], '/apie', true, true, 'Kodėl atsirado GANG: platforma, kuri padeda restoranams, kavinėms, barams ir klubams rasti patikimus darbuotojus, o specialistams – tinkamą darbą.');
 }
 
 function sitemap(): never
