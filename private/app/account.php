@@ -109,11 +109,11 @@ function profile_page(): never
                 flash('Paskyra paruošta. Dabar galite pateikti kandidatūrą.');
                 redirect($back);
             }
-            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : (!empty($u['dual']) ? 'Darbuotojo paskyra paruošta.' : 'Paskyra sukurta.')).$jobsNote);
+            flash((!$first ? 'Paskyros pakeitimai išsaugoti.' : (!empty($u['both_sides']) ? 'Darbuotojo paskyra paruošta.' : 'Paskyra sukurta.')).$jobsNote);
             redirect('/mano');
         }
     }
-    $title = profile_complete($u) ? 'Redaguoti paskyrą' : ($worker ? (!empty($u['dual']) ? 'Užpildykite darbuotojo paskyrą' : 'Susikurkite paskyrą') : 'Jūsų duomenys');
+    $title = profile_complete($u) ? 'Redaguoti paskyrą' : ($worker ? (!empty($u['both_sides']) ? 'Užpildykite darbuotojo paskyrą' : 'Susikurkite paskyrą') : 'Jūsų duomenys');
     $workerFields = '';
     $remove = $u['photo'] ? '<label class="check"><input type="checkbox" name="remove_photo"> Pašalinti paveikslėlį</label>' : '';
     $photoField = '<fieldset class="photo-field"><legend>Paskyros nuotrauka arba avataras <small>(neprivaloma)</small></legend>'
@@ -944,7 +944,7 @@ function account_export(): never
     $u = require_user();
     $id = (int) $u['id'];
     $rows = fn (string $q, ?array $p = null) => sql($q, $p ?? [$id])->fetchAll(PDO::FETCH_ASSOC);
-    $profile = array_intersect_key($u, array_flip(['kind', 'dual', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
+    $profile = array_intersect_key($u, array_flip(['kind', 'both_sides', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
     $venues = $rows('SELECT id, name, type, concept, city, address, about, hours, team_size, perks, website, instagram, facebook, tiktok, created_at FROM venues WHERE manager_id = ?');
     $venueIds = array_map('intval', array_column($venues, 'id')) ?: [0];
     $in = implode(',', $venueIds);
@@ -1002,7 +1002,7 @@ function account_delete_page(): never
         }
     }
     $what = match (true) {
-        !empty($u['dual']) => '<li>paskyros duomenys, nuotrauka, pareigos ir miestai, visos jūsų darbovietės ir jų logotipai;</li><li>kandidatūros, paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti, jums ir jūsų darbovietėms skirti įvertinimai;</li>',
+        !empty($u['both_sides']) => '<li>paskyros duomenys, nuotrauka, pareigos ir miestai, visos jūsų darbovietės ir jų logotipai;</li><li>kandidatūros, paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti, jums ir jūsų darbovietėms skirti įvertinimai;</li>',
         $u['kind'] === 'worker' => '<li>paskyros duomenys, nuotrauka, pareigos ir miestai;</li><li>kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jums skirti įvertinimai;</li>',
         default => '<li>paskyros duomenys, visos jūsų darbovietės ir jų logotipai;</li><li>visos paieškos, gautos kandidatūros, GANG kontraktai, pokalbių žinutės;</li><li>jūsų parašyti ir jūsų darbovietėms skirti įvertinimai;</li>',
     };
@@ -1134,7 +1134,7 @@ function side_add_label(string $side): string
 
 function side_add_box(array $u): string
 {
-    if (!empty($u['dual'])) {
+    if (!empty($u['both_sides'])) {
         return '';
     }
     $other = other_side($u['kind']);
@@ -1151,7 +1151,7 @@ function side_add_box(array $u): string
 // and what waits there (employer: candidates to decide on; worker: a shift to confirm).
 function side_switch(array $u): string
 {
-    if (empty($u['dual'])) {
+    if (empty($u['both_sides'])) {
         return '';
     }
     $out = '<form method="post" action="/mano/puse" class="side-switch" aria-label="Paskyra">'.csrf_field();
@@ -1195,8 +1195,8 @@ function side_add_action(): never
 {
     $u = require_user();
     check_csrf();
-    if (empty($u['dual'])) {
-        sql('UPDATE users SET dual = 1, kind = ? WHERE id = ?', [other_side($u['kind']), $u['id']]);
+    if (empty($u['both_sides'])) {
+        sql('UPDATE users SET both_sides = 1, kind = ? WHERE id = ?', [other_side($u['kind']), $u['id']]);
         $u = current_user(true);
     }
     $step = signup_step_url($u);

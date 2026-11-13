@@ -74,7 +74,7 @@ function require_user(?string $kind = null): array
 }
 
 // Both sides on one account (Vilius 2026-11-12): users.kind is the side the member is on now, and
-// dual = 1 means they also have the other one. Signing up still picks one side; the other is added
+// both_sides = 1 means they also have the other one. Signing up still picks one side; the other is added
 // later on Mano paskyra ("Taip pat ieškote …?"), and the switch there moves between the two.
 // Pages and buttons follow the side the member is on (kind); what makes someone a worker or an employer
 // for others – job emails, profile and photo access, admin – asks has_side() / side_sql() instead.
@@ -82,14 +82,14 @@ const SIDES = ['worker' => 'Darbuotojas', 'manager' => 'Darbdavys'];
 
 function has_side(?array $u, string $side): bool
 {
-    return $u !== null && ($u['kind'] === $side || !empty($u['dual']));
+    return $u !== null && ($u['kind'] === $side || !empty($u['both_sides']));
 }
 
-// SQL condition for members who have $side, e.g. side_sql('worker', 'u') = "(u.kind = 'worker' OR u.dual = 1)".
+// SQL condition for members who have $side, e.g. side_sql('worker', 'u') = "(u.kind = 'worker' OR u.both_sides = 1)".
 function side_sql(string $side, string $alias = ''): string
 {
     $p = $alias !== '' ? $alias.'.' : '';
-    return '('.$p."kind = '".($side === 'manager' ? 'manager' : 'worker')."' OR ".$p.'dual = 1)';
+    return '('.$p."kind = '".($side === 'manager' ? 'manager' : 'worker')."' OR ".$p.'both_sides = 1)';
 }
 
 function other_side(string $side): string
@@ -101,7 +101,7 @@ function other_side(string $side): string
 function switch_side(array $u, string $side): array
 {
     if ($u['kind'] !== $side && has_side($u, $side)) {
-        sql('UPDATE users SET kind = ? WHERE id = ? AND dual = 1', [$side, $u['id']]);
+        sql('UPDATE users SET kind = ? WHERE id = ? AND both_sides = 1', [$side, $u['id']]);
     }
     return current_user(true) ?? $u;
 }
@@ -136,7 +136,7 @@ function signup_finished(array $u): bool
     if (signup_step_url($u) === '') {
         return true;
     }
-    return !empty($u['dual']) && signup_step_url($u, other_side($u['kind'])) === '';
+    return !empty($u['both_sides']) && signup_step_url($u, other_side($u['kind'])) === '';
 }
 
 // One network (IP address) may ask for this many sign-in codes, to any addresses, so the form
@@ -316,7 +316,7 @@ function login_page(): never
 function already_member_page(string $email, string $memberKind, string $wantedKind): never
 {
     $role = $memberKind === 'manager' ? 'darbdavio' : 'darbuotojo';
-    $dual = (bool) sql('SELECT dual FROM users WHERE email = ?', [$email])->fetchColumn();
+    $dual = (bool) sql('SELECT both_sides FROM users WHERE email = ?', [$email])->fetchColumn();
     $other = $wantedKind !== '' && $wantedKind !== $memberKind
         ? '<p>'.($wantedKind === 'manager' ? 'Ieškoti darbuotojų' : 'Ieškoti darbo').' galite su ta pačia paskyra: prisijunkite ir „Mano paskyroje“ paspauskite „'.side_add_label($wantedKind).'“.</p>'
         : '';

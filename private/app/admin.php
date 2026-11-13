@@ -623,7 +623,7 @@ JS;
 
 function admin_kind_label(array $u): string
 {
-    return !empty($u['dual']) ? 'Darbuotojas ir darbdavys' : ($u['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys');
+    return !empty($u['both_sides']) ? 'Darbuotojas ir darbdavys' : ($u['kind'] === 'worker' ? 'Darbuotojas' : 'Darbdavys');
 }
 
 // The employer may publish searches and see the profiles of workers who apply. Mails them once.

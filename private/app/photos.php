@@ -93,7 +93,7 @@ function delete_photo(?string $name): void
 function photo_page(int $id): never
 {
     $u = is_admin() ? current_user() : require_user();
-    $w = sql('SELECT id, kind, dual, photo FROM users WHERE id = ?', [$id])->fetch();
+    $w = sql('SELECT id, kind, both_sides, photo FROM users WHERE id = ?', [$id])->fetch();
     // A worker's photo: see sees_worker_profile(). An employer's photo is seen by the workers the employer
     // talks to: candidates and past workers. A member with both sides: either rule.
     $allowed = $w && ((has_side($w, 'worker') && sees_worker_profile($u, $id))
