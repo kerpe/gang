@@ -211,6 +211,12 @@ function login_codes_from_ip(string $ipHash, int $seconds): int
     return (int) sql('SELECT COUNT(*) FROM login_codes WHERE ip_hash = ? AND created_at > ?', [$ipHash, date('Y-m-d H:i:s', time() - $seconds)])->fetchColumn();
 }
 
+// A valid address that fits users.email (190 characters; MySQL refuses longer ones).
+function email_ok(string $email): bool
+{
+    return strlen($email) <= 190 && filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+}
+
 function login_page(): never
 {
     start_session();
@@ -250,7 +256,7 @@ function login_page(): never
             $kind = '';
             $signup = false;
         }
-        $member = $signup && filter_var($email, FILTER_VALIDATE_EMAIL)
+        $member = $signup && email_ok($email)
             ? sql('SELECT kind, blocked FROM users WHERE email = ?', [$email])->fetch()
             : false;
         if ($member && !$member['blocked']) {
@@ -262,7 +268,7 @@ function login_page(): never
         if ($kind !== '' && !consent_given()) {
             $termsError = CONSENT_ERROR;
         }
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (!email_ok($email)) {
             $error = 'Patikrinkite el. pašto adresą.';
         } elseif ($termsError === '') {
             $ipHash = hash_hmac('sha256', client_ip(), mail_secret());

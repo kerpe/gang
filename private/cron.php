@@ -9,6 +9,11 @@ if (PHP_SAPI !== 'cli') {
 foreach (['bootstrap', 'data', 'views', 'auth', 'admin', 'account', 'shifts', 'contracts', 'messages'] as $f) {
     require __DIR__."/app/$f.php";
 }
+// A failed run is written to errors.log (admin → Nustatymai); the cron's own output nobody reads.
+set_exception_handler(function (Throwable $t): void {
+    gang_log('CRON '.get_class($t).' '.$t->getMessage().' @ '.basename($t->getFile()).':'.$t->getLine());
+    exit(1);
+});
 
 // Close requests whose time has passed.
 [$where, $params] = open_where('requests');
