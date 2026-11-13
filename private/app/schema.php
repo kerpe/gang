@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 30;
+const SCHEMA_VERSION = 31;
 
 function migrate(PDO $db): void
 {
@@ -181,85 +181,26 @@ function migrate(PDO $db): void
     }
     // Version 2: profile photo; availability moved from users.available_until to ranges.
     // Version 4: worker experience and the experience a request requires.
-    $columns = [
-        'users ADD photo VARCHAR(64) NULL',
-        'users ADD experience TINYINT NOT NULL DEFAULT 0',
-        'requests ADD min_experience TINYINT NOT NULL DEFAULT 1',
-        // Version 6: several date ranges in one request ("from:to,from:to"), empty for one range.
-        "requests ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
-        // Version 8: workers who signed up before launch get one "GANG jau veikia" email; NULL = not sent yet.
-        'users ADD launch_mail_at DATETIME NULL',
-        // Version 10: job durations a worker is interested in (KINDS keys); empty = all of them.
-        "users ADD durations VARCHAR(100) NOT NULL DEFAULT ''",
-        // Version 11: venue profile – type, concept, opening hours, team size, staff perks, links and logo.
-        "venues ADD type VARCHAR(30) NOT NULL DEFAULT ''",
-        "venues ADD concept VARCHAR(120) NOT NULL DEFAULT ''",
-        "venues ADD hours VARCHAR(190) NOT NULL DEFAULT ''",
-        "venues ADD team_size VARCHAR(10) NOT NULL DEFAULT ''",
-        "venues ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
-        "venues ADD website VARCHAR(255) NOT NULL DEFAULT ''",
-        "venues ADD instagram VARCHAR(255) NOT NULL DEFAULT ''",
-        "venues ADD facebook VARCHAR(255) NOT NULL DEFAULT ''",
-        "venues ADD tiktok VARCHAR(255) NOT NULL DEFAULT ''",
-        'venues ADD logo VARCHAR(64) NULL',
-        // Version 12: cancelled contracts (by whom, why, late = less than a day before the work) and no-shows.
-        'contracts ADD cancelled_at DATETIME NULL',
-        "contracts ADD cancelled_by VARCHAR(10) NOT NULL DEFAULT ''",
-        "contracts ADD cancel_reason VARCHAR(20) NOT NULL DEFAULT ''",
-        "contracts ADD cancel_note VARCHAR(500) NOT NULL DEFAULT ''",
-        'contracts ADD late TINYINT NOT NULL DEFAULT 0',
-        'contracts ADD no_show_at DATETIME NULL',
-        // Version 12: team first (other workers see the request from public_at), events (several roles, one event_id).
-        'requests ADD public_at DATETIME NULL',
-        'requests ADD event_id INT NULL',
-        "requests ADD event_title VARCHAR(120) NOT NULL DEFAULT ''",
-        // Version 12: three criteria per review; rating stays the rounded average.
-        'reviews ADD c1 TINYINT NULL',
-        'reviews ADD c2 TINYINT NULL',
-        'reviews ADD c3 TINYINT NULL',
-        // Version 12: personal invitation link (/k/{code}) and who invited the person.
-        'users ADD invite_code VARCHAR(16) NULL',
-        'users ADD referred_by INT NULL',
-        // Version 13: the readable link word (/k/palangosbarolegenda); invite_code keeps old links working.
-        'users ADD invite_slug VARCHAR(80) NULL',
-        // Version 15: the terms version the member last accepted (consents keeps every acceptance).
-        "users ADD terms_version VARCHAR(20) NOT NULL DEFAULT ''",
-        'users ADD terms_accepted_at DATETIME NULL',
-        // Version 17: a worker can apply for only some of the job's days ("from:to,…"; empty = all days),
-        // and a contract can cover only some of them (NULL start_date = the request's dates).
-        "responses ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
-        'contracts ADD start_date DATE NULL',
-        'contracts ADD end_date DATE NULL',
-        "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
-        // Version 19: GANG checks every employer before they publish searches or open worker profiles.
-        'users ADD verified_at DATETIME NULL',
-        // Version 19: raised by "Atsijungti visuose įrenginiuose"; sessions keep the value they started with.
-        'users ADD session_epoch INT NOT NULL DEFAULT 0',
-        // Version 20: keyed hash of the visitor's IP, so one network cannot mail codes to many addresses.
-        "login_codes ADD ip_hash CHAR(64) NOT NULL DEFAULT ''",
-        // Version 21: the employer changed the job's dates or pay after this application; set until the
-        // candidate confirms the new terms ("Tinka") – until then the employer cannot approve them.
-        'responses ADD recheck_at DATETIME NULL',
-        // Version 23: when the member last read a new message (the chat's "Perskaityta 18:32").
-        'chat_reads ADD read_at DATETIME NULL',
-        // Version 26: staff perks belong to each job ad (they differ by role); venues.perks stays, used as the first default.
-        "requests ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
-        // Version 27: "Užbaikite registraciją" reminders sent (at most 2), when, and whether the member turned them off.
-        'users ADD signup_reminders INT NOT NULL DEFAULT 0',
-        'users ADD signup_reminder_at DATETIME NULL',
-        'users ADD signup_reminders_off TINYINT NOT NULL DEFAULT 0',
-        // Version 28: the language of the member's emails (lt | en), chosen in the account form.
-        "users ADD lang VARCHAR(2) NOT NULL DEFAULT 'lt'",
-        // Version 30: one account can have both sides (Vilius 2026-11-12). both_sides = 1: the member also added
-        // the other side; users.kind is then the side they are on right now (the switch on Mano paskyra).
-        // (Version 29 named it "dual", a reserved word in MySQL, so on gang.lt the column was never made.)
-        'users ADD both_sides TINYINT NOT NULL DEFAULT 0',
-    ];
-    foreach ($columns as $column) {
+    $problems = [];
+    foreach (schema_columns() as $column) {
         try {
             $db->exec("ALTER TABLE $column");
-        } catch (PDOException) {
-            // Already there.
+        } catch (PDOException $e) {
+            // Already there is fine; anything else (e.g. a reserved word, see version 30) is written down.
+            if (!preg_match('/duplicate column/i', $e->getMessage())) {
+                $problems[] = "ALTER TABLE $column: ".$e->getMessage();
+            }
+        }
+    }
+    // Version 31: day lists of long jobs (a worker can pick every other day of a whole season) outgrew
+    // VARCHAR(500) on MySQL. SQLite has no length limit, so there is nothing to change there.
+    if (!$sqlite) {
+        foreach (['requests', 'responses', 'contracts'] as $table) {
+            try {
+                $db->exec("ALTER TABLE $table MODIFY dates VARCHAR(4100) NOT NULL DEFAULT ''");
+            } catch (PDOException $e) {
+                $problems[] = "ALTER TABLE $table MODIFY dates: ".$e->getMessage();
+            }
         }
     }
     // Version 25: "Mano komanda" and the free-days calendar removed (Vilius 2026-11-08); requests.public_at stays, unused.
@@ -337,5 +278,103 @@ function migrate(PDO $db): void
         }
     }
     @mkdir(dirname($marker), 0700, true);
+    foreach ($problems as $problem) {
+        gang_log('SCHEMA '.$problem);
+    }
     file_put_contents($marker, date('c'));
+}
+
+// Columns added after the first version of each table, in the order they came. migrate() adds the
+// missing ones; schema_missing() checks that every one of them is really there.
+function schema_columns(): array
+{
+    return [
+        'users ADD photo VARCHAR(64) NULL',
+        'users ADD experience TINYINT NOT NULL DEFAULT 0',
+        'requests ADD min_experience TINYINT NOT NULL DEFAULT 1',
+        // Version 6: several date ranges in one request ("from:to,from:to"), empty for one range.
+        "requests ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        // Version 8: workers who signed up before launch get one "GANG jau veikia" email; NULL = not sent yet.
+        'users ADD launch_mail_at DATETIME NULL',
+        // Version 10: job durations a worker is interested in (KINDS keys); empty = all of them.
+        "users ADD durations VARCHAR(100) NOT NULL DEFAULT ''",
+        // Version 11: venue profile – type, concept, opening hours, team size, staff perks, links and logo.
+        "venues ADD type VARCHAR(30) NOT NULL DEFAULT ''",
+        "venues ADD concept VARCHAR(120) NOT NULL DEFAULT ''",
+        "venues ADD hours VARCHAR(190) NOT NULL DEFAULT ''",
+        "venues ADD team_size VARCHAR(10) NOT NULL DEFAULT ''",
+        "venues ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD website VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD instagram VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD facebook VARCHAR(255) NOT NULL DEFAULT ''",
+        "venues ADD tiktok VARCHAR(255) NOT NULL DEFAULT ''",
+        'venues ADD logo VARCHAR(64) NULL',
+        // Version 12: cancelled contracts (by whom, why, late = less than a day before the work) and no-shows.
+        'contracts ADD cancelled_at DATETIME NULL',
+        "contracts ADD cancelled_by VARCHAR(10) NOT NULL DEFAULT ''",
+        "contracts ADD cancel_reason VARCHAR(20) NOT NULL DEFAULT ''",
+        "contracts ADD cancel_note VARCHAR(500) NOT NULL DEFAULT ''",
+        'contracts ADD late TINYINT NOT NULL DEFAULT 0',
+        'contracts ADD no_show_at DATETIME NULL',
+        // Version 12: team first (other workers see the request from public_at), events (several roles, one event_id).
+        'requests ADD public_at DATETIME NULL',
+        'requests ADD event_id INT NULL',
+        "requests ADD event_title VARCHAR(120) NOT NULL DEFAULT ''",
+        // Version 12: three criteria per review; rating stays the rounded average.
+        'reviews ADD c1 TINYINT NULL',
+        'reviews ADD c2 TINYINT NULL',
+        'reviews ADD c3 TINYINT NULL',
+        // Version 12: personal invitation link (/k/{code}) and who invited the person.
+        'users ADD invite_code VARCHAR(16) NULL',
+        'users ADD referred_by INT NULL',
+        // Version 13: the readable link word (/k/palangosbarolegenda); invite_code keeps old links working.
+        'users ADD invite_slug VARCHAR(80) NULL',
+        // Version 15: the terms version the member last accepted (consents keeps every acceptance).
+        "users ADD terms_version VARCHAR(20) NOT NULL DEFAULT ''",
+        'users ADD terms_accepted_at DATETIME NULL',
+        // Version 17: a worker can apply for only some of the job's days ("from:to,…"; empty = all days),
+        // and a contract can cover only some of them (NULL start_date = the request's dates).
+        "responses ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        'contracts ADD start_date DATE NULL',
+        'contracts ADD end_date DATE NULL',
+        "contracts ADD dates VARCHAR(500) NOT NULL DEFAULT ''",
+        // Version 19: GANG checks every employer before they publish searches or open worker profiles.
+        'users ADD verified_at DATETIME NULL',
+        // Version 19: raised by "Atsijungti visuose įrenginiuose"; sessions keep the value they started with.
+        'users ADD session_epoch INT NOT NULL DEFAULT 0',
+        // Version 20: keyed hash of the visitor's IP, so one network cannot mail codes to many addresses.
+        "login_codes ADD ip_hash CHAR(64) NOT NULL DEFAULT ''",
+        // Version 21: the employer changed the job's dates or pay after this application; set until the
+        // candidate confirms the new terms ("Tinka") – until then the employer cannot approve them.
+        'responses ADD recheck_at DATETIME NULL',
+        // Version 23: when the member last read a new message (the chat's "Perskaityta 18:32").
+        'chat_reads ADD read_at DATETIME NULL',
+        // Version 26: staff perks belong to each job ad (they differ by role); venues.perks stays, used as the first default.
+        "requests ADD perks VARCHAR(255) NOT NULL DEFAULT ''",
+        // Version 27: "Užbaikite registraciją" reminders sent (at most 2), when, and whether the member turned them off.
+        'users ADD signup_reminders INT NOT NULL DEFAULT 0',
+        'users ADD signup_reminder_at DATETIME NULL',
+        'users ADD signup_reminders_off TINYINT NOT NULL DEFAULT 0',
+        // Version 28: the language of the member's emails (lt | en), chosen in the account form.
+        "users ADD lang VARCHAR(2) NOT NULL DEFAULT 'lt'",
+        // Version 30: one account can have both sides (Vilius 2026-11-12). both_sides = 1: the member also added
+        // the other side; users.kind is then the side they are on right now (the switch on Mano paskyra).
+        // (Version 29 named it "dual", a reserved word in MySQL, so on gang.lt the column was never made.)
+        'users ADD both_sides TINYINT NOT NULL DEFAULT 0',
+    ];
+}
+
+// Columns from schema_columns() the database does not have (admin → Nustatymai). [] = all there.
+function schema_missing(): array
+{
+    $missing = [];
+    foreach (schema_columns() as $column) {
+        [$table, , $name] = explode(' ', $column, 4);
+        try {
+            db()->query("SELECT $name FROM $table LIMIT 0");
+        } catch (PDOException) {
+            $missing[] = "$table.$name";
+        }
+    }
+    return $missing;
 }

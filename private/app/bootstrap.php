@@ -190,6 +190,12 @@ function config(): array
     return $c;
 }
 
+// One line in private/data/errors.log (shown on /admin → Nustatymai, "Serverio klaidos").
+function gang_log(string $message): void
+{
+    @file_put_contents(private_root().'/data/errors.log', date('Y-m-d H:i:s').' '.str_replace("\n", ' ', $message)."\n", FILE_APPEND | LOCK_EX);
+}
+
 function db(): PDO
 {
     static $db;
@@ -369,7 +375,7 @@ function send_mail(string $to, string $subject, array $mail, string $replyTo = '
     // Envelope sender on the site's own mailbox, so Hostinger accepts and signs the mail.
     $ok = mail($to, '=?UTF-8?B?'.base64_encode($subject).'?=', $message, $headers, '-f'.$from);
     if (!$ok) {
-        error_log("GANG mail: PHP mail() failed for $to");
+        gang_log("MAIL PHP mail() failed for $to");
     }
     return $ok;
 }
@@ -396,7 +402,7 @@ function resend_mail(array $c, string $to, string $subject, string $text, string
     if ($res !== false && preg_match('#^HTTP/\S+ 2\d\d#', $status)) {
         return true;
     }
-    error_log('GANG mail: Resend failed for '.$to.': '.$status.' '.substr((string) $res, 0, 300));
+    gang_log('MAIL Resend failed for '.$to.': '.$status.' '.substr((string) $res, 0, 300));
     return false;
 }
 

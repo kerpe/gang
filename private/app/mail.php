@@ -206,8 +206,11 @@ function mail_queue_after_response(int $seconds = 40): void
     }
     $registered = true;
     register_shutdown_function(function () use ($seconds) {
+        // Hand the page to the visitor first (PHP-FPM or LiteSpeed, which Hostinger runs).
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
+        } elseif (function_exists('litespeed_finish_request')) {
+            litespeed_finish_request();
         }
         ignore_user_abort(true);
         @set_time_limit($seconds + 20);

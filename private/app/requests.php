@@ -676,7 +676,7 @@ function request_form_page(): never
             foreach ($lines as $line) {
                 $ids[] = insert('requests', [
                     'venue_id' => (int) $v['venue_id'], 'role' => $line['role'], 'kind' => $v['kind'], 'people' => (int) $line['people'],
-                    'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? $v['dates'] : '', 'hours' => '',
+                    'start_date' => $ranges[0][0], 'end_date' => end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, 'dates' => count($ranges) > 1 ? ranges_string($ranges) : '', 'hours' => '',
                     'pay' => pay_label(str_replace(',', '.', $line['pay'])), 'min_experience' => (int) $v['min_experience'], 'description' => $v['description'], 'created_at' => now(),
                     'event_title' => $extras ? $v['event_title'] : '', 'perks' => to_list($perks, VENUE_PERKS),
                 ]);
@@ -1489,7 +1489,7 @@ function request_edit_page(int $id): never
                     dates = (SELECT dates FROM requests WHERE requests.id = contracts.request_id)
                     WHERE request_id IN ($ids) AND start_date IS NULL");
                 sql("UPDATE requests SET start_date = ?, end_date = ?, dates = ? WHERE id IN ($ids)", [
-                    $ranges[0][0], end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, count($ranges) > 1 ? $v['dates'] : '',
+                    $ranges[0][0], end($ranges)[1] !== $ranges[0][0] ? end($ranges)[1] : null, count($ranges) > 1 ? ranges_string($ranges) : '',
                 ]);
             }
             sql("UPDATE requests SET description = ?, hours = '', perks = ? WHERE id IN ($ids)", [$v['description'], to_list($perks, VENUE_PERKS)]);
