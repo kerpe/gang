@@ -527,6 +527,8 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .top nav .mnav-links a { padding: 10px 12px; border-radius: 8px; opacity: 1; }
 .top nav .mnav-links a:hover { background: var(--surface-2); }
 @media (max-width: 860px) { .mnav { display: block; } .top nav { gap: 10px; } }
+/* Narrowest phones (≤359 px): tighter header gaps so logo, „Registruotis“, language and menu fit without sideways scroll. */
+@media (max-width: 359px) { .top .wrap { gap: 8px; } .top nav { gap: 6px; } }
 .tabbar { display: none; }
 @media (max-width: 720px) {
   body.has-tabbar { --tabbar-h: 64px; padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom)); }
