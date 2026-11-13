@@ -82,11 +82,8 @@ function join_cta(string $workerClass = 'btn', string $employerClass = 'btn ligh
 
 function home_page(): never
 {
-    // Urgent listings come first (open_requests orders them so), the rest fills full rows of three.
-    $latest = open_requests([], 6);
-    if (count($latest) >= 3) {
-        $latest = array_slice($latest, 0, count($latest) >= 6 ? 6 : 3);
-    }
+    // One row of the three newest offers; urgent ones come first (open_requests orders them so).
+    $latest = open_requests([], 3);
     $urgent = $latest && !array_filter($latest, fn ($r) => !request_urgent($r));
     $listTitle = $urgent ? 'Skubiai reikia' : 'Naujausi darbo pasiūlymai';
     $list = $latest ? '<section class="wrap home-block"><div class="section-head feed-head"><h2><span class="live-dot" aria-hidden="true"></span>'.$listTitle.'</h2><a href="/darbai">Visi pasiūlymai →</a></div><div class="feed">'.implode('', array_map('request_card_short', $latest)).'</div></section>' : '';
