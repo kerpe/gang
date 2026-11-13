@@ -11,6 +11,31 @@ header('Referrer-Policy: strict-origin-when-cross-origin');
 header("Content-Security-Policy: base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
 header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');
 
+// Errors that end a request (and slow /admin pages) go to private/data/errors.log; the last lines are on
+// /admin → Nustatymai. Added 2026-11-13 to find why /admin dropped the connection after the sign-in code.
+$GLOBALS['gang_t0'] = microtime(true);
+register_shutdown_function(function (): void {
+    $e = error_get_last();
+    $uri = substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 120);
+    $ms = (int) ((microtime(true) - $GLOBALS['gang_t0']) * 1000);
+    $line = '';
+    if ($e && in_array($e['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true)) {
+        $line = 'FATAL '.$e['message'].' @ '.basename($e['file']).':'.$e['line'];
+    } elseif (str_starts_with($uri, '/admin') && $ms > 3000) {
+        $line = 'SLOW '.$ms.' ms';
+    }
+    if ($line !== '') {
+        @file_put_contents(dirname(__DIR__).'/private/data/errors.log', date('Y-m-d H:i:s').' '.$uri.' '.$line."\n", FILE_APPEND | LOCK_EX);
+    }
+});
+set_exception_handler(function (Throwable $t): void {
+    @file_put_contents(dirname(__DIR__).'/private/data/errors.log', date('Y-m-d H:i:s').' '.substr((string) ($_SERVER['REQUEST_URI'] ?? ''), 0, 120).' '.get_class($t).' '.$t->getMessage().' @ '.basename($t->getFile()).':'.$t->getLine()."\n", FILE_APPEND | LOCK_EX);
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+    echo '<!doctype html><meta charset="utf-8"><title>GANG</title><p style="font:16px sans-serif;padding:24px">Įvyko klaida. Pabandykite dar kartą po minutės.</p>';
+});
+
 foreach (['bootstrap', 'preview', 'data', 'views', 'auth', 'public', 'account', 'requests', 'reviews', 'admin', 'analytics', 'photos', 'shifts', 'contracts', 'team', 'legal', 'messages'] as $file) {
     require dirname(__DIR__)."/private/app/$file.php";
 }

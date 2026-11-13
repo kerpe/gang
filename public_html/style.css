@@ -1290,3 +1290,12 @@ table.data td.actions form + form { margin-left: 6px; }
 .mine-offers .section-head { margin: 32px 0 14px; padding-top: 22px; }
 .mine-offers .section-head h2 { margin: 0; }
 .empty-cal .meta { margin-bottom: 0; }
+.err-log { white-space: pre-wrap; font: .8rem/1.5 ui-monospace, Menlo, monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px; max-height: 360px; overflow: auto; }
+/* Admin Nariai: a search box over every column */
+.data tr[hidden] { display: none !important; }
+.data .col-filter th { padding: 6px 6px 8px; }
+.data .col-filter input { padding: 6px 8px; font-size: .82rem; min-width: 80px; border-radius: 6px; }
+@media (max-width: 720px) {
+  .admin-main table.data tr.col-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .admin-main table.data tr.col-filter th { display: block; padding: 0; border: 0; }
+}

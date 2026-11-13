@@ -568,7 +568,10 @@ function admin_users(): string
     // cities; employers: also the venue) are kept out of the main list, in their own table below it.
     $done = array_filter($rows, 'signup_finished');
     $unfinished = array_diff_key($rows, $done);
-    $head = '<div class="scroll"><table class="data"><tr><th>Registruotas</th><th>Tipas</th><th>Vardas</th><th>El. paštas</th><th>Telefonas</th><th>Miestai / pareigos / darbovietės</th><th>Kontr.</th><th>Paskutinį kartą</th></tr>';
+    $cols = ['Registruotas', 'Tipas', 'Vardas', 'El. paštas', 'Telefonas', 'Miestai / pareigos / darbovietės', 'Kontr.', 'Paskutinį kartą'];
+    // A search box over every column (Vilius 2026-11-13): filters the rows on the page at once, several words = all of them.
+    $head = '<div class="scroll"><table class="data col-search"><tr>'.implode('', array_map(fn ($c) => '<th>'.$c.'</th>', $cols)).'</tr>'
+        .'<tr class="col-filter">'.implode('', array_map(fn ($i, $c) => '<th><input type="search" data-col="'.$i.'" placeholder="'.e($i === 5 ? 'Miestas, pareigos' : $c).'" aria-label="Ieškoti: '.e($c).'"></th>', array_keys($cols), $cols)).'</tr>';
     $table = function (array $list, string $empty) use ($head): string {
         $html = $head;
         foreach ($list as $r) {
@@ -582,13 +585,40 @@ function admin_users(): string
         }
         return $html.($list ? '' : '<tr><td colspan="8">'.$empty.'</td></tr>').'</table></div>';
     };
-    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta">Rasta: '.count($done).'. Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
+    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta"><span class="col-count">Rasta: '.count($done).'.</span> Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
         .$table($done, 'Narių nerasta.');
     if ($unfinished) {
         $html .= '<h2>Nebaigė registracijos ('.count($unfinished).')</h2><p class="meta">Patvirtino el. paštą, bet dar neišsaugojo savo duomenų. Užbaigę registraciją jie atsiras sąraše viršuje.</p>'
             .$table($unfinished, '');
     }
-    return $html;
+    return $html.admin_column_search_script();
+}
+
+// Column search boxes of table.col-search: case and Lithuanian letters do not matter ("siauliai" finds "Šiauliai").
+function admin_column_search_script(): string
+{
+    return <<<'JS'
+<script>
+(function () {
+  var norm = function (s) { return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); };
+  document.querySelectorAll('table.col-search').forEach(function (t, n) {
+    var inputs = t.querySelectorAll('.col-filter input');
+    var rows = [].slice.call(t.querySelectorAll('tr')).filter(function (tr) { return tr.querySelector('td') && tr.children.length > 1; });
+    var apply = function () {
+      var terms = [].map.call(inputs, function (i) { return norm(i.value).split(/\s+/).filter(Boolean); });
+      var shown = 0;
+      rows.forEach(function (tr) {
+        var ok = terms.every(function (words, c) { var cell = tr.children[c]; var text = cell ? norm(cell.textContent) : ''; return words.every(function (w) { return text.indexOf(w) !== -1; }); });
+        tr.hidden = !ok; if (ok) shown++;
+      });
+      var count = n === 0 && document.querySelector('.col-count');
+      if (count) count.textContent = 'Rasta: ' + shown + '.';
+    };
+    inputs.forEach(function (i) { i.addEventListener('input', apply); });
+  });
+})();
+</script>
+JS;
 }
 
 function admin_kind_label(array $u): string
@@ -735,6 +765,9 @@ function admin_settings(): string
         .'<h2>Bandomasis laiškas</h2><p class="meta">Atidarykite mail-tester.com, nukopijuokite ten rodomą adresą, išsiųskite į jį laišką ir grįžę į mail-tester.com pamatysite įvertinimą (tikslas – 9/10 ar daugiau). Galite išsiųsti ir sau, į Gmail ar Outlook.</p>'
         .'<form method="post" action="/admin?tab=settings" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="test_mail">'
         .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti</button></form>';
+    $log = private_root().'/data/errors.log';
+    $lines = is_file($log) ? array_slice(file($log, FILE_IGNORE_NEW_LINES) ?: [], -30) : [];
+    $html .= '<h2>Serverio klaidos</h2>'.($lines ? '<pre class="err-log">'.e(implode("\n", array_reverse($lines))).'</pre>' : '<p class="meta">Klaidų neužregistruota.</p>');
     return $html.'<p class="meta">Šiuos nustatymus pakeičia Claude, kai paprašote gijoje. Narių dabar: '.$test.'.</p>';
 }
 
