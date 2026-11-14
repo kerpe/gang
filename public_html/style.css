@@ -432,7 +432,7 @@ table.data { border-collapse: collapse; width: 100%; background: var(--surface);
 .bento { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
 .bt { grid-column: span 6; min-width: 0; container-type: inline-size; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 26px 28px; }
 .bt .k { display: block; margin-bottom: 14px; font: .8rem/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
-.bt .big { display: block; margin-bottom: 8px; font-family: var(--display); font-size: clamp(3.2rem, 6vw, 4.6rem); line-height: 1; color: var(--lime); overflow-wrap: anywhere; }
+.bt .big { display: block; margin-bottom: 8px; font-family: var(--display); font-size: clamp(3.2rem, 6vw, 4.6rem); line-height: 1.08; color: var(--lime); overflow-wrap: anywhere; }
 /* Long words ("kalendorius") shrink with the card instead of spilling out of it */
 @supports (font-size: 1cqi) { .bt .big { font-size: clamp(1.6rem, 20cqi, 4.6rem); } }
 .bt p { margin: 0; color: var(--muted); }
