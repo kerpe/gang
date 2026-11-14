@@ -21,7 +21,7 @@ function profile_page(): never
 {
     $u = require_user();
     $worker = $u['kind'] === 'worker';
-    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'durations' => worker_durations($u), 'notify' => (bool) $u['notify'], 'lang' => (string) ($u['lang'] ?? 'lt')];
+    $v = ['name' => $u['name'], 'phone' => $u['phone'], 'about' => (string) $u['about'], 'roles' => from_list($u['roles']), 'cities' => from_list($u['cities']), 'xp' => array_map('strval', array_filter(role_experience((int) $u['id']))), 'durations' => worker_durations($u), 'notify' => (bool) $u['notify'], 'search' => (string) ($u['job_search'] ?? 'looking'), 'lang' => (string) ($u['lang'] ?? 'lt')];
     $errors = [];
     if (is_post()) {
         // A file over post_max_size empties $_POST, so say that instead of "form expired".
@@ -31,7 +31,7 @@ function profile_page(): never
         }
         check_csrf();
         $v = ['name' => input('name'), 'phone' => input('phone'), 'about' => input('about'),
-            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify']), 'lang' => isset(LANGS[input('lang')]) ? input('lang') : 'lt'];
+            'roles' => (array) ($_POST['roles'] ?? []), 'cities' => (array) ($_POST['cities'] ?? []), 'xp' => array_map('strval', (array) ($_POST['xp'] ?? [])), 'durations' => (array) ($_POST['durations'] ?? []), 'notify' => isset($_POST['notify']), 'search' => isset(JOB_SEARCH[input('job_search')]) ? input('job_search') : 'looking', 'lang' => isset(LANGS[input('lang')]) ? input('lang') : 'lt'];
         $v['name'] = preg_replace('/\s+/u', ' ', $v['name']);
         if (!full_name_ok($v['name']) || mb_strlen($v['name']) > 120) {
             $errors['name'] = NAME_ERROR;
@@ -84,10 +84,10 @@ function profile_page(): never
             $first = !profile_complete($u);
             $matchedBefore = $worker ? array_column(matching_jobs($u), 'id') : [];
             // The employer's form has no worker fields: a member with both sides keeps them as they are.
-            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, photo = ?, lang = ? WHERE id = ?', $worker ? [
-                $v['name'], $v['phone'], $v['about'], to_list($v['roles'], ROLES), to_list($v['cities'], CITIES), to_list($v['durations'], KINDS), $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $photo, $v['lang'], $u['id'],
+            sql('UPDATE users SET name = ?, phone = ?, about = ?, roles = ?, cities = ?, durations = ?, experience = ?, notify = ?, job_search = ?, photo = ?, lang = ? WHERE id = ?', $worker ? [
+                $v['name'], $v['phone'], $v['about'], to_list($v['roles'], ROLES), to_list($v['cities'], CITIES), to_list($v['durations'], KINDS), $xp ? min($xp) : 0, $v['notify'] ? 1 : 0, $v['search'], $photo, $v['lang'], $u['id'],
             ] : [
-                $v['name'], $v['phone'], $u['about'], $u['roles'], $u['cities'], $u['durations'], $u['experience'], $u['notify'], $photo, $v['lang'], $u['id'],
+                $v['name'], $v['phone'], $u['about'], $u['roles'], $u['cities'], $u['durations'], $u['experience'], $u['notify'], $u['job_search'], $photo, $v['lang'], $u['id'],
             ]);
             if ($worker) {
                 save_role_experience((int) $u['id'], $xp);
@@ -140,13 +140,20 @@ function profile_page(): never
             $durationChoices .= '<label class="choice"><input type="checkbox" name="durations[]" value="'.$kind.'"'.(in_array($kind, $v['durations'], true) ? ' checked' : '').'>'
                 .'<span><span class="choice-name">'.e($label).'</span><small>'.e(KIND_HINTS[$kind]).'</small></span></label>';
         }
+        // "Darbo paieška" (JOB_SEARCH): the worker says how openly they are looking; the email checkbox sits with it.
+        $searchChoices = '';
+        foreach (JOB_SEARCH as $key => $label) {
+            $searchChoices .= '<label class="choice"><input type="radio" name="job_search" value="'.$key.'"'.($v['search'] === $key ? ' checked' : '').'>'
+                .'<span><span class="choice-name">'.e($label).'</span><small>'.e(JOB_SEARCH_HINTS[$key]).'</small></span></label>';
+        }
         $workerFields = '<fieldset><legend>Pareigos ir patirtis</legend><p class="hint">Pažymėkite dominančias pareigas ir prie kiekvienų nurodykite savo patirtį. Darbo pasiūlymus gausite iš darbdavių, kurių reikalavimus atitinkate.</p>'
             .'<div class="role-list">'.$roleRows.'</div>'.err($errors, 'roles').'</fieldset>'
             .'<fieldset><legend>Miestai, kuriuose galite dirbti</legend>'.checkboxes('cities', CITIES, $v['cities']).err($errors, 'cities').'</fieldset>'
             .'<fieldset><legend>Jūs dominantis darbas</legend><p class="hint">Pažymėkite, kokios trukmės darbo ieškote. Galite pasirinkti kelis variantus, pavyzdžiui, trumpus pavadavimus ir nuolatinį darbą.</p>'
             .'<div class="choices kind-choices">'.$durationChoices.'</div>'.err($errors, 'durations').'</fieldset>'
             .'<label>Apie save <small>(darbo patirtis, ankstesnės darbovietės, įgūdžiai)</small><textarea name="about" rows="5" minlength="'.WORKER_ABOUT_MIN.'" maxlength="2000" required data-min="'.WORKER_ABOUT_MIN.'" placeholder="Pavyzdžiui: trejų metų barmeno patirtis kokteilių bare, darbo su kasos sistema įgūdžiai, galiojantis higienos pažymėjimas.">'.e($v['about']).'</textarea>'.err($errors, 'about').'</label>'
-            .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label>';
+            .'<fieldset id="darbo-paieska"><legend>Darbo paieška</legend><div class="choices kind-choices search-choices">'.$searchChoices.'</div>'
+            .'<label class="check"><input type="checkbox" name="notify"'.($v['notify'] ? ' checked' : '').'> Gauti el. laiškus apie naujus man tinkančius darbo pasiūlymus</label></fieldset>';
     }
     $phoneNote = '(neprivaloma, naudojamas tik sisteminiams pranešimams siųsti)';
     $step = !$worker && !profile_complete($u) ? onboarding_step(1) : '';
@@ -328,7 +335,9 @@ function dashboard_page(): never
     if ($u['kind'] === 'worker') {
         [$avg, $n] = worker_rating((int) $u['id']);
         // A newcomer sees just "GANG naujokas", not "Įvertinimų dar nėra" next to it.
-        $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>';
+        $rating = '<span class="meta account-rating">'.($n ? 'Jūsų įvertinimas: '.stars($avg, $n).' · ' : '').gang_jobs_text((int) $u['id']).'</span>'
+            // The worker's "Darbo paieška" choice, one click from changing it.
+            .'<span class="meta account-search"><span>'.e(JOB_SEARCH[$u['job_search'] ?? ''] ?? JOB_SEARCH['looking']).'</span> · <a href="/profilis#darbo-paieska">Keisti</a></span>';
     }
     page('Mano paskyra', '<section class="wrap">'.side_switch($u)
         .'<div class="account-bar">'.avatar($u, 'account-avatar')
@@ -944,7 +953,7 @@ function account_export(): never
     $u = require_user();
     $id = (int) $u['id'];
     $rows = fn (string $q, ?array $p = null) => sql($q, $p ?? [$id])->fetchAll(PDO::FETCH_ASSOC);
-    $profile = array_intersect_key($u, array_flip(['kind', 'both_sides', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
+    $profile = array_intersect_key($u, array_flip(['kind', 'both_sides', 'email', 'name', 'phone', 'roles', 'cities', 'about', 'durations', 'notify', 'job_search', 'lang', 'created_at', 'last_login_at', 'terms_version', 'terms_accepted_at', 'verified_at']));
     $venues = $rows('SELECT id, name, type, concept, city, address, about, hours, team_size, perks, website, instagram, facebook, tiktok, created_at FROM venues WHERE manager_id = ?');
     $venueIds = array_map('intval', array_column($venues, 'id')) ?: [0];
     $in = implode(',', $venueIds);

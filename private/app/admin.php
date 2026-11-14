@@ -665,6 +665,9 @@ function admin_user(int $id): string
         'Sutiko su taisyklėmis' => $u['terms_accepted_at'] ? e(substr($u['terms_accepted_at'], 0, 16).' (redakcija '.$u['terms_version'].')').($u['terms_version'] !== TERMS_VERSION ? ' – <strong>senesnė redakcija</strong>' : '') : 'Dar nesutiko',
         'Būsena' => $u['blocked'] ? 'Užblokuotas' : 'Aktyvus',
     ];
+    if ($worker) {
+        $facts['Darbo paieška'] = e(JOB_SEARCH[$u['job_search'] ?? ''] ?? '–');
+    }
     if ($manager) {
         $missing = array_keys(array_filter(['vardas ir pavardė' => $u['name'] === '', 'darbovietė' => !sql('SELECT 1 FROM venues WHERE manager_id = ? LIMIT 1', [$id])->fetchColumn()]));
         $facts['Patvirtinimas'] = match (true) {

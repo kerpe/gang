@@ -60,6 +60,19 @@ const KIND_HINTS = [
     'sezonas' => 'Keli mėnesiai',
     'nuolat' => 'Ilgalaikis darbas',
 ];
+// "Darbo paieška": how openly the worker is looking (users.job_search), chosen on the account form.
+// looking: employers the worker applies to see "Ieško darbo dabar". watching: offers as usual, no tag.
+// hidden: not counted in "tinkami darbuotojai mieste". Job emails follow users.notify in every case.
+const JOB_SEARCH = [
+    'looking' => 'Ieškau darbo dabar',
+    'watching' => 'Tik stebiu pasiūlymus',
+    'hidden' => 'Nerodyti manęs darbdaviams',
+];
+const JOB_SEARCH_HINTS = [
+    'looking' => 'Darbdaviai, kuriems pateikiate kandidatūrą, matys žymą „Ieško darbo dabar“.',
+    'watching' => 'Pasiūlymus matote kaip įprasta, bet darbdaviams nerodome, kad ieškote darbo.',
+    'hidden' => 'Darbdaviai jūsų nematys, kol patys nepateiksite kandidatūros.',
+];
 // Levels are ordered: a worker matches a request when their experience in the requested
 // role (worker_roles.experience) >= min_experience. users.experience keeps the lowest
 // level across the worker's roles; 0 means not stated yet.
