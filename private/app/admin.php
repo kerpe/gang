@@ -464,7 +464,7 @@ function admin_stats(): string
     foreach ($tiles as [$label, $n, $delta, $spark]) {
         $html .= '<div class="tile"><span>'.$label.'</span><strong>'.$n.($delta ? ' <i>+'.$delta.' per 7 d.</i>' : '').'</strong>'.$spark.'</div>';
     }
-    $html .= '</div>';
+    $html .= '</div>'.admin_weekly();
     // Fill rate and time to first contract, per kind: the numbers that later sell subscriptions.
     $rows = sql('SELECT r.kind, r.created_at, r.status, (SELECT MIN(c.created_at) FROM contracts c WHERE c.request_id = r.id) AS first_contract FROM requests r WHERE r.created_at > ?', [date('Y-m-d H:i:s', strtotime('-90 days'))])->fetchAll();
     $table = '<h2>Kaip greitai užpildoma (90 d.)</h2><table class="data"><tr><th>Tipas</th><th>Paieškų</th><th>Užpildyta</th><th>Mediana iki patvirtinimo</th></tr>';
@@ -483,6 +483,71 @@ function admin_stats(): string
         $table .= '<tr><td>'.e($label).'</td><td>'.count($mine).'</td><td>'.$filledPct.'</td><td>'.$medianText.'</td></tr>';
     }
     return $html.$table.'</table>';
+}
+
+// Weekly summary for the growth phase (Vilius 2026-11-14): new members, jobs that ended in a
+// GANG contract and how fast, and employers who came back to post again. Mon–Sun, Vilnius time,
+// newest week first; the demo venues (SEO_HIDDEN_VENUES) are left out.
+const GANG_OPENED = '2026-11-09'; // gang.lt opened to everyone (PR #140); earlier weeks are test data
+
+function admin_weekly(int $weeks = 8): string
+{
+    $monday = strtotime('monday this week', strtotime(today()));
+    $from = date('Y-m-d H:i:s', strtotime('-'.($weeks - 1).' weeks', $monday));
+    $users = sql('SELECT created_at, '.side_sql('worker').' AS w, '.side_sql('manager').' AS m FROM users WHERE created_at >= ?', [$from])->fetchAll();
+    $hidden = SEO_HIDDEN_VENUES ? ' AND r.venue_id NOT IN ('.implode(',', array_map('intval', SEO_HIDDEN_VENUES)).')' : '';
+    $requests = sql('SELECT r.created_at, v.manager_id, (SELECT MIN(c.created_at) FROM contracts c WHERE c.request_id = r.id) AS first_contract,
+            (SELECT MIN(r2.created_at) FROM requests r2 JOIN venues v2 ON v2.id = r2.venue_id WHERE v2.manager_id = v.manager_id'.str_replace('r.venue_id', 'r2.venue_id', $hidden).') AS first_post
+        FROM requests r JOIN venues v ON v.id = r.venue_id WHERE r.created_at >= ?'.$hidden, [$from])->fetchAll();
+    // Weeks back from this one: 0 = this week, 1 = last week… (days rounded, so DST changes do not matter).
+    $weekOf = function (string $at) use ($monday): int {
+        $days = (int) round(($monday - strtotime(substr($at, 0, 10))) / 86400);
+        return $days <= 0 ? 0 : intdiv($days + 6, 7);
+    };
+    $rows = [];
+    for ($i = 0; $i < $weeks; $i++) {
+        $rows[$i] = ['workers' => 0, 'managers' => 0, 'requests' => 0, 'times' => [], 'posters' => [], 'back' => []];
+    }
+    foreach ($users as $u) {
+        $i = $weekOf($u['created_at']);
+        if (isset($rows[$i])) {
+            $rows[$i]['workers'] += (int) $u['w'];
+            $rows[$i]['managers'] += (int) $u['m'];
+        }
+    }
+    foreach ($requests as $r) {
+        $i = $weekOf($r['created_at']);
+        if (!isset($rows[$i])) {
+            continue;
+        }
+        $rows[$i]['requests']++;
+        if ($r['first_contract']) {
+            $rows[$i]['times'][] = (strtotime($r['first_contract']) - strtotime($r['created_at'])) / 3600;
+        }
+        $start = date('Y-m-d', strtotime('-'.$i.' weeks', $monday));
+        $rows[$i]['posters'][$r['manager_id']] = true;
+        if ($r['first_post'] && substr($r['first_post'], 0, 10) < $start) {
+            $rows[$i]['back'][$r['manager_id']] = true;
+        }
+    }
+    $html = '<h2>Savaitės suvestinė</h2><p class="meta">Pirmadienis–sekmadienis. „Su kontraktu“ – skelbimai, kuriuose darbdavys patvirtino bent vieną darbuotoją. „Grįžo“ – darbdaviai, kurie skelbė ir anksčiau. Bandomosios darbovietės neįskaičiuotos.</p>'
+        .'<div class="scroll"><table class="data"><tr><th>Savaitė</th><th>Nauji darbuotojai</th><th>Nauji darbdaviai</th><th>Skelbimai</th><th>Su kontraktu</th><th>Mediana iki kontrakto</th><th>Skelbė darbdavių</th><th>Iš jų grįžo</th></tr>';
+    foreach ($rows as $i => $w) {
+        $start = strtotime('-'.$i.' weeks', $monday);
+        if (date('Y-m-d', strtotime('+6 days', $start)) < GANG_OPENED) {
+            break;
+        }
+        $label = date('m-d', $start).' – '.date('m-d', strtotime('+6 days', $start)).($i === 0 ? ' (ši)' : '');
+        $times = $w['times'];
+        sort($times);
+        $median = $times ? $times[intdiv(count($times), 2)] : null;
+        $medianText = $median === null ? '–' : ($median < 1 ? round($median * 60).' min.' : ($median < 48 ? number_format($median, 1, ',', '').' val.' : number_format($median / 24, 1, ',', '').' d.'));
+        $filled = $w['requests'] ? count($times).' ('.round(count($times) / $w['requests'] * 100).' %)' : '–';
+        $posters = count($w['posters']);
+        $back = $posters ? count($w['back']).' ('.round(count($w['back']) / $posters * 100).' %)' : '–';
+        $html .= '<tr><td>'.$label.'</td><td>'.$w['workers'].'</td><td>'.$w['managers'].'</td><td>'.$w['requests'].'</td><td>'.$filled.'</td><td>'.$medianText.'</td><td>'.$posters.'</td><td>'.$back.'</td></tr>';
+    }
+    return $html.'</table></div>';
 }
 
 const REQUEST_STATUSES = ['open' => 'Atvira', 'filled' => 'Užpildyta', 'cancelled' => 'Uždaryta', 'expired' => 'Pasibaigusi'];
