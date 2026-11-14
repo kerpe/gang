@@ -136,10 +136,9 @@ function home_page(): never
   <div class="grain" aria-hidden="true"></div>
   <p class="rec" aria-hidden="true"><i></i>REC</p>
   <div class="wrap hero-body">
-    <h1>FOH &amp; BOH <span class="hl">Patikimi žmonės šiandien</span></h1>
+    <h1>Baras ir virtuvė. <span class="hl">Patikimi žmonės šiandien.</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     $heroCta
-    <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li></ul>
   </div>
 </section>
 $list
@@ -171,7 +170,7 @@ $list
 
 <section class="wrap home-block">
   <div class="bento">
-    <div class="bt t-2 lime"><span class="k">Darbuotojams</span><span class="big">1 kalendorius</span><p>Visi jūsų GANG darbai vienoje vietoje: patvirtinti darbai jame atsiranda patys.</p></div>
+    <div class="bt t-2 lime"><span class="k">Komisiniai</span><span class="big">0&nbsp;%</span><p>Darbdavys ir darbuotojas susitaria tiesiogiai.</p></div>
     <div class="bt t-2"><span class="k">Miestai</span><span class="big">6</span><p>Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys ir Palanga.</p></div>
     <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">{$mark}1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
