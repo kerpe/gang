@@ -311,7 +311,7 @@ return [
         'baro vadovas' => 'bar manager',
         'restorano vadovas' => 'restaurant manager',
         // Home, how it works, about, team pages
-        'FOH & BOH' => 'FOH & BOH',
+        'Baras. Salė. Virtuvė.' => 'Bar. Floor. Kitchen.',
         'Get ready to meet the GANG' => 'Get ready to meet the GANG',
         'GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.' => 'GANG helps restaurants, cafés, bars and clubs quickly find staff for cover, the season or a permanent job, and gives hospitality professionals and enthusiasts extra income and work where they can express themselves.',
         'Ieškau darbo' => 'I\'m looking for work',
