@@ -311,8 +311,23 @@ function request_card_short(array $r): string
     $when = ($oneDay ? '' : 'nuo ').date_lt($from);
     $kind = KINDS[$r['kind']] ?? $r['kind'];
     $soon = request_urgent($r) ? starts_in($from) : '';
+    // Photos take turns by id; within one list a photo already shown goes to the next of the role's photos,
+    // so two cooks side by side get different kitchens. Once a role runs out, photos repeat.
+    static $shown = [];
     $keys = ROLE_PHOTOS[$r['role']] ?? [];
-    $key = $keys ? $keys[(int) $r['id'] % count($keys)] : '';
+    $key = '';
+    if ($keys) {
+        $start = (int) $r['id'] % count($keys);
+        $key = $keys[$start];
+        for ($i = 0; $i < count($keys); $i++) {
+            $try = $keys[($start + $i) % count($keys)];
+            if (!isset($shown[$try])) {
+                $key = $try;
+                break;
+            }
+        }
+        $shown[$key] = true;
+    }
     $img = $key !== '' ? '<img src="/img/job-'.$key.'-sm.jpg?v=3" srcset="/img/job-'.$key.'-sm.jpg?v=3 640w, /img/job-'.$key.'.jpg?v=3 960w" sizes="(max-width: 380px) 100px, (max-width: 640px) 136px, (max-width: 960px) 50vw, 420px" alt="" width="640" height="480" loading="lazy" decoding="async">' : '';
     return '<a class="card feed-card" href="/darbas/'.(int) $r['id'].'">'
         .'<div class="feed-media">'.$img
