@@ -88,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=110">
+<link rel="stylesheet" href="/style.css?v=111">
 $head
 </head>
 <body$bodyClass>
@@ -291,11 +291,11 @@ function pro_stats(array $items): string
     return $out !== '' ? '<dl class="pro-stats">'.$out.'</dl>' : '';
 }
 
-// Experience level 1–5 as five segments.
+// Experience level as four segments: 1 "Be patirties" lights none, 5 "Daugiau nei 5 metai" all four.
 function xp_meter(int $level): string
 {
     $out = '<span class="xp-meter" aria-hidden="true">';
-    for ($i = 1; $i <= 5; $i++) {
+    for ($i = 2; $i <= 5; $i++) {
         $out .= '<i'.($i <= $level ? ' class="on"' : '').'></i>';
     }
     return $out.'</span>';
