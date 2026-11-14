@@ -96,8 +96,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .wall-cell:nth-child(n+3) figcaption { display: block; }
   .wall-cell figcaption { top: 14px; left: 16px; }
 }
-/* All four screens are dimmed evenly, a little more in the middle where the text sits. */
-.hero-shade { background: radial-gradient(ellipse 70% 60% at 50% 50%, rgba(14,14,13,.28) 0%, rgba(14,14,13,0) 100%), rgba(14,14,13,.62); }
+/* All four screens are dimmed evenly, a little more on the left where the text sits. */
+.hero-shade { background: radial-gradient(ellipse 75% 65% at 25% 50%, rgba(14,14,13,.28) 0%, rgba(14,14,13,0) 100%), rgba(14,14,13,.62); }
 /* Moving film grain on top of the grain baked into the photo. */
 .grain { inset: -100%; opacity: .06; pointer-events: none; mix-blend-mode: overlay; animation: grain 1s steps(6) infinite;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
@@ -105,13 +105,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .rec { position: absolute; top: 20px; right: 24px; margin: 0; display: flex; align-items: center; gap: 8px; font: 600 .78rem/1 ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: .2em; color: var(--ink); z-index: 2; }
 .rec i { width: 9px; height: 9px; border-radius: 50%; background: var(--orange); animation: rec 1.4s steps(2) infinite; }
 @keyframes rec { 50% { opacity: .15; } }
-/* The hero text sits in the middle of the camera wall. */
-.hero-body { position: relative; z-index: 1; padding-top: 88px; padding-bottom: 88px; width: 100%; text-align: center; }
-.home-hero h1 { font-size: clamp(2.6rem, 6.6vw, 5.4rem); line-height: 1.15; margin: 0 auto 22px; max-width: 1100px; text-wrap: balance; }
+/* The hero text sits on the left, halfway down the camera wall. */
+.hero-body { position: relative; z-index: 1; padding-top: 88px; padding-bottom: 88px; width: 100%; }
+.home-hero h1 { font-size: clamp(2.6rem, 6.6vw, 5.4rem); line-height: 1.15; margin-bottom: 22px; max-width: 1100px; text-wrap: balance; }
 .home-hero h1 .hl { color: var(--lime); display: block; }
 .home-hero .eyebrow { color: var(--ink); opacity: .8; }
-.home-hero .lead { font-size: clamp(1.02rem, 1.6vw, 1.18rem); max-width: 600px; margin: 0 auto 30px; color: var(--ink); opacity: .92; }
-.home-hero .cta { justify-content: center; }
+.home-hero .lead { font-size: clamp(1.02rem, 1.6vw, 1.18rem); max-width: 600px; margin: 0 0 30px; color: var(--ink); opacity: .92; }
 .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; }
 .cta .btn { padding: 15px 28px; font-size: 1.05rem; }
 .btn.light { background: var(--ink); border-color: var(--ink); color: #151515; }
