@@ -88,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=109">
+<link rel="stylesheet" href="/style.css?v=110">
 $head
 </head>
 <body$bodyClass>
@@ -266,6 +266,39 @@ function stars(?float $avg, int $count): string
         return '<span class="stars none">Įvertinimų dar nėra</span>';
     }
     return '<span class="stars" title="'.number_format($avg, 1, ',', '').' iš 5">'.knives().' '.number_format($avg, 1, ',', '').' <small>('.$count.')</small></span>';
+}
+
+// Profile pages (worker and venue) share one look: a header card, a row of numbers, then sections.
+function pro_head(string $media, string $eyebrow, string $name, string $where, string $extra = ''): string
+{
+    $pin = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    return '<header class="pro-head">'.$media.'<div class="pro-id">'
+        .($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '')
+        .'<h1>'.e($name).'</h1>'
+        .($where !== '' ? '<p class="pro-where">'.$pin.e($where).'</p>' : '')
+        .$extra.'</div></header>';
+}
+
+// [[label, value html, note], ...]; a tile without a value is left out.
+function pro_stats(array $items): string
+{
+    $out = '';
+    foreach ($items as [$label, $value, $note]) {
+        if ($value !== '') {
+            $out .= '<div><dt>'.e($label).'</dt><dd><span class="pro-num">'.$value.'</span>'.($note !== '' ? '<small>'.e($note).'</small>' : '').'</dd></div>';
+        }
+    }
+    return $out !== '' ? '<dl class="pro-stats">'.$out.'</dl>' : '';
+}
+
+// Experience level 1–5 as five segments.
+function xp_meter(int $level): string
+{
+    $out = '<span class="xp-meter" aria-hidden="true">';
+    for ($i = 1; $i <= 5; $i++) {
+        $out .= '<i'.($i <= $level ? ' class="on"' : '').'></i>';
+    }
+    return $out.'</span>';
 }
 
 // One look for a job's duration everywhere: label from KINDS, colour per kind (style.css .tag.k-*).

@@ -846,6 +846,54 @@ table.data td.actions form + form { margin-left: 6px; }
 .perk-list li { padding: 7px 14px; border-radius: 8px; background: rgba(216,255,54,.08); border: 1px solid rgba(216,255,54,.35); font-size: .92rem; }
 .venue-page .venue-actions { margin: 0 0 8px; }
 @media (max-width: 560px) { .venue-head { flex-direction: column; align-items: flex-start; gap: 14px; } }
+/* Worker and venue profiles: header card, numbers, sections */
+.pro-head { position: relative; display: flex; gap: 28px; align-items: center; margin: 8px 0 14px; padding: 28px; background: linear-gradient(135deg, rgba(216,255,54,.09), transparent 55%), var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.pro-head::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 6px; background: var(--lime); }
+.pro-id { min-width: 0; }
+.pro-head h1 { margin: 0; font-size: clamp(2.4rem, 7vw, 4rem); line-height: 1; }
+.pro-head .eyebrow { margin: 0 0 8px; color: var(--lime); letter-spacing: .2em; font-weight: 700; }
+.pro-where { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; color: var(--ink); opacity: .85; }
+.pro-where svg { width: 16px; height: 16px; flex: none; color: var(--lime); }
+.pro-badge { margin: 12px 0 0; }
+.pro-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 0 0; }
+.pro-tags-label { font-size: .75rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; margin-right: 4px; }
+.pro-head .venue-links { margin-top: 14px; }
+.avatar.pro { width: 148px; height: 148px; font-size: 2.6rem; border: 0; box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--lime); }
+.avatar.none.pro { font-family: var(--display); font-weight: 400; color: var(--lime); }
+.avatar.venue-logo.pro { border-radius: 22px; }
+.pro-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 8px; }
+.pro-stats > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.pro-stats dt, .pro-info dt { font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.pro-stats dd { margin: 4px 0 0; }
+.pro-num { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-size: 2.3rem; line-height: 1.1; color: var(--ink); }
+.pro-num .gk { width: .7em; height: .7em; color: var(--lime); }
+.pro-stats small { display: block; color: var(--muted); font-size: .82rem; }
+.pro-page h2 { margin-top: 34px; margin-bottom: 12px; font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .2em; }
+.xp-list { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.xp-list li { display: grid; grid-template-columns: 1fr 120px 170px; gap: 16px; align-items: center; padding: 13px 18px; border-top: 1px solid var(--line); }
+.xp-list li:first-child { border-top: 0; }
+.xp-role { font-weight: 700; font-size: 1.05rem; }
+.xp-years { color: var(--muted); font-size: .92rem; text-align: right; }
+.xp-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.xp-meter i { height: 8px; border-radius: 2px; background: var(--line); }
+.xp-meter i.on { background: var(--lime); }
+.pro-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0 0; }
+.pro-info > div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+.pro-info dd { margin: 4px 0 0; }
+.pro-page .venue-actions { margin: 0 0 14px; }
+.pro-page .panel h2 { margin-top: 0; }
+@media (max-width: 600px) {
+  .pro-head { flex-direction: column; align-items: flex-start; gap: 18px; padding: 24px 20px 22px 24px; }
+  .avatar.pro { width: 112px; height: 112px; font-size: 2rem; }
+  .pro-head h1 { font-size: clamp(2.2rem, 11vw, 3rem); }
+  .pro-stats { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+  .pro-stats > div { padding: 12px 10px; min-width: 0; }
+  .pro-stats dt { font-size: .62rem; letter-spacing: .06em; hyphens: auto; overflow-wrap: anywhere; }
+  .pro-stats small { font-size: .75rem; }
+  .pro-num { font-size: 1.8rem; }
+  .xp-list li { grid-template-columns: 1fr auto; gap: 6px 12px; padding: 12px 16px; }
+  .xp-meter { grid-column: 1 / -1; grid-row: 2; }
+}
 .venue-card-head { display: flex; align-items: center; gap: 12px; }
 .avatar.venue-logo.small { font-size: .85rem; border-radius: 8px; }
 

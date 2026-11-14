@@ -543,7 +543,7 @@ function venue_page(int $id): never
     [$avg, $n] = venue_rating($id);
     $reliable = $private ? venue_reliability($id) : null;
     $reviewsHtml = match (true) {
-        $private => '<h2>Darbuotojų įvertinimai</h2>'.criteria_html('worker', 'venue_id', $id).reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas'),
+        $private => $n ? '<h2>Darbuotojų įvertinimai</h2>'.criteria_html('worker', 'venue_id', $id).reviews_html(venue_reviews($id), fn ($r) => 'Darbuotojas') : '',
         !$u => '<div class="panel venue-join"><h2>Darbuotojų įvertinimai</h2><p>Darbuotojų įvertinimus ir darbdavio patikimumą mato registruoti GANG darbuotojai.</p><p><a class="btn" href="/prisijungti?kaip=darbuotojas">Susikurti paskyrą</a> <a href="/prisijungti">Jau turiu paskyrą</a></p></div>',
         default => '',
     };
@@ -552,16 +552,20 @@ function venue_page(int $id): never
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
     $type = venue_type_text($venue);
     $facts = array_filter([
-        'Adresas' => full_address($venue),
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
-        'Patikimumas' => $reliable !== null ? $reliable.' % sutartų darbų įvyko' : '',
     ]);
-    $factsHtml = '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>';
+    $factsHtml = $facts ? '<dl class="pro-info">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    // Numbers for workers (and the venue itself); a venue without any yet is a newcomer.
+    $stats = !$private || ($reliable === null && !$n) ? '' : pro_stats([
+        ['Vidutinis įvertinimas', $n ? knives().' '.number_format((float) $avg, 1, ',', '') : '–', $n ? 'Įvertinimų: '.$n : 'Įvertinimų dar nėra'],
+        ['Patikimumas', $reliable !== null ? $reliable.' %' : '–', $reliable !== null ? 'sutartų darbų įvyko' : ''],
+    ]);
+    $badge = $private && $stats === '' ? '<p class="pro-badge"><span class="tag good">GANG naujokas</span></p>' : '';
     $edit = $u && (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
-    page($venue['name'], '<section class="wrap narrow venue-page"><header class="venue-head">'.venue_logo($venue, 'large')
-        .'<div>'.($type !== '' ? '<p class="eyebrow">'.e($type).'</p>' : '').'<h1>'.e($venue['name']).'</h1><p class="meta">'.e(CITIES[$venue['city']] ?? '').($private ? ' · '.stars($avg, $n) : '').'</p>'
-        .venue_links_html($venue).'</div></header>'.$edit
+    page($venue['name'], '<section class="wrap narrow pro-page venue-page">'
+        .pro_head(venue_logo($venue, 'pro'), $type, $venue['name'], full_address($venue), $badge.venue_links_html($venue))
+        .$edit.$stats
         .$factsHtml
         .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
         .$jobsHtml.$reviewsHtml.'</section>', ['noindex' => true]);
@@ -1883,10 +1887,29 @@ function worker_profile_page(int $id): never
         redirect('/mano');
     }
     [$avg, $n] = worker_rating($id);
-    $reviews = reviews_html(worker_reviews($id), fn ($r) => 'Darbdavys, '.(CITIES[$r['city']] ?? ''));
-    page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'
-        .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
-        .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
-        .'<h2>Įvertinimai</h2>'.criteria_html('manager', 'worker_id', $id).$reviews.'</section>', ['noindex' => true]);
+    $reliable = worker_reliability($id);
+    $roles = role_experience($id);
+    arsort($roles);
+    // Headline: the one or two roles with the most experience.
+    $top = implode(' · ', array_map(fn ($r) => ROLES[$r] ?? $r, array_slice(array_keys($roles), 0, 2)));
+    $rows = '';
+    foreach ($roles as $role => $level) {
+        $rows .= '<li><span class="xp-role">'.e(ROLES[$role] ?? $role).'</span>'.xp_meter($level).'<span class="xp-years">'.e(EXPERIENCE[$level] ?? '').'</span></li>';
+    }
+    $kinds = implode(' ', array_map('kind_tag', worker_durations($w)));
+    // A newcomer gets one note instead of empty numbers.
+    $stats = $reliable === null && !$n ? '' : pro_stats([
+        ['Vidutinis įvertinimas', $n ? knives().' '.number_format((float) $avg, 1, ',', '') : '–', $n ? 'Įvertinimų: '.$n : 'Įvertinimų dar nėra'],
+        ['Darbų per GANG', (string) completed_count($id), ''],
+        ['Patikimumas', $reliable !== null ? $reliable.' %' : '–', $reliable !== null ? 'sutartų darbų įvyko' : ''],
+    ]);
+    page(first_name($w['name']), '<section class="wrap narrow pro-page">'
+        .pro_head(avatar($w, 'pro'), $top, first_name($w['name']), str_replace(', ', ' · ', labels($w['cities'], CITIES)),
+            ($stats === '' ? '<p class="pro-badge"><span class="tag good">GANG naujokas</span></p>' : '')
+            .'<p class="pro-tags"><span class="pro-tags-label">Domina darbas</span> '.$kinds.'</p>')
+        .$stats
+        .($rows !== '' ? '<h2>Pareigos ir patirtis</h2><ul class="xp-list">'.$rows.'</ul>' : '')
+        .($w['about'] ? '<h2>Apie save</h2><div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
+        .($n ? '<h2>Įvertinimai</h2>'.criteria_html('manager', 'worker_id', $id).reviews_html(worker_reviews($id), fn ($r) => 'Darbdavys, '.(CITIES[$r['city']] ?? '')) : '')
+        .'</section>', ['noindex' => true]);
 }
