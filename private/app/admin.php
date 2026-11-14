@@ -494,7 +494,7 @@ function admin_weekly(int $weeks = 8): string
 {
     $monday = strtotime('monday this week', strtotime(today()));
     $from = date('Y-m-d H:i:s', strtotime('-'.($weeks - 1).' weeks', $monday));
-    $users = sql('SELECT created_at, '.side_sql('worker').' AS w, '.side_sql('manager').' AS m FROM users WHERE created_at >= ?', [$from])->fetchAll();
+    $users = sql('SELECT * FROM users WHERE created_at >= ?', [$from])->fetchAll();
     $hidden = SEO_HIDDEN_VENUES ? ' AND r.venue_id NOT IN ('.implode(',', array_map('intval', SEO_HIDDEN_VENUES)).')' : '';
     $requests = sql('SELECT r.created_at, v.manager_id, (SELECT MIN(c.created_at) FROM contracts c WHERE c.request_id = r.id) AS first_contract,
             (SELECT MIN(r2.created_at) FROM requests r2 JOIN venues v2 ON v2.id = r2.venue_id WHERE v2.manager_id = v.manager_id'.str_replace('r.venue_id', 'r2.venue_id', $hidden).') AS first_post
@@ -511,8 +511,12 @@ function admin_weekly(int $weeks = 8): string
     foreach ($users as $u) {
         $i = $weekOf($u['created_at']);
         if (isset($rows[$i])) {
-            $rows[$i]['workers'] += (int) $u['w'];
-            $rows[$i]['managers'] += (int) $u['m'];
+            // Only a side the member has finished filling in (employers: with a venue), as in the admin member list.
+            foreach (['worker' => 'workers', 'manager' => 'managers'] as $side => $col) {
+                if (has_side($u, $side) && signup_step_url($u, $side) === '') {
+                    $rows[$i][$col]++;
+                }
+            }
         }
     }
     foreach ($requests as $r) {
@@ -530,7 +534,7 @@ function admin_weekly(int $weeks = 8): string
             $rows[$i]['back'][$r['manager_id']] = true;
         }
     }
-    $html = '<h2>Savaitės suvestinė</h2><p class="meta">Pirmadienis–sekmadienis. „Su kontraktu“ – skelbimai, kuriuose darbdavys patvirtino bent vieną darbuotoją. „Grįžo“ – darbdaviai, kurie skelbė ir anksčiau. Bandomosios darbovietės neįskaičiuotos.</p>'
+    $html = '<h2>Savaitės suvestinė</h2><p class="meta">Pirmadienis–sekmadienis. „Su kontraktu“ – skelbimai, kuriuose darbdavys patvirtino bent vieną darbuotoją. „Grįžo“ – darbdaviai, kurie skelbė ir anksčiau. Nauji nariai – tik baigę registraciją (darbdaviai – su darboviete). Bandomosios darbovietės neįskaičiuotos.</p>'
         .'<div class="scroll"><table class="data"><tr><th>Savaitė</th><th>Nauji darbuotojai</th><th>Nauji darbdaviai</th><th>Skelbimai</th><th>Su kontraktu</th><th>Mediana iki kontrakto</th><th>Skelbė darbdavių</th><th>Iš jų grįžo</th></tr>';
     foreach ($rows as $i => $w) {
         $start = strtotime('-'.$i.' weeks', $monday);
