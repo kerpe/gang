@@ -170,7 +170,7 @@ $list
 
 <section class="wrap home-block">
   <div class="bento">
-    <div class="bt t-2 lime"><span class="k">Darbo trukmė</span><span class="big">Nuo 1 pamainos</span><p>Pavadavimas vienai dienai, sezoninis ar nuolatinis darbas.</p></div>
+    <div class="bt t-2 lime"><span class="k">Susitarimas</span><span class="big">Tiesiogiai</span><p>Darbdavys ir darbuotojas susitaria tarpusavyje, GANG komisinių neima.</p></div>
     <div class="bt t-2"><span class="k">Miestai</span><span class="big">6</span><p>Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys ir Palanga.</p></div>
     <div class="bt t-2 orange"><span class="k">Įvertinimai</span><span class="big">{$mark}1–5</span><p>Vertina tik tie, kurie iš tiesų dirbo kartu.</p></div>
   </div>
