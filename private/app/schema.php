@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 // Creates the tables on first use. The marker file keeps later requests from re-checking;
 // bump SCHEMA_VERSION and add CREATE/ALTER statements below when the schema changes.
-const SCHEMA_VERSION = 31;
+const SCHEMA_VERSION = 32;
 
 function migrate(PDO $db): void
 {
@@ -361,6 +361,9 @@ function schema_columns(): array
         // the other side; users.kind is then the side they are on right now (the switch on Mano paskyra).
         // (Version 29 named it "dual", a reserved word in MySQL, so on gang.lt the column was never made.)
         'users ADD both_sides TINYINT NOT NULL DEFAULT 0',
+        // Version 32: "Darbo paieška" (Vilius 2026-11-14), the worker's own choice: looking | watching | hidden
+        // (JOB_SEARCH in bootstrap.php). Named so it is no reserved word in MySQL.
+        "users ADD job_search VARCHAR(10) NOT NULL DEFAULT 'looking'",
     ];
 }
 

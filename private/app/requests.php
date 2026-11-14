@@ -1285,7 +1285,7 @@ function accepted_panel(array $r, array $u): string
 
 function owner_panel(array $r, bool $isOpen): string
 {
-    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, wr.experience FROM responses s JOIN users w ON w.id = s.worker_id
+    $responses = sql("SELECT s.*, w.name, w.about, w.roles, w.photo, w.phone, w.job_search, wr.experience FROM responses s JOIN users w ON w.id = s.worker_id
         LEFT JOIN worker_roles wr ON wr.user_id = s.worker_id AND wr.role = ?
         WHERE s.request_id = ? AND s.status IN ('sent', 'accepted') ORDER BY CASE WHEN s.status = 'accepted' THEN 0 ELSE 1 END, s.created_at", [$r['role'], $r['id']])->fetchAll();
     $list = '';
@@ -1295,7 +1295,8 @@ function owner_panel(array $r, bool $isOpen): string
     $chats = false;
     foreach ($responses as $s) {
         [$avg, $n] = worker_rating((int) $s['worker_id']);
-        $badges = [];
+        // "Ieško darbo dabar" first, while the worker is still waiting for a decision.
+        $badges = $s['status'] === 'sent' && ($tag = job_search_badge($s)) !== '' ? [$tag] : [];
         // Days: what the worker can do, and what approving now would cover (days already filled drop out).
         $take = null;
         if ($split) {
@@ -1885,7 +1886,7 @@ function worker_profile_page(int $id): never
     [$avg, $n] = worker_rating($id);
     $reviews = reviews_html(worker_reviews($id), fn ($r) => 'Darbdavys, '.(CITIES[$r['city']] ?? ''));
     page(first_name($w['name']), '<section class="wrap narrow"><div class="greeting">'.avatar($w, 'large').'<div><h1>'.e(first_name($w['name'])).'</h1>'
-        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p></div></div>'
+        .'<p class="meta">'.stars($avg, $n).' · '.gang_jobs_text($id).'</p>'.(($tag = job_search_badge($w)) !== '' ? '<p class="badges">'.$tag.'</p>' : '').'</div></div>'
         .'<ul class="facts"><li><b>Pareigos ir patirtis</b>'.e(roles_with_experience($id)).'</li>'.'<li><b>Miestai</b>'.e(labels($w['cities'], CITIES)).'</li>'.'<li><b>Domina darbas</b>'.e(durations_text($w)).'</li></ul>'
         .($w['about'] ? '<div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
         .'<h2>Įvertinimai</h2>'.criteria_html('manager', 'worker_id', $id).$reviews.'</section>', ['noindex' => true]);

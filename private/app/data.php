@@ -407,12 +407,13 @@ function notify_worker_of_open_jobs(array $u, array $before = []): int
     return count($jobs);
 }
 
-// How many workers match the role, city, experience and duration.
+// How many workers match the role, city, experience and duration ("tinkami darbuotojai mieste" for the
+// employer). Workers who chose "Nerodyti manęs darbdaviams" are not counted.
 // $exclude: the employer asking, when they are a worker too.
 function matching_workers_count(string $role, string $city, int $minExperience = 1, string $kind = '', int $exclude = 0): int
 {
     return (int) sql('SELECT COUNT(*) FROM users u
-        WHERE '.side_sql('worker', 'u')." AND u.id <> ? AND blocked = 0 AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
+        WHERE '.side_sql('worker', 'u')." AND u.id <> ? AND blocked = 0 AND u.job_search <> 'hidden' AND cities LIKE ? AND (? = '' OR durations = '' OR durations LIKE ?)
         AND EXISTS (SELECT 1 FROM worker_roles wr WHERE wr.user_id = u.id AND wr.role = ? AND (wr.experience >= ? OR ? <= 1))", [$exclude, '%,'.$city.',%', $kind, '%,'.$kind.',%', $role, $minExperience, $minExperience])->fetchColumn();
 }
 
@@ -479,6 +480,12 @@ function roles_with_experience(int $userId): string
 function manager_verified(array $u): bool
 {
     return has_side($u, 'manager') && !empty($u['verified_at']);
+}
+
+// "Ieško darbo dabar" for employers, when the worker chose it ('' otherwise).
+function job_search_badge(array $w): string
+{
+    return ($w['job_search'] ?? '') === 'looking' ? '<span class="badge looking">Ieško darbo dabar</span>' : '';
 }
 
 // A worker who applied to one of the employer's searches or worked for them.

@@ -1296,3 +1296,8 @@ table.data td.actions form + form { margin-left: 6px; }
   .admin-main table.data tr.col-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .admin-main table.data tr.col-filter th { display: block; padding: 0; border: 0; }
 }
+
+/* "Darbo paieška": the worker's choice on the account form, the line on Mano paskyra, the tag employers see */
+.search-choices + .check { margin-top: 12px; }
+.account-search { margin-top: 2px; }
+.badge.looking { border-color: rgba(216,255,54,.45); background: rgba(216,255,54,.1); color: var(--lime); font-weight: 600; }
