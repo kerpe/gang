@@ -136,7 +136,7 @@ function home_page(): never
   <div class="grain" aria-hidden="true"></div>
   <p class="rec" aria-hidden="true"><i></i>REC</p>
   <div class="wrap hero-body">
-    <h1>Baras. Salė. Virtuvė. <span class="hl">Patikimi žmonės šiandien</span></h1>
+    <h1>Barmenai. Padavėjai. Virėjai. <span class="hl">Patikimi žmonės šiandien</span></h1>
     <p class="lead">GANG padeda restoranams, kavinėms, barams ir klubams greitai rasti darbuotojų pavadavimui, sezonui ar nuolatiniam darbui, o hospitality specialistams bei entuziastams – papildomų pajamų ir darbo, kuriame galima save išreikšti.</p>
     $heroCta
     <ul class="hero-facts"><li><strong>Salė ir virtuvė</strong> visos komandos pareigos</li><li><strong>6 miestai</strong> Vilnius, Kaunas, Klaipėda, Šiauliai, Panevėžys, Palanga</li></ul>
