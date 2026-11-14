@@ -874,7 +874,7 @@ table.data td.actions form + form { margin-left: 6px; }
 .xp-list li:first-child { border-top: 0; }
 .xp-role { font-weight: 700; font-size: 1.05rem; }
 .xp-years { color: var(--muted); font-size: .92rem; text-align: right; }
-.xp-meter { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; }
+.xp-meter { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .xp-meter i { height: 8px; border-radius: 2px; background: var(--line); }
 .xp-meter i.on { background: var(--lime); }
 .pro-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 10px 0 0; }
@@ -893,6 +893,11 @@ table.data td.actions form + form { margin-left: 6px; }
   .pro-num { font-size: 1.8rem; }
   .xp-list li { grid-template-columns: 1fr auto; gap: 6px 12px; padding: 12px 16px; }
   .xp-meter { grid-column: 1 / -1; grid-row: 2; }
+}
+/* Narrowest phones: two numbers in a row, a third one takes the whole row instead of hanging half-empty. */
+@media (max-width: 359px) {
+  .pro-stats { grid-template-columns: 1fr 1fr; }
+  .pro-stats > div:nth-child(3):last-child { grid-column: 1 / -1; }
 }
 .venue-card-head { display: flex; align-items: center; gap: 12px; }
 .avatar.venue-logo.small { font-size: .85rem; border-radius: 8px; }

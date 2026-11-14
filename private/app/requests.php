@@ -549,7 +549,7 @@ function venue_page(int $id): never
     };
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
-    $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="cards">'.implode('', array_map('request_card', $jobs)).'</div>' : '';
+    $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="feed">'.implode('', array_map('request_card_short', $jobs)).'</div>' : '';
     $type = venue_type_text($venue);
     $facts = array_filter([
         'Darbo laikas' => $venue['hours'],
