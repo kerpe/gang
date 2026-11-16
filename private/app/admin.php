@@ -221,6 +221,8 @@ function admin_page(): never
             'delete_venue' => flash(admin_delete_venue($id) ? 'Darbovietė ir jos paieškos ištrintos.' : 'Darbovietė nerasta.') ?: redirect($back),
             'message' => admin_send_message($id),
             'test_mail' => admin_test_mail(),
+            'thanks_test' => admin_thanks_test(),
+            'thanks_all' => admin_thanks_all(),
             'delete_review' => sql('DELETE FROM reviews WHERE id = ?', [$id]),
             'close_request' => sql("UPDATE requests SET status = 'cancelled' WHERE id = ?", [$id]),
             'invite_waitlist' => flash(invite_waitlist().' laiškų išsiųsta.') ?: redirect('/admin?tab=waitlist'),
@@ -429,6 +431,77 @@ function admin_test_mail(): never
     ]);
     flash($ok ? 'Bandomasis laiškas išsiųstas: '.$to.'.' : 'Laiško išsiųsti nepavyko.');
     redirect('/admin?tab=settings');
+}
+
+// One-time thank-you email to every member after the first week (Vilius 2026-11-16). The middle
+// paragraph depends on the member's side; an address without an account gets both.
+function thanks_mail(?array $u): array
+{
+    $worker = !$u || has_side($u, 'worker');
+    $manager = !$u || has_side($u, 'manager');
+    return [
+        'kicker' => 'Pirmoji savaitė',
+        'title' => 'Ačiū, kad esate su mumis',
+        'lead' => 'dėkojame, kad užsiregistravote GANG. Dirbame vos savaitę, o jau galime pasidžiaugti solidžia barų, restoranų ir kavinių profesionalų bendruomene.',
+        'body' => array_values(array_filter([
+            $worker ? 'Norime priminti, kad nariai su profilio nuotrauka ir detalesniu aprašymu paprastai lengviau gauna pirmąjį darbo pasiūlymą. Darbdaviui svarbu matyti, kas jūs esate, kokią patirtį turite ir kur esate dirbę. Paskyrą papildyti užtruks vos kelias minutes.' : '',
+            $manager ? ($worker ? 'Darbdaviams: darbuotojai' : 'Norime priminti, kad darbuotojai').' paprastai aktyviau kandidatuoja, kai darbovietė turi logotipą ar nuotrauką ir trumpą aprašymą, o skelbime aiškiai nurodytos pareigos, darbo laikas ir atlygis.' : '',
+        ])),
+        'cta' => ['Papildyti paskyrą', url('/mano')],
+        'after' => 'Linkime sėkmės ir sklandžių pamainų.',
+        'footnote' => 'Šį laišką gavote, nes turite GANG paskyrą.',
+    ];
+}
+
+const THANKS_SUBJECT = 'Ačiū, kad esate GANG bendruomenėje';
+
+// Members who get the thank-you email: registration finished, not blocked.
+function thanks_recipients(): array
+{
+    return array_values(array_filter(sql('SELECT * FROM users WHERE blocked = 0 ORDER BY id')->fetchAll(), 'signup_finished'));
+}
+
+function admin_thanks_box(): string
+{
+    $sent = setting('thanks_mail_at');
+    if ($sent !== '') {
+        return '<p class="meta">Padėkos laiškas nariams išsiųstas '.e(substr($sent, 0, 16)).'.</p>';
+    }
+    $n = count(thanks_recipients());
+    return '<h2>Padėkos laiškas nariams</h2><p class="meta">Pirmiausia išsiųskite bandomąjį laišką sau. Jei adresas priklauso GANG paskyrai, laiškas bus toks, kokį gaus tas narys; kitu atveju – su abiem pastraipomis (darbuotojams ir darbdaviams).</p>'
+        .'<form method="post" action="/admin?tab=users" class="test-mail">'.csrf_field().'<input type="hidden" name="action" value="thanks_test">'
+        .'<input type="email" name="email" required placeholder="adresas@pavyzdys.lt" aria-label="El. paštas"> <button class="btn small">Siųsti bandomąjį</button></form>'
+        .'<p>'.post_button('/admin?tab=users', 'Siųsti padėkos laišką visiems nariams ('.$n.')', ['action' => 'thanks_all', 'id' => 0], 'btn small',
+            'Išsiųsti padėkos laišką visiems '.$n.' nariams? Kiekvienas jį gaus tik vieną kartą.').'</p>';
+}
+
+function admin_thanks_test(): never
+{
+    $to = strtolower(trim(input('email')));
+    if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        flash('Įrašykite teisingą el. pašto adresą.');
+        redirect('/admin?tab=users');
+    }
+    $u = sql('SELECT * FROM users WHERE email = ?', [$to])->fetch() ?: null;
+    $ok = send_mail($to, THANKS_SUBJECT, thanks_mail($u));
+    flash($ok ? 'Bandomasis padėkos laiškas išsiųstas: '.$to.'.' : 'Laiško išsiųsti nepavyko.');
+    redirect('/admin?tab=users');
+}
+
+// Marked as sent first, so a second click (or a second admin tab) never sends it again.
+function admin_thanks_all(): never
+{
+    if (setting('thanks_mail_at') !== '') {
+        flash('Padėkos laiškas jau išsiųstas.');
+        redirect('/admin?tab=users');
+    }
+    set_setting('thanks_mail_at', now());
+    $list = thanks_recipients();
+    foreach ($list as $u) {
+        queue_mail($u['email'], THANKS_SUBJECT, thanks_mail($u), [], 20);
+    }
+    flash('Padėkos laiškas įtrauktas į siuntimo eilę: '.count($list).' narių. Laiškai išeis per kelias minutes.');
+    redirect('/admin?tab=users');
 }
 
 // A personal email from the GANG team; replies go to hello@gang.lt.
@@ -654,7 +727,7 @@ function admin_users(): string
         }
         return $html.($list ? '' : '<tr><td colspan="8">'.$empty.'</td></tr>').'</table></div>';
     };
-    $html = admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta"><span class="col-count">Rasta: '.count($done).'.</span> Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
+    $html = admin_thanks_box().admin_filter('users', 'Vardas, el. paštas, telefonas ar darbovietė', 'kind', $kinds).'<p class="meta"><span class="col-count">Rasta: '.count($done).'.</span> Paspauskite vardą: matysite visus duomenis, galėsite parašyti laišką ar ištrinti narį.</p>'
         .$table($done, 'Narių nerasta.');
     if ($unfinished) {
         $html .= '<h2>Nebaigė registracijos ('.count($unfinished).')</h2><p class="meta">Patvirtino el. paštą, bet dar neišsaugojo savo duomenų. Užbaigę registraciją jie atsiras sąraše viršuje.</p>'
