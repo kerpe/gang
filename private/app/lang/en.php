@@ -388,6 +388,17 @@ return [
         'Susikurti paskyrą' => 'Create an account',
         'Susikurti paskyrą ir atsiliepti' => 'Create an account and apply',
         'Jau turiu paskyrą' => 'I already have an account',
+        // Thank-you email after the first week (admin, 2026-11-16)
+        'Ačiū, kad esate GANG bendruomenėje' => 'Thank you for being part of the GANG community',
+        'Pirmoji savaitė' => 'Our first week',
+        'Ačiū, kad esate su mumis' => 'Thank you for being with us',
+        'dėkojame, kad užsiregistravote GANG. Dirbame vos savaitę, o jau galime pasidžiaugti solidžia barų, restoranų ir kavinių profesionalų bendruomene.' => 'thank you for joining GANG. We have been up and running for just a week, and we are already proud of a solid community of bar, restaurant and café professionals.',
+        'Norime priminti, kad nariai su profilio nuotrauka ir detalesniu aprašymu paprastai lengviau gauna pirmąjį darbo pasiūlymą. Darbdaviui svarbu matyti, kas jūs esate, kokią patirtį turite ir kur esate dirbę. Paskyrą papildyti užtruks vos kelias minutes.' => 'A quick reminder: members with a profile photo and a more detailed description usually find it easier to get their first job offer. Employers want to see who you are, what experience you have and where you have worked. Completing your account takes only a few minutes.',
+        'Norime priminti, kad darbuotojai paprastai aktyviau kandidatuoja, kai darbovietė turi logotipą ar nuotrauką ir trumpą aprašymą, o skelbime aiškiai nurodytos pareigos, darbo laikas ir atlygis.' => 'A quick reminder: workers usually apply more readily when the venue has a logo or photo and a short description, and the job post clearly states the role, working hours and pay.',
+        'Darbdaviams: darbuotojai paprastai aktyviau kandidatuoja, kai darbovietė turi logotipą ar nuotrauką ir trumpą aprašymą, o skelbime aiškiai nurodytos pareigos, darbo laikas ir atlygis.' => 'For employers: workers usually apply more readily when the venue has a logo or photo and a short description, and the job post clearly states the role, working hours and pay.',
+        'Papildyti paskyrą' => 'Complete your account',
+        'Linkime sėkmės ir sklandžių pamainų.' => 'We wish you every success and smooth shifts.',
+        'Šį laišką gavote, nes turite GANG paskyrą.' => 'You received this email because you have a GANG account.',
         'Registracija trunka kelias minutes.' => 'Signing up takes a few minutes.',
         // Jobs list
         'Visi miestai' => 'All cities',
