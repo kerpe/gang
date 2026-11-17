@@ -231,6 +231,26 @@ function venue_hours_text(array $hours): string
     return implode('; ', $parts);
 }
 
+// Opening hours as a week: one row per day, a day off as "Nedirba", today's row marked.
+// Older free text stays as it was typed.
+function venue_hours_week(string $text): string
+{
+    $hours = venue_hours_parse($text);
+    if (!$hours) {
+        return venue_hours_html($text);
+    }
+    $names = lang() === 'en' ? WEEKDAYS_SHORT_EN : WEEKDAYS_SHORT;
+    $today = (int) date('N');
+    $rows = '';
+    foreach (range(1, 7) as $d) {
+        $time = isset($hours[$d]) ? $hours[$d][0].'–'.($hours[$d][1] === '00:00' ? '24:00' : $hours[$d][1]) : '';
+        $rows .= '<li class="'.trim(($d === $today ? 'today' : '').($time === '' ? ' off' : '')).'"><span class="wk-day">'.e($names[$d]).'</span>'
+            .'<span class="wk-time">'.($time !== '' ? e($time) : 'Nedirba').'</span>'
+            .($d === $today ? '<span class="wk-now">Šiandien</span>' : '').'</li>';
+    }
+    return '<ul class="week-hours">'.$rows.'</ul>';
+}
+
 // The form's [day => [from, to]] from a stored text, or null for older free text.
 function venue_hours_parse(string $text): ?array
 {
@@ -569,7 +589,7 @@ function venue_page(int $id): never
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
     ]);
-    $factsHtml = $facts ? '<dl class="pro-info">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    $factsHtml = $facts ? '<dl class="pro-info">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_week($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
     // Numbers for workers (and the venue itself); a venue without any yet is a newcomer.
     $stats = !$private || ($reliable === null && !$n) ? '' : pro_stats([
         ['Vidutinis įvertinimas', $n ? knives().' '.number_format((float) $avg, 1, ',', '') : '–', $n ? 'Įvertinimų: '.$n : 'Įvertinimų dar nėra'],
@@ -1076,7 +1096,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
 {
     $pin = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
     $concept = venue_concept($venue);
-    $tiles = ($venue['hours'] !== '' ? '<div class="venue-hours"><dt>Darbo laikas</dt><dd>'.venue_hours_html($venue['hours']).'</dd></div>' : '')
+    $tiles = ($venue['hours'] !== '' ? '<div class="venue-hours"><dt>Darbo laikas</dt><dd>'.venue_hours_week($venue['hours']).'</dd></div>' : '')
         .(isset(TEAM_SIZES[$venue['team_size']]) ? '<div><dt>Komanda</dt><dd>'.e(TEAM_SIZES[$venue['team_size']]).'</dd></div>' : '')
         .($address !== '' ? '<div class="venue-addr"><dt>Adresas</dt><dd>'.$pin.e($address).'</dd></div>' : '');
     return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'

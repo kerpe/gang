@@ -1405,3 +1405,14 @@ table.data td.actions form + form { margin-left: 6px; }
   .venue-box .venue-facts .venue-hours { grid-column: 1 / -1; }
 
 }
+
+/* Venue opening hours as a week (venue_hours_week): day, time, today marked in lime. */
+.week-hours { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.week-hours li { display: flex; align-items: center; gap: 12px; padding: 5px 10px; margin: 0 -10px; border-radius: 8px; }
+.wk-day { width: 2.2em; flex: none; font-weight: 700; color: var(--muted); }
+.wk-time { flex: 1; }
+.week-hours li.off .wk-time { color: var(--muted); }
+.week-hours li.today { background: rgba(216,255,54,.1); }
+.week-hours li.today .wk-day, .week-hours li.today .wk-time { color: var(--lime); }
+.wk-now { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--lime); }
+.venue-box .venue-facts { align-items: start; }
