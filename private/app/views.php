@@ -88,7 +88,7 @@ $robots$canonical
 <link rel="preload" href="/fonts/anton-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/fonts/anton-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/style.css?v=111">
+<link rel="stylesheet" href="/style.css?v=114">
 $head
 </head>
 <body$bodyClass>
@@ -269,12 +269,45 @@ function stars(?float $avg, int $count): string
 }
 
 // Profile pages (worker and venue) share one look: a header card, a row of numbers, then sections.
-function pro_head(string $media, string $eyebrow, string $name, string $where, string $extra = ''): string
+// Text a member typed (job description, "Apie darbovietę", "Apie save") as paragraphs instead of one block:
+// each line is a paragraph, lines starting with "-", "–", "•" or "*" become a list, and $lead makes the first
+// paragraph larger so the text has a start.
+function text_html(string $text, bool $lead = false): string
+{
+    $out = '';
+    $list = [];
+    $flush = function () use (&$out, &$list) {
+        if ($list) {
+            $out .= '<ul>'.implode('', array_map(fn ($x) => '<li>'.e($x).'</li>', $list)).'</ul>';
+            $list = [];
+        }
+    };
+    foreach (preg_split('/\R/u', trim($text)) as $line) {
+        $line = trim($line);
+        if ($line === '') {
+            $flush();
+        } elseif (preg_match('/^[-–•*]\s*(.+)$/u', $line, $m)) {
+            $list[] = $m[1];
+        } else {
+            $flush();
+            $out .= ($lead && $out === '' ? '<p class="lead">' : '<p>').e($line).'</p>';
+        }
+    }
+    $flush();
+    // A single paragraph stays plain: a lead needs something after it.
+    if ($lead && substr_count($out, '<p') + substr_count($out, '<ul') < 2) {
+        $out = str_replace('<p class="lead">', '<p>', $out);
+    }
+    return '<div class="rich">'.$out.'</div>';
+}
+
+function pro_head(string $media, string $eyebrow, string $name, string $where, string $extra = '', string $tagline = ''): string
 {
     $pin = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
     return '<header class="pro-head">'.$media.'<div class="pro-id">'
         .($eyebrow !== '' ? '<p class="eyebrow">'.e($eyebrow).'</p>' : '')
         .'<h1>'.e($name).'</h1>'
+        .($tagline !== '' ? '<p class="pro-tagline">'.e($tagline).'</p>' : '')
         .($where !== '' ? '<p class="pro-where">'.$pin.e($where).'</p>' : '')
         .$extra.'</div></header>';
 }
