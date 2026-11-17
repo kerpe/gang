@@ -1372,24 +1372,16 @@ table.data td.actions form + form { margin-left: 6px; }
 .venue-box .venue-card-head strong a:hover { color: var(--lime); }
 .venue-concept { display: block; margin-top: 6px; color: var(--ink); opacity: .8; }
 .venue-box .desc { margin: 18px 0 0; }
-.venue-box .venue-facts { grid-template-columns: 1fr 1fr; margin: 18px 0 0; }
-.venue-box .venue-facts .venue-hours { grid-row: span 2; }
-.venue-box .venue-facts > div:only-child, .venue-box .venue-facts .venue-hours:last-child { grid-column: 1 / -1; }
-.venue-addr dd { display: flex; gap: 6px; align-items: flex-start; }
-.venue-addr svg { width: 16px; height: 16px; flex: none; margin-top: 3px; color: var(--lime); }
 @media (max-width: 560px) {
   .venue-box { padding: 18px; }
-  .venue-box .venue-facts { grid-template-columns: 1fr; }
-  .venue-box .venue-facts .venue-hours { grid-row: auto; }
   .venue-box .venue-card-head strong { font-size: 1.6rem; }
 }
 
-/* Job facts card: the date stands out, short answers sit two in a row with the value first. */
+/* Job facts card: the date stands out, short answers sit two in a row. */
 .job-facts { display: grid; grid-template-columns: 1fr 1fr; }
 .job-facts > div { grid-column: 1 / -1; }
-.job-facts > div.half { grid-column: auto; display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+.job-facts > div.half { grid-column: auto; }
 .job-facts > div.half + div.half { border-left: 1px solid var(--line); }
-.job-facts > div.half dd { margin: 0 0 4px; font: 400 1.7rem/1.1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
 .job-facts > div.half dt { letter-spacing: .06em; }
 .job-when dd { font-size: 1.15rem; font-weight: 600; }
 .job-card .job-facts > div:first-child { border-top: 0; }
@@ -1401,18 +1393,17 @@ table.data td.actions form + form { margin-left: 6px; }
 @media (min-width: 961px) { .pro-page .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 560px) {
   .rich .lead { font-size: 1.1rem; }
-  .venue-box .venue-facts { grid-template-columns: 1fr 1fr; }
-  .venue-box .venue-facts .venue-hours { grid-column: 1 / -1; }
 
 }
 
-/* Venue opening hours as a week (venue_hours_week): day, time, today marked in lime. */
-.week-hours { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
-.week-hours li { display: flex; align-items: center; gap: 12px; padding: 5px 10px; margin: 0 -10px; border-radius: 8px; }
-.wk-day { width: 2.2em; flex: none; font-weight: 700; color: var(--muted); }
-.wk-time { flex: 1; }
-.week-hours li.off .wk-time { color: var(--muted); }
-.week-hours li.today { background: rgba(216,255,54,.1); }
-.week-hours li.today .wk-day, .week-hours li.today .wk-time { color: var(--lime); }
-.wk-now { font-size: .7rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--lime); }
-.venue-box .venue-facts { align-items: start; }
+/* Venue hours, team and address on the job page: a quiet list, label left, answer right. */
+.venue-list { margin: 18px 0 0; border-top: 1px solid var(--line); }
+.venue-list > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 4px 16px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+.venue-list dt { padding-top: 3px; font-size: .72rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .15em; }
+.venue-list dd { margin: 0; }
+/* Opening hours: days and times in two columns. */
+.hours-rows { display: inline-grid; grid-template-columns: auto auto; gap: 2px 14px; font-variant-numeric: tabular-nums; }
+.hr-days { color: var(--muted); font-weight: 600; }
+@media (max-width: 560px) {
+  .venue-list > div { grid-template-columns: 1fr; }
+}

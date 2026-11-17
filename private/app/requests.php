@@ -231,24 +231,19 @@ function venue_hours_text(array $hours): string
     return implode('; ', $parts);
 }
 
-// Opening hours as a week: one row per day, a day off as "Nedirba", today's row marked.
+// Opening hours as short rows, days in one column and times in the other: "Pr–Kt | 11:30–22:00".
 // Older free text stays as it was typed.
-function venue_hours_week(string $text): string
+function venue_hours_rows(string $text): string
 {
-    $hours = venue_hours_parse($text);
-    if (!$hours) {
+    if (venue_hours_parse($text) === null) {
         return venue_hours_html($text);
     }
-    $names = lang() === 'en' ? WEEKDAYS_SHORT_EN : WEEKDAYS_SHORT;
-    $today = (int) date('N');
     $rows = '';
-    foreach (range(1, 7) as $d) {
-        $time = isset($hours[$d]) ? $hours[$d][0].'–'.($hours[$d][1] === '00:00' ? '24:00' : $hours[$d][1]) : '';
-        $rows .= '<li class="'.trim(($d === $today ? 'today' : '').($time === '' ? ' off' : '')).'"><span class="wk-day">'.e($names[$d]).'</span>'
-            .'<span class="wk-time">'.($time !== '' ? e($time) : 'Nedirba').'</span>'
-            .($d === $today ? '<span class="wk-now">Šiandien</span>' : '').'</li>';
+    foreach (explode('<br>', venue_hours_html($text)) as $line) {
+        $at = strrpos($line, ' ');
+        $rows .= '<span class="hr-days">'.substr($line, 0, $at).'</span><span class="hr-time">'.substr($line, $at + 1).'</span>';
     }
-    return '<ul class="week-hours">'.$rows.'</ul>';
+    return '<span class="hours-rows">'.$rows.'</span>';
 }
 
 // The form's [day => [from, to]] from a stored text, or null for older free text.
@@ -589,7 +584,7 @@ function venue_page(int $id): never
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
     ]);
-    $factsHtml = $facts ? '<dl class="pro-info">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_week($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    $factsHtml = $facts ? '<dl class="pro-info">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_rows($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
     // Numbers for workers (and the venue itself); a venue without any yet is a newcomer.
     $stats = !$private || ($reliable === null && !$n) ? '' : pro_stats([
         ['Vidutinis įvertinimas', $n ? knives().' '.number_format((float) $avg, 1, ',', '') : '–', $n ? 'Įvertinimų: '.$n : 'Įvertinimų dar nėra'],
@@ -1091,14 +1086,14 @@ HTML, [
 
 // "Apie darbovietę" on the job page: what the employer filled in about the venue, visible to everyone.
 // Head like the venue's own page (type above, name, concept under it), then the text, then hours, team and
-// address as tiles. For members who may see them, the venue's ratings sit under the name.
+// address as a short list. For members who may see them, the venue's ratings sit under the name.
 function venue_section_html(array $venue, string $url, string $city = '', string $address = '', string $rating = ''): string
 {
-    $pin = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
     $concept = venue_concept($venue);
-    $tiles = ($venue['hours'] !== '' ? '<div class="venue-hours"><dt>Darbo laikas</dt><dd>'.venue_hours_week($venue['hours']).'</dd></div>' : '')
+    // Hours, team and address as one quiet list: label on the left, answer on the right.
+    $rows = ($venue['hours'] !== '' ? '<div><dt>Darbo laikas</dt><dd>'.venue_hours_rows($venue['hours']).'</dd></div>' : '')
         .(isset(TEAM_SIZES[$venue['team_size']]) ? '<div><dt>Komanda</dt><dd>'.e(TEAM_SIZES[$venue['team_size']]).'</dd></div>' : '')
-        .($address !== '' ? '<div class="venue-addr"><dt>Adresas</dt><dd>'.$pin.e($address).'</dd></div>' : '');
+        .($address !== '' ? '<div><dt>Adresas</dt><dd>'.e($address).'</dd></div>' : '');
     return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'
         .'<div class="venue-card-head">'.venue_logo($venue, 'mid').'<div class="venue-id">'
         .'<p class="eyebrow">'.e(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $city]))).'</p>'
@@ -1106,7 +1101,7 @@ function venue_section_html(array $venue, string $url, string $city = '', string
         .($concept !== '' ? '<span class="venue-concept">'.e($concept).'</span>' : '')
         .($rating !== '' ? '<span class="meta venue-rating">'.$rating.'</span>' : '').'</div></div>'
         .($venue['about'] ? '<div class="desc">'.text_html($venue['about']).'</div>' : '')
-        .($tiles !== '' ? '<dl class="venue-facts">'.$tiles.'</dl>' : '')
+        .($rows !== '' ? '<dl class="venue-list">'.$rows.'</dl>' : '')
         .venue_links_html($venue)
         .'</div></section>';
 }
