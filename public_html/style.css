@@ -1349,3 +1349,59 @@ table.data td.actions form + form { margin-left: 6px; }
   .admin-main table.data tr.col-filter { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .admin-main table.data tr.col-filter th { display: block; padding: 0; border: 0; }
 }
+
+/* Typed text as paragraphs: job description, "Apie darbovietę", "Apie save" (text_html). */
+.rich > * { margin: 0 0 .8em; }
+.rich > :last-child { margin-bottom: 0; }
+.rich p { max-width: 68ch; }
+.rich .lead { font-size: 1.2rem; font-weight: 600; line-height: 1.45; color: var(--ink); }
+.rich ul { padding-left: 1.2em; }
+.rich li::marker { color: var(--lime); }
+.rich li + li { margin-top: .3em; }
+/* The job description carries the lime edge of the profile heads. */
+.job-desc .desc { position: relative; overflow: hidden; padding: 24px 26px 24px 30px; background: linear-gradient(135deg, rgba(216,255,54,.06), transparent 50%), var(--surface); }
+.job-desc .desc::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 5px; background: var(--lime); }
+
+/* Venue card on the job page: a small version of the venue's own head. */
+.venue-box { padding: 22px; }
+.venue-box .venue-card-head { gap: 16px; align-items: center; }
+.avatar.venue-logo.mid { width: 64px; height: 64px; border-radius: 14px; font-size: 1.4rem; }
+.venue-id { min-width: 0; }
+.venue-id .eyebrow { margin: 0 0 4px; font-size: .72rem; color: var(--lime); font-weight: 700; letter-spacing: .2em; }
+.venue-box .venue-card-head strong { font: 400 1.9rem/1.05 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.venue-box .venue-card-head strong a:hover { color: var(--lime); }
+.venue-concept { display: block; margin-top: 6px; color: var(--ink); opacity: .8; }
+.venue-box .desc { margin: 18px 0 0; }
+.venue-box .venue-facts { grid-template-columns: 1fr 1fr; margin: 18px 0 0; }
+.venue-box .venue-facts .venue-hours { grid-row: span 2; }
+.venue-box .venue-facts > div:only-child, .venue-box .venue-facts .venue-hours:last-child { grid-column: 1 / -1; }
+.venue-addr dd { display: flex; gap: 6px; align-items: flex-start; }
+.venue-addr svg { width: 16px; height: 16px; flex: none; margin-top: 3px; color: var(--lime); }
+@media (max-width: 560px) {
+  .venue-box { padding: 18px; }
+  .venue-box .venue-facts { grid-template-columns: 1fr; }
+  .venue-box .venue-facts .venue-hours { grid-row: auto; }
+  .venue-box .venue-card-head strong { font-size: 1.6rem; }
+}
+
+/* Job facts card: the date stands out, short answers sit two in a row with the value first. */
+.job-facts { display: grid; grid-template-columns: 1fr 1fr; }
+.job-facts > div { grid-column: 1 / -1; }
+.job-facts > div.half { grid-column: auto; display: flex; flex-direction: column-reverse; justify-content: flex-end; }
+.job-facts > div.half + div.half { border-left: 1px solid var(--line); }
+.job-facts > div.half dd { margin: 0 0 4px; font: 400 1.7rem/1.1 var(--display); text-transform: uppercase; letter-spacing: .01em; }
+.job-facts > div.half dt { letter-spacing: .06em; }
+.job-when dd { font-size: 1.15rem; font-weight: 600; }
+.job-card .job-facts > div:first-child { border-top: 0; }
+
+/* Venue page: the concept under the name. */
+.pro-tagline { margin: 10px 0 0; max-width: 60ch; font-size: 1.05rem; color: var(--ink); opacity: .85; }
+.job-side { align-self: start; }
+.pro-info { align-items: start; }
+@media (min-width: 961px) { .pro-page .feed { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px) {
+  .rich .lead { font-size: 1.1rem; }
+  .venue-box .venue-facts { grid-template-columns: 1fr 1fr; }
+  .venue-box .venue-facts .venue-hours { grid-column: 1 / -1; }
+
+}

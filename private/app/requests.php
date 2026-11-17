@@ -520,6 +520,19 @@ function perks_html(string $list, string $heading): string
     return $perks ? $heading.'<ul class="perk-list">'.implode('', array_map(fn ($p) => '<li>'.e($p).'</li>', $perks)).'</ul>' : '';
 }
 
+// The concept under the venue's name. Some employers write a whole sentence there and repeat it in
+// "Apie darbovietę"; when most of its words are already in that text, it is left out.
+function venue_concept(array $venue): string
+{
+    $concept = trim((string) $venue['concept']);
+    $words = fn ($t) => array_unique(array_filter(preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($t)), fn ($w) => mb_strlen($w) >= 3));
+    $mine = $words($concept);
+    if (count($mine) >= 4 && count(array_intersect($mine, $words((string) $venue['about']))) >= 0.7 * count($mine)) {
+        return '';
+    }
+    return $concept;
+}
+
 function venue_type_text(array $venue): string
 {
     return trim(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $venue['concept']])));
@@ -550,7 +563,8 @@ function venue_page(int $id): never
     $jobs = open_requests([], 200);
     $jobs = array_filter($jobs, fn ($r) => (int) $r['venue_id'] === $id);
     $jobsHtml = $jobs ? '<h2>Aktualūs darbo pasiūlymai</h2><div class="feed">'.implode('', array_map('request_card_short', $jobs)).'</div>' : '';
-    $type = venue_type_text($venue);
+    // The type above the name; the concept (often a whole sentence) under it, in normal letters.
+    $type = VENUE_TYPES[$venue['type']] ?? '';
     $facts = array_filter([
         'Darbo laikas' => $venue['hours'],
         'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
@@ -564,10 +578,10 @@ function venue_page(int $id): never
     $badge = $private && $stats === '' ? '<p class="pro-badge"><span class="tag good">GANG naujokas</span></p>' : '';
     $edit = $u && (int) $venue['manager_id'] === (int) $u['id'] ? '<p class="venue-actions"><a class="btn small ghost" href="/darboviete/'.$id.'/redaguoti">Redaguoti duomenis</a></p>' : '';
     page($venue['name'], '<section class="wrap narrow pro-page venue-page">'
-        .pro_head(venue_logo($venue, 'pro'), $type, $venue['name'], full_address($venue), $badge.venue_links_html($venue))
+        .pro_head(venue_logo($venue, 'pro'), $type, $venue['name'], full_address($venue), $badge.venue_links_html($venue), venue_concept($venue))
         .$edit.$stats
         .$factsHtml
-        .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
+        .($venue['about'] ? '<h2>Apie darbovietę</h2><div class="desc">'.text_html($venue['about'], true).'</div>' : '')
         .$jobsHtml.$reviewsHtml.'</section>', ['noindex' => true]);
 }
 
@@ -964,12 +978,13 @@ function request_page(int $id): never
     $perks = perks_html($r['perks'], '');
     // Dates and working hours sit in the facts card instead of a separate "Kada" section.
     $facts = '<dl class="job-facts">'
-        .'<div><dt>Kada</dt><dd>'.$chips.'</dd></div>'
-        // The owner chose the duration and the experience themselves; workers need them to decide.
-        .($owner ? '' : '<div><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>')
+        .'<div class="job-when"><dt>Kada</dt><dd>'.$chips.'</dd></div>'
         .($r['hours'] !== '' ? '<div><dt>Darbo laikas</dt><dd>'.e($r['hours']).'</dd></div>' : '')
+        // The owner chose the duration and the experience themselves; workers need them to decide.
+        // Short answers go two in a row, so the card reads faster than a long list.
+        .($owner ? '' : '<div class="half"><dt>Darbo trukmė</dt><dd>'.e(KINDS[$r['kind']] ?? '').'</dd></div>')
+        .'<div'.($owner ? '' : ' class="half"').'><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
         .($owner ? '' : '<div><dt>Reikalinga patirtis</dt><dd>'.e(EXPERIENCE_REQUIRED[(int) $r['min_experience']] ?? '').'</dd></div>')
-        .'<div><dt>Reikia darbuotojų</dt><dd>'.e($peopleText).'</dd></div>'
         // Workers see the venue's name and address in the "Apie darbovietę" card; the owner has no such card.
         .($owner ? '<div><dt>Darbovietė</dt><dd><a href="/darboviete/'.(int) $r['venue_id'].'">'.e($r['venue_name']).'</a></dd></div>'
             .'<div><dt>Adresas</dt><dd>'.e($place).'</dd></div>' : '')
@@ -990,7 +1005,7 @@ function request_page(int $id): never
             .' if (!bar || !panel || !("IntersectionObserver" in window)) return; bar.hidden = false;'
             .' new IntersectionObserver(function (e) { bar.classList.toggle("off", e[0].isIntersecting || e[0].boundingClientRect.top < 0); }).observe(panel); })();</script>';
     }
-    $desc = nl2br(e($r['description']));
+    $desc = text_html($r['description'], true);
     $e = 'e';
     $ld = '';
     // Other roles of the same event.
@@ -1039,7 +1054,7 @@ function request_page(int $id): never
   <div class="job-grid">
     <div class="job-side job-card">$payBox$applyBtn$facts</div>
     <div class="job-main">
-      <section class="job-sec"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
+      <section class="job-sec job-desc"><h2>Darbo aprašymas</h2><div class="desc">$desc</div></section>
       $venueSec
       $event
       $action
@@ -1054,25 +1069,26 @@ HTML, [
     ]);
 }
 
-// "Apie darbovietę" at the top of the job page: what the employer filled in about the venue, visible to everyone.
-// The address closes the card. The city and (for members who may see them) the venue's ratings sit under the name.
+// "Apie darbovietę" on the job page: what the employer filled in about the venue, visible to everyone.
+// Head like the venue's own page (type above, name, concept under it), then the text, then hours, team and
+// address as tiles. For members who may see them, the venue's ratings sit under the name.
 function venue_section_html(array $venue, string $url, string $city = '', string $address = '', string $rating = ''): string
 {
-    $type = implode(' · ', array_filter([venue_type_text($venue), $city], fn ($x) => $x !== ''));
-    $facts = array_filter([
-        'Darbo laikas' => $venue['hours'],
-        'Komanda' => TEAM_SIZES[$venue['team_size']] ?? '',
-    ]);
-    $factsHtml = $facts ? '<dl class="venue-facts">'.implode('', array_map(fn ($k, $val) => '<div><dt>'.$k.'</dt><dd>'.($k === 'Darbo laikas' ? venue_hours_html($val) : e($val)).'</dd></div>', array_keys($facts), $facts)).'</dl>' : '';
+    $pin = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>';
+    $concept = venue_concept($venue);
+    $tiles = ($venue['hours'] !== '' ? '<div class="venue-hours"><dt>Darbo laikas</dt><dd>'.venue_hours_html($venue['hours']).'</dd></div>' : '')
+        .(isset(TEAM_SIZES[$venue['team_size']]) ? '<div><dt>Komanda</dt><dd>'.e(TEAM_SIZES[$venue['team_size']]).'</dd></div>' : '')
+        .($address !== '' ? '<div class="venue-addr"><dt>Adresas</dt><dd>'.$pin.e($address).'</dd></div>' : '');
     return '<section class="job-sec job-venue-sec"><h2>Apie darbovietę</h2><div class="venue-box">'
-        .'<div class="venue-card-head">'.venue_logo($venue, 'small').'<div><strong><a href="'.$url.'">'.e($venue['name']).'</a></strong>'
-        .($type !== '' ? '<span class="meta">'.e($type).'</span>' : '')
+        .'<div class="venue-card-head">'.venue_logo($venue, 'mid').'<div class="venue-id">'
+        .'<p class="eyebrow">'.e(implode(' · ', array_filter([VENUE_TYPES[$venue['type']] ?? '', $city]))).'</p>'
+        .'<strong><a href="'.$url.'">'.e($venue['name']).'</a></strong>'
+        .($concept !== '' ? '<span class="venue-concept">'.e($concept).'</span>' : '')
         .($rating !== '' ? '<span class="meta venue-rating">'.$rating.'</span>' : '').'</div></div>'
-        .($venue['about'] ? '<div class="desc">'.nl2br(e($venue['about'])).'</div>' : '')
-        .$factsHtml
+        .($venue['about'] ? '<div class="desc">'.text_html($venue['about']).'</div>' : '')
+        .($tiles !== '' ? '<dl class="venue-facts">'.$tiles.'</dl>' : '')
         .venue_links_html($venue)
-        // The address as plain text; the venue's name above already links to its page.
-        .($address !== '' ? '<p class="venue-more">'.e($address).'</p>' : '').'</div></section>';
+        .'</div></section>';
 }
 
 function worker_panel(array $r, ?array $u, bool $isOpen): string
@@ -1909,7 +1925,7 @@ function worker_profile_page(int $id): never
             .'<p class="pro-tags"><span class="pro-tags-label">Domina darbas</span> '.$kinds.'</p>')
         .$stats
         .($rows !== '' ? '<h2>Pareigos ir patirtis</h2><ul class="xp-list">'.$rows.'</ul>' : '')
-        .($w['about'] ? '<h2>Apie save</h2><div class="desc">'.nl2br(e($w['about'])).'</div>' : '')
+        .($w['about'] ? '<h2>Apie save</h2><div class="desc">'.text_html($w['about'], true).'</div>' : '')
         .($n ? '<h2>Įvertinimai</h2>'.criteria_html('manager', 'worker_id', $id).reviews_html(worker_reviews($id), fn ($r) => 'Darbdavys, '.(CITIES[$r['city']] ?? '')) : '')
         .'</section>', ['noindex' => true]);
 }
